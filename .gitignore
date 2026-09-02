@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+build/
+dist/
+
+# env
+.env
+.env*.local
+!.env.example
+
+# database
+*.db
+*.sqlite
+
+# generated
+src/graphql/generated/introspection.json
+
+# test / tooling
+coverage/
+playwright-report/
+test-results/
+.turbo/
+*.tsbuildinfo
+
+# scratch — the v1 mistake: temp.json, fix-lint.js, test-db.js all got committed
+temp*
+scratch*
+*.local
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
