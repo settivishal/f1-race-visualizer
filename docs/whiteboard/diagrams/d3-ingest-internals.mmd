@@ -1,0 +1,45 @@
+flowchart TD
+    START(["ingestRace(sessionKey)"]) --> RUN1["startIngestRun → status RUNNING"]
+
+    subgraph SHELL1["IMPERATIVE SHELL — openf1.ts"]
+        RUN1 --> TH["throttledGet<br/>3 req/s · 30 req/min<br/>retry with backoff on 429 / 5xx"]
+        TH --> F1["/sessions /meetings /drivers"]
+        TH --> F2["/laps — date_start, lap_duration, sectors"]
+        TH --> F3["/position — timestamped samples"]
+        TH --> F4["/pit /race_control /session_result /weather"]
+        F1 --> ZOD["zod.parse — trust boundary<br/>shape change fails HERE, not deep in transform"]
+        F2 --> ZOD
+        F3 --> ZOD
+        F4 --> ZOD
+    end
+
+    subgraph CORE["FUNCTIONAL CORE — transform.ts · pure, no I/O, fully tested"]
+        ZOD --> J["THE JOIN<br/>for each driver-lap, take the last /position sample<br/>with date &lt;= lap.date_start + lap_duration"]
+        J --> J2["Edge cases: no prior sample → grid position<br/>null lap_duration → next lap date_start<br/>red flag → lap gaps are legal"]
+        J2 --> T1["race_positions rows"]
+        ZOD --> T2["race_events rows<br/>pit + race_control"]
+        ZOD --> T3["race_results rows<br/>points copied verbatim — we sum, we do not score"]
+    end
+
+    subgraph SHELL2["IMPERATIVE SHELL — run.ts"]
+        T1 --> TX["db.transaction"]
+        T2 --> TX
+        T3 --> TX
+        TX --> UP["INSERT ... ON CONFLICT DO UPDATE<br/>idempotency is a schema property,<br/>not a have-I-imported-this check"]
+        UP --> CHK{"Unique constraints hold?"}
+        CHK -->|"no — two drivers in one position"| ABORT["ROLLBACK<br/>the DB is a test that runs in production"]
+        CHK -->|"yes"| COMMIT["COMMIT"]
+    end
+
+    ABORT --> FAIL["ingest_runs → FAILED + error<br/>never swallowed"]
+    COMMIT --> OK["ingest_runs → SUCCESS + rowsWritten"]
+    OK --> REV["revalidateTag race + standings<br/>LAST — a failed ingest leaves the cache alone"]
+    REV --> DONE(["done"])
+
+    IMG["images.ts — has headshotUrl?<br/>no → fetch → put() to Blob → store our URL<br/>failure never fails the ingest"]
+    RUN1 -.-> IMG
+
+    classDef core fill:#e8ffe8,stroke:#484
+    classDef bad fill:#ffe8e8,stroke:#c44
+    class J,J2,T1,T2,T3 core
+    class ABORT,FAIL bad

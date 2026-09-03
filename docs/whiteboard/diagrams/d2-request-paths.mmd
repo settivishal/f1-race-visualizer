@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph P1["PATH 1 — public page load, CACHE HIT (the common case)"]
+        A1(["Browser"]) --> A2["Vercel edge cache"] --> A3["HTML"]
+        A4["No resolver. No Drizzle. No Neon.<br/>Neon is never woken by traffic."]
+    end
+
+    subgraph P2["PATH 2 — cache miss or post-ingest revalidation"]
+        B1(["Browser"]) --> B2["Vercel"] --> B3["Server component"]
+        B3 --> B4["execute() in-process"] --> B5["Resolvers"]
+        B5 --> B6["DataLoader<br/>~6 queries, not ~4800"]
+        B6 --> B7["Drizzle"] --> B8[("Neon")]
+        B8 --> B9["HTML streamed back<br/>+ cached at the edge"]
+    end
+
+    subgraph P3["PATH 3 — interactive widget (scrub, filter, admin edit)"]
+        C1(["Browser"]) -->|"POST /api/graphql"| C2["Yoga"]
+        C2 --> C3{"Admin field?"}
+        C3 -->|"yes"| C4["Check Auth.js session<br/>in resolver context"]
+        C3 -->|"no"| C5["Resolvers"]
+        C4 --> C5
+        C5 --> C6["DataLoader"] --> C7["Drizzle"] --> C8[("Neon")] --> C9["JSON"]
+    end
+
+    subgraph P4["PATH 4 — scheduled update (Monday morning, no user)"]
+        D1["Vercel Cron"] -->|"CRON_SECRET"| D2["POST /api/cron/ingest"]
+        D2 --> D3["Read app_config"]
+        D3 --> D4{"Work due?"}
+        D4 -->|"no"| D5["200 skipped"]
+        D4 -->|"yes"| D6["Fetch OpenF1 (throttled)"]
+        D6 --> D7["transform — pure"]
+        D7 --> D8["Upsert one race in a tx"]
+        D8 --> D9["Write ingest_runs"]
+        D9 --> D10["COMMIT"]
+        D10 --> D11["revalidateTag race + standings"]
+        D11 --> D12["200 ingested"]
+    end
+
+    D11 -.->|"invalidates"| A2
+
+    classDef good fill:#e8ffe8,stroke:#484
+    classDef note fill:#fffbe6,stroke:#cc0,stroke-dasharray: 4 3
+    class A2,A3 good
+    class A4 note

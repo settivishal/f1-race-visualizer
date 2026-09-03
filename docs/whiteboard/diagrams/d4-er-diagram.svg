@@ -1,0 +1,217 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:gn="http://www.goodnotes.com/gn-svg" width="1280" height="900" viewBox="0 0 1280 900">
+
+  <text x="24" y="34" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="bold" fill="#111111">F1 v2 — Entity Relationships</text>
+  <text x="24" y="56" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#666666">PK = primary key · UQ = unique constraint · FK = foreign key · crow's foot = many</text>
+
+  <!-- seasons -->
+  <rect x="40" y="90" width="200" height="54" fill="#eef3fb" stroke="#3a5a8c" stroke-width="2" rx="4"/>
+  <rect x="40" y="90" width="200" height="24" fill="#3a5a8c" rx="4"/>
+  <text x="50" y="107" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">seasons</text>
+  <text x="50" y="132" font-family="Courier, monospace" font-size="12" fill="#111111">PK year : integer</text>
+
+  <!-- meetings -->
+  <rect x="40" y="200" width="250" height="152" fill="#eef3fb" stroke="#3a5a8c" stroke-width="2" rx="4"/>
+  <rect x="40" y="200" width="250" height="24" fill="#3a5a8c" rx="4"/>
+  <text x="50" y="217" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">meetings   (race weekend)</text>
+  <text x="50" y="242" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="50" y="260" font-family="Courier, monospace" font-size="12" fill="#111111">FK season_year</text>
+  <text x="50" y="278" font-family="Courier, monospace" font-size="12" fill="#111111">   round, name, country</text>
+  <text x="50" y="296" font-family="Courier, monospace" font-size="12" fill="#111111">   circuit_name, start_date</text>
+  <text x="50" y="314" font-family="Courier, monospace" font-size="12" fill="#111111">   weather : jsonb</text>
+  <text x="50" y="332" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ (season_year, round)</text>
+  <text x="50" y="348" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ openf1_meeting_key</text>
+
+  <!-- races -->
+  <rect x="40" y="410" width="250" height="152" fill="#eef3fb" stroke="#3a5a8c" stroke-width="2" rx="4"/>
+  <rect x="40" y="410" width="250" height="24" fill="#3a5a8c" rx="4"/>
+  <text x="50" y="427" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">races   (scored session)</text>
+  <text x="50" y="452" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="50" y="470" font-family="Courier, monospace" font-size="12" fill="#111111">FK meeting_id  (cascade)</text>
+  <text x="50" y="488" font-family="Courier, monospace" font-size="12" fill="#111111">   type : GRAND_PRIX|SPRINT</text>
+  <text x="50" y="506" font-family="Courier, monospace" font-size="12" fill="#111111">   date, laps, is_featured</text>
+  <text x="50" y="524" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ (meeting_id, type)</text>
+  <text x="50" y="542" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ slug   UQ openf1_session_key</text>
+
+  <!-- teams -->
+  <rect x="700" y="90" width="230" height="90" fill="#f6f0e8" stroke="#8c6a3a" stroke-width="2" rx="4"/>
+  <rect x="700" y="90" width="230" height="24" fill="#8c6a3a" rx="4"/>
+  <text x="710" y="107" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">teams</text>
+  <text x="710" y="132" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="710" y="150" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ name</text>
+  <text x="710" y="168" font-family="Courier, monospace" font-size="12" fill="#111111">   color, logo_url</text>
+
+  <!-- drivers -->
+  <rect x="1000" y="90" width="230" height="108" fill="#f6f0e8" stroke="#8c6a3a" stroke-width="2" rx="4"/>
+  <rect x="1000" y="90" width="230" height="24" fill="#8c6a3a" rx="4"/>
+  <text x="1010" y="107" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">drivers</text>
+  <text x="1010" y="132" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="1010" y="150" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ code  (VER, HAM)</text>
+  <text x="1010" y="168" font-family="Courier, monospace" font-size="12" fill="#111111">   name, number, country</text>
+  <text x="1010" y="186" font-family="Courier, monospace" font-size="12" fill="#111111">   headshot_url (our Blob)</text>
+
+  <!-- team_seasons -->
+  <rect x="700" y="240" width="230" height="108" fill="#f6f0e8" stroke="#8c6a3a" stroke-width="2" rx="4"/>
+  <rect x="700" y="240" width="230" height="24" fill="#8c6a3a" rx="4"/>
+  <text x="710" y="257" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">team_seasons</text>
+  <text x="710" y="282" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="710" y="300" font-family="Courier, monospace" font-size="12" fill="#111111">FK season_year, team_id</text>
+  <text x="710" y="318" font-family="Courier, monospace" font-size="12" fill="#111111">   color  (per-season livery)</text>
+  <text x="710" y="338" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ (season_year, team_id)</text>
+
+  <!-- driver_team_assignments -->
+  <rect x="700" y="400" width="290" height="126" fill="#fff2cc" stroke="#b8860b" stroke-width="3" rx="4"/>
+  <rect x="700" y="400" width="290" height="24" fill="#b8860b" rx="4"/>
+  <text x="710" y="417" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">driver_team_assignments</text>
+  <text x="710" y="442" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="710" y="460" font-family="Courier, monospace" font-size="12" fill="#111111">FK team_season_id (cascade)</text>
+  <text x="710" y="478" font-family="Courier, monospace" font-size="12" fill="#111111">FK driver_id</text>
+  <text x="710" y="496" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ (team_season_id, driver_id)</text>
+  <text x="710" y="516" font-family="Helvetica, Arial, sans-serif" font-size="11" font-style="italic" fill="#8a5a00">the ONLY driver reference in race data</text>
+
+  <!-- race_positions -->
+  <rect x="330" y="600" width="290" height="180" fill="#e8f6ec" stroke="#2f7a4a" stroke-width="2" rx="4"/>
+  <rect x="330" y="600" width="290" height="24" fill="#2f7a4a" rx="4"/>
+  <text x="340" y="617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">race_positions   (~1,200 / race)</text>
+  <text x="340" y="642" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="340" y="660" font-family="Courier, monospace" font-size="12" fill="#111111">FK race_id  (cascade)</text>
+  <text x="340" y="678" font-family="Courier, monospace" font-size="12" fill="#111111">FK assignment_id</text>
+  <text x="340" y="696" font-family="Courier, monospace" font-size="12" fill="#111111">   lap, position</text>
+  <text x="340" y="714" font-family="Courier, monospace" font-size="12" fill="#111111">   gap : text, lap_time</text>
+  <text x="340" y="732" font-family="Courier, monospace" font-size="12" fill="#111111">   sector_1 / 2 / 3</text>
+  <text x="340" y="752" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ (race_id, lap, assignment_id)</text>
+  <text x="340" y="770" font-family="Courier, monospace" font-size="12" fill="#a8341f">UQ (race_id, lap, position)</text>
+
+  <!-- race_events -->
+  <rect x="40" y="600" width="260" height="126" fill="#e8f6ec" stroke="#2f7a4a" stroke-width="2" rx="4"/>
+  <rect x="40" y="600" width="260" height="24" fill="#2f7a4a" rx="4"/>
+  <text x="50" y="617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">race_events</text>
+  <text x="50" y="642" font-family="Courier, monospace" font-size="12" fill="#111111">PK id : uuid</text>
+  <text x="50" y="660" font-family="Courier, monospace" font-size="12" fill="#111111">FK race_id  (cascade)</text>
+  <text x="50" y="678" font-family="Courier, monospace" font-size="12" fill="#111111">FK assignment_id  NULLABLE</text>
+  <text x="50" y="696" font-family="Courier, monospace" font-size="12" fill="#111111">   lap, type : enum, details</text>
+  <text x="50" y="716" font-family="Helvetica, Arial, sans-serif" font-size="11" font-style="italic" fill="#2f7a4a">null driver = race-wide event</text>
+
+  <!-- race_results -->
+  <rect x="650" y="600" width="290" height="162" fill="#e8f6ec" stroke="#2f7a4a" stroke-width="2" rx="4"/>
+  <rect x="650" y="600" width="290" height="24" fill="#2f7a4a" rx="4"/>
+  <text x="660" y="617" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">race_results   (new in v2)</text>
+  <text x="660" y="642" font-family="Courier, monospace" font-size="12" fill="#a8341f">PK (race_id, assignment_id)</text>
+  <text x="660" y="660" font-family="Courier, monospace" font-size="12" fill="#111111">   grid_position</text>
+  <text x="660" y="678" font-family="Courier, monospace" font-size="12" fill="#111111">   final_position  NULLABLE</text>
+  <text x="660" y="696" font-family="Courier, monospace" font-size="12" fill="#111111">   status : FINISHED|DNF|DNS|DSQ</text>
+  <text x="660" y="714" font-family="Courier, monospace" font-size="12" fill="#111111">   laps_completed</text>
+  <text x="660" y="732" font-family="Courier, monospace" font-size="12" fill="#111111">   points : real  (verbatim)</text>
+  <text x="660" y="752" font-family="Courier, monospace" font-size="12" fill="#111111">   fastest_lap : boolean</text>
+
+  <!-- derived standings -->
+  <rect x="980" y="600" width="270" height="126" fill="#ffffff" stroke="#888888" stroke-width="2" stroke-dasharray="7 5" rx="4"/>
+  <text x="990" y="622" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#555555">standings — NOT A TABLE</text>
+  <text x="990" y="646" font-family="Courier, monospace" font-size="12" fill="#333333">SUM(points) GROUP BY driver</text>
+  <text x="990" y="664" font-family="Courier, monospace" font-size="12" fill="#333333">over race_results</text>
+  <text x="990" y="690" font-family="Helvetica, Arial, sans-serif" font-size="11" font-style="italic" fill="#555555">A snapshot would be a second</text>
+  <text x="990" y="706" font-family="Helvetica, Arial, sans-serif" font-size="11" font-style="italic" fill="#555555">source of truth. Deleting it also</text>
+  <text x="990" y="722" font-family="Helvetica, Arial, sans-serif" font-size="11" font-style="italic" fill="#555555">removed the second upstream API.</text>
+
+  <!-- ops tables -->
+  <rect x="1010" y="240" width="220" height="72" fill="#f2eef6" stroke="#6a4a8c" stroke-width="2" rx="4"/>
+  <rect x="1010" y="240" width="220" height="24" fill="#6a4a8c" rx="4"/>
+  <text x="1020" y="257" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">ingest_runs</text>
+  <text x="1020" y="282" font-family="Courier, monospace" font-size="12" fill="#111111">source, target, status</text>
+  <text x="1020" y="300" font-family="Courier, monospace" font-size="12" fill="#111111">rows_written, error, times</text>
+
+  <rect x="1010" y="330" width="220" height="54" fill="#f2eef6" stroke="#6a4a8c" stroke-width="2" rx="4"/>
+  <rect x="1010" y="330" width="220" height="24" fill="#6a4a8c" rx="4"/>
+  <text x="1020" y="347" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">app_config</text>
+  <text x="1020" y="372" font-family="Courier, monospace" font-size="12" fill="#a8341f">CHECK (id = 1)  one row</text>
+
+  <rect x="1010" y="402" width="220" height="54" fill="#f2eef6" stroke="#6a4a8c" stroke-width="2" rx="4"/>
+  <rect x="1010" y="402" width="220" height="24" fill="#6a4a8c" rx="4"/>
+  <text x="1020" y="419" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">users   (one admin)</text>
+  <text x="1020" y="444" font-family="Courier, monospace" font-size="12" fill="#111111">email UQ, password_hash</text>
+
+  <!-- relationship lines -->
+  <!-- seasons -> meetings -->
+  <line x1="140" y1="144" x2="140" y2="200" stroke="#333333" stroke-width="2"/>
+  <line x1="130" y1="200" x2="140" y2="188" stroke="#333333" stroke-width="2"/>
+  <line x1="150" y1="200" x2="140" y2="188" stroke="#333333" stroke-width="2"/>
+  <text x="150" y="176" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333">1 : many</text>
+
+  <!-- meetings -> races -->
+  <line x1="140" y1="352" x2="140" y2="410" stroke="#333333" stroke-width="2"/>
+  <line x1="130" y1="410" x2="140" y2="398" stroke="#333333" stroke-width="2"/>
+  <line x1="150" y1="410" x2="140" y2="398" stroke="#333333" stroke-width="2"/>
+  <text x="150" y="386" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333">1 : at most 2</text>
+
+  <!-- races -> race_events -->
+  <line x1="120" y1="562" x2="120" y2="600" stroke="#333333" stroke-width="2"/>
+  <line x1="110" y1="600" x2="120" y2="588" stroke="#333333" stroke-width="2"/>
+  <line x1="130" y1="600" x2="120" y2="588" stroke="#333333" stroke-width="2"/>
+
+  <!-- races -> race_positions -->
+  <line x1="220" y1="562" x2="220" y2="580" stroke="#333333" stroke-width="2"/>
+  <line x1="220" y1="580" x2="430" y2="580" stroke="#333333" stroke-width="2"/>
+  <line x1="430" y1="580" x2="430" y2="600" stroke="#333333" stroke-width="2"/>
+  <line x1="420" y1="600" x2="430" y2="588" stroke="#333333" stroke-width="2"/>
+  <line x1="440" y1="600" x2="430" y2="588" stroke="#333333" stroke-width="2"/>
+
+  <!-- races -> race_results -->
+  <line x1="270" y1="562" x2="270" y2="572" stroke="#333333" stroke-width="2"/>
+  <line x1="270" y1="572" x2="760" y2="572" stroke="#333333" stroke-width="2"/>
+  <line x1="760" y1="572" x2="760" y2="600" stroke="#333333" stroke-width="2"/>
+  <line x1="750" y1="600" x2="760" y2="588" stroke="#333333" stroke-width="2"/>
+  <line x1="770" y1="600" x2="760" y2="588" stroke="#333333" stroke-width="2"/>
+
+  <!-- teams -> team_seasons -->
+  <line x1="790" y1="180" x2="790" y2="240" stroke="#333333" stroke-width="2"/>
+  <line x1="780" y1="240" x2="790" y2="228" stroke="#333333" stroke-width="2"/>
+  <line x1="800" y1="240" x2="790" y2="228" stroke="#333333" stroke-width="2"/>
+
+  <!-- seasons -> team_seasons -->
+  <line x1="240" y1="117" x2="620" y2="117" stroke="#333333" stroke-width="2" stroke-dasharray="5 4"/>
+  <line x1="620" y1="117" x2="620" y2="290" stroke="#333333" stroke-width="2" stroke-dasharray="5 4"/>
+  <line x1="620" y1="290" x2="700" y2="290" stroke="#333333" stroke-width="2" stroke-dasharray="5 4"/>
+  <line x1="700" y1="290" x2="688" y2="283" stroke="#333333" stroke-width="2"/>
+  <line x1="700" y1="290" x2="688" y2="297" stroke="#333333" stroke-width="2"/>
+
+  <!-- team_seasons -> dta -->
+  <line x1="790" y1="348" x2="790" y2="400" stroke="#333333" stroke-width="2"/>
+  <line x1="780" y1="400" x2="790" y2="388" stroke="#333333" stroke-width="2"/>
+  <line x1="800" y1="400" x2="790" y2="388" stroke="#333333" stroke-width="2"/>
+  <text x="800" y="378" font-family="Helvetica, Arial, sans-serif" font-size="11" fill="#333333">1 : many seats</text>
+
+  <!-- drivers -> dta -->
+  <line x1="1115" y1="198" x2="1115" y2="220" stroke="#333333" stroke-width="2"/>
+  <line x1="1115" y1="220" x2="960" y2="220" stroke="#333333" stroke-width="2"/>
+  <line x1="960" y1="220" x2="960" y2="400" stroke="#333333" stroke-width="2"/>
+  <line x1="950" y1="400" x2="960" y2="388" stroke="#333333" stroke-width="2"/>
+  <line x1="970" y1="400" x2="960" y2="388" stroke="#333333" stroke-width="2"/>
+
+  <!-- dta -> race_positions -->
+  <line x1="760" y1="526" x2="760" y2="548" stroke="#b8860b" stroke-width="3"/>
+  <line x1="760" y1="548" x2="540" y2="548" stroke="#b8860b" stroke-width="3"/>
+  <line x1="540" y1="548" x2="540" y2="600" stroke="#b8860b" stroke-width="3"/>
+  <line x1="530" y1="600" x2="540" y2="588" stroke="#b8860b" stroke-width="3"/>
+  <line x1="550" y1="600" x2="540" y2="588" stroke="#b8860b" stroke-width="3"/>
+
+  <!-- dta -> race_events -->
+  <line x1="700" y1="470" x2="200" y2="470" stroke="#b8860b" stroke-width="3"/>
+  <line x1="200" y1="470" x2="200" y2="600" stroke="#b8860b" stroke-width="3"/>
+  <line x1="190" y1="600" x2="200" y2="588" stroke="#b8860b" stroke-width="3"/>
+  <line x1="210" y1="600" x2="200" y2="588" stroke="#b8860b" stroke-width="3"/>
+
+  <!-- dta -> race_results -->
+  <line x1="880" y1="526" x2="880" y2="600" stroke="#b8860b" stroke-width="3"/>
+  <line x1="870" y1="600" x2="880" y2="588" stroke="#b8860b" stroke-width="3"/>
+  <line x1="890" y1="600" x2="880" y2="588" stroke="#b8860b" stroke-width="3"/>
+
+  <!-- race_results -> derived -->
+  <line x1="940" y1="660" x2="980" y2="660" stroke="#888888" stroke-width="2" stroke-dasharray="6 4"/>
+  <line x1="980" y1="660" x2="968" y2="653" stroke="#888888" stroke-width="2"/>
+  <line x1="980" y1="660" x2="968" y2="667" stroke="#888888" stroke-width="2"/>
+
+  <!-- legend -->
+  <rect x="40" y="800" width="1200" height="70" fill="#fafafa" stroke="#cccccc" stroke-width="1" rx="4"/>
+  <line x1="60" y1="822" x2="110" y2="822" stroke="#b8860b" stroke-width="3"/>
+  <text x="120" y="827" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#111111">assignment_id — one FK resolves driver + team + season-correct livery. v1 carried driverId AND driverAssignmentId: two sources of truth for one fact.</text>
+  <text x="60" y="852" font-family="Helvetica, Arial, sans-serif" font-size="12" fill="#a8341f">Red text = the constraints that make invalid data unstorable. The meeting/race split is what lets UQ(season_year, round) and UQ(openf1_session_key) coexist — v1's schema could not satisfy both on a sprint weekend.</text>
+</svg>

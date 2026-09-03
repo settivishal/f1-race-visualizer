@@ -1,0 +1,28 @@
+timeline
+    title F1 v2 — Milestones and Acceptance Criteria
+    section M0 Foundation
+        Build : Next.js + TS + Tailwind : Neon project : Drizzle configured : schema.ts hand-written : first migration : seed script : Vercel wired
+        Done when : pnpm dev runs against Neon and a seeded driver renders on a page
+        Why : a thin vertical slice proves the chain is connected before anything is built on it
+    section M1 Ingest
+        Build : lib/ingest openf1 · images · transform · run : fixtures from real races : scripts/backfill.ts : ingest_runs on every attempt
+        Done when : full 2025 season in the DB, GPs and sprints, correct per-lap positions and classifications : backfill finishes in one run under 30 req/min : re-running changes no row counts
+        Why a FULL season : it forces sprint weekends, red flags, DNS/DNF, mid-season swaps and short classifications to arrive NOW, when only the ingest can be wrong
+    section M1.5 GraphQL
+        Build : Pothos builder : core types : cursor pagination : Yoga mounted : execute.ts : DataLoaders : codegen : depth + cost limits : introspection dev-only : PGlite resolver tests
+        Done when : GraphiQL and the server component return identical data : one race issues a bounded query count, verified in the Neon log, not assumed
+        By hand, not generated : writing the naive resolver, watching 4800 queries, then fixing it IS the milestone
+    section M2 Public replay
+        Build : port race-visualization near-verbatim : re-cut the data contract to one RaceReplayFragment : race library with search and filter : ISR-cached pages
+        Done when : a race replays end to end at portfolio quality : at 390px width : player operable by keyboard alone : timing tower is the canvas text alternative
+        Why those are gates here : cheap to design in, expensive to retrofit into canvas layout and event handling — and a phone is where most people open this first
+    section M3 Admin and cron
+        Build : Auth.js credentials, one admin : middleware on /admin/* : triggerIngest, setRaceFeatured, updateRaceMetadata : admin sees ingest_runs : cron wired to vercel.json
+        Deliberately thinner than v1 : cron does the bulk work, so full CRUD is not rebuilt — the admin's real job is seeing that ingest worked and re-running it when it did not
+    section M4 Polish and ship
+        Build : standings from the derived resolvers : SEO, sitemap, per-race OG images : skeletons, dark theme, error boundaries : image attribution on /about : custom domain
+        Verification 8 : derived 2025 standings match the published final championship — one number per driver exercises the join, sprints, penalties and classification at once
+    section Deferred, not cut
+        Public accounts : Auth.js gains OAuth providers, users table grows
+        Armchair Strategist : BUILT not ported — no code survives on any v1 branch, only two orphaned Prisma models
+        Both : arrive as new types and mutations on the existing schema, which is the concrete payoff of the GraphQL layer

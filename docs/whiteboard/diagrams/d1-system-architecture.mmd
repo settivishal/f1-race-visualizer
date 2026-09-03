@@ -1,0 +1,48 @@
+flowchart TD
+    OF1["api.openf1.org<br/>laps · position · pit<br/>race_control · session_result"]
+    WIKI["Wikipedia<br/>driver images"]
+
+    CRON["Vercel Cron<br/>daily 06:00 UTC"]
+    BACK["scripts/backfill.ts<br/>full season · no timeout"]
+
+    ING["lib/ingest<br/>openf1 · images<br/>transform (pure)<br/>run (upsert in tx)"]
+    BLOB["Vercel Blob<br/>driver + team art"]
+
+    PG[("Neon Postgres<br/>seasons · meetings · races<br/>race_positions · race_results<br/>ingest_runs · app_config")]
+
+    DL["loaders.ts<br/>DataLoader · per request"]
+    GQL["GraphQL schema<br/>Pothos · code-first<br/>depth + cost limits"]
+
+    EXEC["execute()<br/>in-process"]
+    YOGA["/api/graphql<br/>Yoga handler"]
+
+    SC["Server Components<br/>race page · library · SEO"]
+    CC["Client Components<br/>replay player · filters · admin"]
+
+    ISR["Vercel edge cache<br/>ISR"]
+    USER(["Browser"])
+
+    OF1 -->|"fetch + zod validate"| ING
+    WIKI --> ING
+    CRON -->|"CRON_SECRET"| ING
+    BACK --> ING
+    ING -->|"put() once"| BLOB
+    ING -->|"one race, one tx"| PG
+    ING -.->|"revalidateTag after COMMIT"| ISR
+
+    PG -->|"Drizzle"| DL
+    DL --> GQL
+    GQL --> EXEC
+    GQL --> YOGA
+    EXEC --> SC
+    YOGA -->|"urql + codegen"| CC
+    SC --> ISR
+    ISR --> USER
+    USER -->|"POST"| YOGA
+
+    classDef ext fill:#ffe8e8,stroke:#c44
+    classDef db fill:#e8f0ff,stroke:#446
+    classDef cache fill:#e8ffe8,stroke:#484
+    class OF1,WIKI ext
+    class PG,BLOB db
+    class ISR cache
