@@ -37,9 +37,16 @@ archived and readable, and its working code is ported rather than rewritten.
 admin/ingestion. Public user accounts and the Armchair Strategist prediction game are
 deferred, not cut.
 
-Both deferred features are already built in v1 (`origin/feature/user`) and can be
-ported when the foundation is stable. Shipping the core product first means the
-foundation gets proven by something that matters before carrying a social feature.
+Shipping the core product first means the foundation gets proven by something that
+matters before it carries a social feature.
+
+*(Corrected 2026-09-02, later the same day: this entry originally said both deferred
+features were "already built in v1 (`origin/feature/user`)" and could be ported. The
+archived repository has four branches — `main`, `dev`, `preprod`, `feature/supabase` —
+and no prediction, stint, scoring, or leaderboard file on any of them. What survives is
+the orphaned `Prediction`/`RaceScore` Prisma models on `dev`, which are the schema drift,
+not an implementation. Public accounts port from the auth work on `feature/supabase`;
+the strategist game gets built.)*
 
 **Consequence:** the only account in v2 is the admin's. That collapses most of the
 authentication surface — no signup, no email verification, no password reset flow.
@@ -233,3 +240,288 @@ Error tracking is deliberately skipped. Vercel logs plus the `ingest_runs` table
 the failure mode that matters: a silent cron failure is visible as a stale row.
 
 v1 had no tests at all beyond a scaffold spec file.
+
+---
+
+## 2026-09-02 — Naming after the restart: `f1-race-visualizer` everywhere
+
+**Decided:** v2 owns the name `f1-race-visualizer`. The name `f1-visualizer` is retired.
+
+The original repository was renamed to `f1-race-visualizer-v1` and archived, which freed
+its old name; v2 then took it on GitHub (`settivishal/f1-race-visualizer`) and as the
+local folder (`~/Coding/f1-race-visualizer`). Early drafts of this design used
+`f1-visualizer` as a working name for the new project, which is now wrong in two
+directions at once — it is neither the repository name nor the folder name, and reading
+`f1-race-visualizer` as "the old one" is exactly the confusion the rename created.
+
+One name, three places: GitHub repository, local folder, and `package.json`.
+
+---
+
+## 2026-09-02 — Team colour is per season, not per team
+
+**Decided:** `team_seasons` gains a nullable `color`. `teams.color` stays as the current
+default, and the replay resolves `teamSeason.color ?? team.color`.
+
+**Considered:** keeping colour only on `teams`, as the first draft of the schema had it.
+
+That draft contradicted its own reasoning. Positions point at an assignment — a
+driver-in-a-team-in-a-season — and the stated reason was that "historical liveries stay
+correct". They cannot, if the only colour on record is the team's present-day one: replay
+a 2024 race after a livery change and every car is painted in this year's colour. v1
+carried `TeamSeason.color` and was right to.
+
+One nullable column now, against a migration plus a backfill later.
+
+---
+
+## 2026-09-02 — Running order comes from OpenF1 `/position`
+
+**Decided:** per-lap running order is read from `/position`. `/laps` supplies lap and
+sector times, `/pit` pit stops, `/race_control` flags, `/session_result` the final
+classification.
+
+**Considered:** porting v1's `buildPositionsFromLaps`, which is known-working code.
+
+It is known-working and quietly wrong. It sums `lap_duration` per driver and sorts by the
+cumulative total, which means a driver who retires stops producing lap rows and silently
+disappears from the field rather than being classified as retired; and any period where
+cars are not racing at their own pace — safety car, virtual safety car, red flag — reorders
+the classification. v1 then patched the symptoms back in by regexing free text.
+
+`/position` is a timestamped sample stream, not per-lap rows, so the transform joins it to
+`/laps`: for each driver-lap, take the last sample with
+`date <= lap.date_start + lap_duration`. That join carries the lap numbering, the
+retirements, and the red-flag gaps, so it is the function the fixture tests are built
+around.
+
+**Cost:** four more endpoints per session and a larger fetch. The transform reduces to one
+row per driver-lap before anything is written, so the row counts are unchanged.
+
+---
+
+## 2026-09-02 — The replay payload is one driver-centric GraphQL field
+
+**Decided:** `Race.replay: RaceReplay!` returns `{summary, laps, drivers[].positions[],
+events[]}` as a single object. The flat `positions(lap: Int)` field stays for the timing
+tower's per-lap slice.
+
+**Considered:** exposing only flat position rows and letting the client group them.
+
+Reading v1's components changed this. The design assumed race data was threaded through
+seven components as separate props; in fact all seven already take one object
+(`visualization: RaceVisualization`), and the canvas, timing tower, and story panel each
+index into `drivers[].positions[]` directly. A flat list would make the client re-pivot
+~1200 rows on every render — worse than what it replaces.
+
+So the fragment is shaped to match what the components already consume, and the port
+becomes a type swap rather than a rewrite. The prop plumbing that genuinely was v1's
+weak point — the explorer's nine `useState`s doing fetch, filter, and sort on the
+client — still gets cut, into the `races` query.
+
+---
+
+## 2026-09-02 — Neon driver: `neon-serverless`, not `neon-http`
+
+**Decided:** one client, `drizzle-orm/neon-serverless` (WebSocket `Pool`), shared by the
+app and `scripts/backfill.ts`.
+
+The HTTP driver is lighter and faster for one-shot reads, but it cannot hold a
+multi-statement transaction — and ingest upserts a race, its positions, its events, and
+its results as one unit or not at all. Splitting into an HTTP client for reads and a
+WebSocket client for writes would buy a little latency for two connection paths to keep
+straight.
+
+---
+
+## 2026-09-02 — The `app_config` single-row constraint lives in the schema
+
+**Decided:** the CHECK that pins `app_config` to one row is declared in `schema.ts` with
+Drizzle's `check()`, so `drizzle-kit generate` emits it.
+
+The design originally said "enforced by a CHECK in migration" while also ruling that
+migrations are generated and never hand-edited. Both cannot hold. Declaring the constraint
+in the schema keeps the schema as the single source of truth, which is the whole reason
+Drizzle was chosen over the Prisma setup that drifted in v1.
+
+---
+
+## 2026-09-03 — Standings are derived from `race_results`, not stored
+
+**Decided:** standings are an aggregate query over `race_results`, exposed as
+`driverStandings` and `constructorStandings`. The `standings_snapshots` table and the
+`standings_type` enum are removed from the schema before either is written.
+
+**Supersedes** the 2026-09-02 data-model entry, which kept a snapshot table alongside
+`race_results`.
+
+**Considered:** keeping the snapshot as the authority; computing and reconciling both.
+
+The same entry that introduced `race_results` gave it points, status, and fastest lap per
+driver-race — which is the entire input to a championship table. Keeping a snapshot as well
+meant two sources of truth for one set of numbers, and the snapshot was the *upstream's*
+truth: it would keep rendering correct-looking standings while our own ingest quietly
+diverged behind it. Deriving removes the divergence by construction, drops a table and an
+enum, and turns standings from an opaque `jsonb` blob into a real GraphQL type.
+
+**Consequence, stated plainly:** sprint points and post-race penalties become ours to get
+right. That is why `race_results.points` is written verbatim from OpenF1 `/session_result`
+rather than computed from finishing position — the sprint scale, the fastest-lap point, and
+any stewards' adjustment are already baked into what upstream reports. We sum; we do not
+score. The verification step for M1 is that derived 2025 standings match the published final
+championship table, which is also the strongest end-to-end check the ingest has.
+
+---
+
+## 2026-09-03 — Jolpica (Ergast) dropped; OpenF1 is the only upstream
+
+**Decided:** the ingest pipeline talks to OpenF1 and to Wikipedia for images. Nothing else.
+`lib/ingest/ergast.ts` is removed from the target structure before it is written.
+
+**Supersedes** the two-source premise in the 2026-09-02 "scheduled ingest" entry.
+
+**Considered:** keeping Jolpica as a silent reconciliation check against the derived
+standings; keeping it to serve pre-2023 seasons.
+
+With standings derived, Jolpica had no remaining job. OpenF1 `/session_result` already
+returns final position, status, and points across the 2023-onward range that is the whole
+scope of this project. A second client, a second rate limit, and a second failure mode were
+buying a duplicate of data we already fetch.
+
+Jolpica's own documentation states its unauthenticated limits (4 req/s burst, 500/hr
+sustained) will *decrease* as token access rolls out — so the dependency was also the one
+most likely to break unannounced.
+
+**Cost, accepted:** no season before 2023 can ever be imported, since OpenF1 does not serve
+them. That is not much of a loss — there is no replay data for those years either, so
+keeping Jolpica would have bought standings tables with no races behind them. And no
+official cross-check on points; the M1 manual comparison against the published championship
+table covers that once, where it matters.
+
+---
+
+## 2026-09-03 — Rendering: ISR, revalidated by the ingest job
+
+**Decided:** public pages are statically cached. A successful ingest calls
+`revalidateTag('race')` and `revalidateTag('standings')` as its last step, after the
+transaction commits.
+
+**Considered:** fully dynamic rendering; time-based ISR (`revalidate = 3600`).
+
+Race data changes once a week, so rendering it per request is waste — and on Neon's free
+tier that waste has a visible cost, because an autosuspended database wakes up on the
+visitor's page load. Caching means traffic never touches Postgres at all.
+
+Time-based revalidation would have left a freshly ingested race up to an hour stale for no
+reason: the ingest job knows precisely when the data changed, so it is the right thing to do
+the invalidating. Revalidating only after the transaction commits means a failed ingest
+leaves the cache serving the last good data rather than dropping it.
+
+---
+
+## 2026-09-03 — Migrations run from a GitHub Action on merge to `main`
+
+**Decided:** `.github/workflows/migrate.yml` applies migrations against the production
+database on merge to `main`, after CI passes and independently of the Vercel deploy.
+
+**Considered:** `drizzle-kit migrate && next build` as the Vercel build command; running
+them by hand before pushing.
+
+Putting migrations in the build command means every preview deploy migrates production, and
+concurrent builds race each other on the same database. Running them by hand works until the
+first time it is forgotten — and the failure mode is a deployed app querying columns that do
+not exist yet.
+
+A dedicated job is explicit, auditable in the Actions log, cannot run twice concurrently,
+and a failed migration fails loudly on its own instead of half-deploying an application.
+
+---
+
+## 2026-09-03 — GraphQL hardening: depth and cost limits, no production introspection
+
+**Decided:** two envelop plugins on `/api/graphql` in every environment — a depth limit
+(~10) and a cost limit. Introspection and GraphiQL are enabled in development only.
+
+**Considered:** persisted operations only in production; leaving the endpoint open.
+
+The endpoint is public and unauthenticated by design, and an open schema is an open
+invitation: `race → meeting → races → meeting` nests indefinitely, and a ~1200-row replay
+payload is a cheap thing to request in a loop. Both classes close in roughly fifteen lines.
+
+Persisted operations are stronger — production would accept only the hashed documents
+codegen emitted, and the endpoint would stop being a general GraphQL API to outsiders. It is
+worth revisiting later. It was not chosen now because it adds a codegen step and makes
+debugging production materially harder, for a portfolio site where depth and cost limits
+already remove the failure that actually costs something: an unbounded Neon bill.
+
+---
+
+## 2026-09-03 — The replay payload travels as server-component props
+
+**Decided:** the race page (a server component) runs the `RaceReplayFragment` query through
+`execute.ts` and passes the result to the client player as a prop. `urql` covers race library
+filters, standings toggles, and admin forms.
+
+**Considered:** the player fetching its own data via urql on mount; splitting the payload so
+the first laps ship in the HTML and the rest stream in as the user scrubs.
+
+Fetching on mount costs a waterfall — HTML, then a POST, then a render — and, worse, the
+payload would bypass the ISR cache entirely, so every visitor would hit Neon for the one
+query in the application large enough to matter. Passing it as a prop puts it in the streamed
+HTML, inside the cache, with no round trip.
+
+The streaming split is the better answer if the payload measures large on a phone. It is not
+worth its complexity before it has been measured; if M2's mobile criterion exposes a problem,
+this entry gets a follow-up.
+
+---
+
+## 2026-09-03 — Tests run against PGlite
+
+**Decided:** resolver and schema tests run against PGlite — Postgres compiled to WASM,
+in-process — with migrations applied to a fresh instance per suite.
+
+**Considered:** a Neon branch per CI run; a Docker Postgres service container.
+
+The design already said resolvers would be tested "against a seeded test database" without
+saying what that database was. PGlite needs no Docker daemon locally and no service container
+or network in CI, so tests stay fast and hermetic, and `pnpm test` works on a fresh clone with
+nothing installed.
+
+A Neon branch would be the actual production engine with no behavioral gap, but it needs API
+credentials in CI, branch cleanup, and a network round trip per query. The gap PGlite leaves
+is extensions, and this schema uses none. If one is ever needed, this decision gets revisited
+rather than worked around.
+
+---
+
+## 2026-09-03 — Mobile and keyboard access are M2 acceptance criteria
+
+**Decided:** M2 is not done until the replay is usable at 390px width, the player controls
+are operable by keyboard alone, and the timing tower is reachable as the canvas's text
+alternative.
+
+**Considered:** a polish pass in M4; declaring desktop-only in the README.
+
+This is a portfolio piece, and a phone is the state most people will first open it in.
+Deferring meant a late rewrite of layout and event handling, which is the expensive version
+of the same work — whereas designing the ported components for it costs almost nothing,
+since the timing tower is already a faithful textual rendering of what the canvas draws and
+only needs to be reachable.
+
+---
+
+## 2026-09-03 — OpenF1 rate limits and where the throttle lives
+
+**Decided:** the request throttle lives in `lib/ingest/openf1.ts`, not in its callers.
+
+OpenF1's free tier serves historical data from 2023 onward at 3 req/s and 30 req/min. Its
+paid tier covers only the live window — 30 minutes either side of a session — which a
+Monday-morning ingest never touches, so the free tier is the permanent tier here, not a
+starting point.
+
+The ceiling is irrelevant to a cron run (one race) and load-bearing for a backfill (~24
+meetings × ~8 endpoints ≈ 200 requests). Putting the throttle in the client means the cron
+path inherits it rather than each caller remembering, and there is one place to change if the
+limits move. A 429 or 5xx retries with backoff; a run that still fails is recorded `FAILED` in
+`ingest_runs` with the error rather than swallowed.

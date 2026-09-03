@@ -29,7 +29,7 @@ geometry, and OpenF1 import logic are ported from it rather than rewritten.
 | Client data | urql + graphql-codegen |
 | Database | Neon Postgres + Drizzle ORM |
 | Auth | Auth.js credentials, single admin account |
-| Data source | OpenF1 + Ergast, ingested on a schedule into our own database |
+| Data source | OpenF1, ingested on a schedule into our own database |
 | Hosting | Vercel (app + cron), Vercel Blob (images) |
 
 One deployable. No separate API service. No external API is ever called during a page
@@ -38,7 +38,7 @@ request — a scheduled job writes everything to Postgres first.
 ## Architecture
 
 ```text
-OpenF1 · Ergast · Wikipedia          (touched only by the ingest job)
+OpenF1 · Wikipedia                   (touched only by the ingest job)
             │
             ▼
      lib/ingest  ──────►  Neon Postgres  ◄────── Drizzle
