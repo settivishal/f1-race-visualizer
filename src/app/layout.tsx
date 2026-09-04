@@ -17,7 +17,9 @@ export const metadata: Metadata = {
   description: "Watch a grand prix unfold as an animated position chart.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
       lang="en"
