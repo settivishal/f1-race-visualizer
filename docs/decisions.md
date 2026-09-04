@@ -525,3 +525,49 @@ meetings × ~8 endpoints ≈ 200 requests). Putting the throttle in the client m
 path inherits it rather than each caller remembering, and there is one place to change if the
 limits move. A 429 or 5xx retries with backoff; a run that still fails is recorded `FAILED` in
 `ingest_runs` with the error rather than swallowed.
+
+---
+
+## 2026-09-03 — Neon region `us-east-2`, Vercel functions moved to `cle1`
+
+**Decided:** the Neon project lives in AWS `us-east-2` (Ohio), and the Vercel project's
+function region is set to `cle1` (Cleveland) to sit beside it.
+
+**Considered:** Neon in `us-east-1` (N. Virginia) to match Vercel's default `iad1`.
+
+`us-east-1` was the first choice, since co-locating with Vercel's default region removes the
+cross-region hop entirely. It was not offered at project creation, so the pairing was made
+from the other side instead: leave the database where it is and move the compute to it.
+
+The distance mattered less than it first appears — Ohio to Virginia is roughly 12ms, and the
+public pages are designed to be served from a static cache that reaches no database at all.
+The hop is only paid on the paths that genuinely need fresh data: the admin panel, the cron
+handler, and any uncached render. Moving the functions makes even those cheap, for the cost
+of one setting.
+
+**Worth knowing for later:** if the app is ever deployed to a second region, this pairing
+breaks silently — the far region pays the full cross-country round trip on every query. The
+fix at that point is a read replica, not a region change.
+
+---
+
+## 2026-09-03 — The database client is built on first query, not on import
+
+**Decided:** `src/db/index.ts` exports `getDb()`, which constructs the Drizzle client on
+first call and memoizes it. `DATABASE_URL` is validated there, not at module scope.
+
+**Considered:** a module-level `export const db`, with the environment check beside it.
+
+The module-level version is the obvious shape and it failed the first Vercel deploy. Next.js
+evaluates route modules during its "collecting page data" phase to read their route config —
+including for a `force-dynamic` route that will never be prerendered. A check at module scope
+therefore runs during the build, in an environment that has no database and needs none, and
+a missing variable fails the build rather than the request.
+
+The general rule this is an instance of: **validate a runtime dependency at the point it is
+used, not at the point it is imported.** An import-time check runs in every context that
+loads the module, including tooling that will never exercise the dependency. It looks stricter
+and is in fact just louder in the wrong places.
+
+The guard itself is unchanged and still has no fallback value — a missing `DATABASE_URL`
+throws. Only its timing moved.
