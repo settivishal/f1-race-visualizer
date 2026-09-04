@@ -608,3 +608,38 @@ tempting during a hotfix, exactly when it is least likely to be noticed.
 exceptions, and if the two ever disagree, `dev` is deleted and re-cut from `main` rather than
 reconciled. A reconciliation procedure maintained by one person is how v1's three auth
 implementations survived as long as they did.
+
+---
+
+## 2026-09-04 — Branch protection: "up to date before merging" on `dev` only
+
+**Decided:** both `main` and `dev` require a pull request, require the `check` CI job, enforce
+the rules on admins, and forbid force pushes and deletion. **"Require branches to be up to
+date before merging" is enabled on `dev` and deliberately disabled on `main`.**
+
+**The deadlock it avoids.** Every GitHub merge type — merge commit, squash, and rebase alike —
+advances the base branch with a commit the head branch does not contain. So the moment
+anything is promoted from `dev` to `main`, `dev` is *behind* `main`. With the up-to-date rule
+on `main`, the next promotion is blocked until `dev` is updated; but `dev` requires a pull
+request for any change, so GitHub cannot push that update itself. The rule and the protection
+make each other unsatisfiable, and the only way through is to disable the rule, merge, and
+re-enable it — every single cycle.
+
+There is no merge button that avoids this. GitHub offers no fast-forward merge, which is the
+one strategy that would leave `main` and `dev` pointing at the same commit.
+
+**Why the asymmetry is correct rather than a compromise.** The rule exists to catch a real
+failure: two branches that each pass CI alone and break when combined. That risk is entirely
+on the `dev` side, where independent feature branches converge — so the rule stays there.
+
+On `dev` → `main` there is exactly one source branch, and its tree is identical to the one CI
+just tested green. Re-running against a base that differs only by a merge commit tests nothing
+that was not already tested. The rule buys no safety on that hop and guarantees the deadlock.
+
+**Rejected:** syncing `dev` from `main` after each promotion, which is real work every cycle to
+satisfy a rule that catches nothing on that hop; and dropping the pull-request requirement on
+`dev` so the update button works, which would weaken the branch the flow exists to enforce.
+
+**What this does not relax.** A pull request is still required to reach either branch, CI must
+still pass, the rules still apply to admins, and neither branch can be force-pushed or deleted.
+Only the up-to-date requirement on `main` is gone.
