@@ -281,11 +281,17 @@ Each of these exists because of a specific v1 failure. That is the standard for 
 
 ### Branch flow
 
-**`feature/*` → `main`. That is all.**
+**`feature/*` → `dev` → `main`.**
 
-Not v1's `dev` → `preprod` → `change` chain, which is where three mutually-divergent auth implementations came from: long-lived branches drifting apart with no forcing function to reconcile them.
+`dev` is the preview environment and deploys against a Neon branch database. `main` is production and deploys against the production database. A change is merged twice: once into `dev`, once into `main`.
 
-Vercel gives a **preview deploy per pull request**, which is a genuine staging environment scoped to one change and destroyed when it merges. A permanent staging branch would be strictly worse — it accumulates divergence, and at this scale it protects against nothing a preview does not.
+> **This reverses an earlier decision.** The original flow was `feature/*` → `main` with nothing in between, on the grounds that v1's `dev` → `preprod` → `change` chain is where three mutually-divergent auth implementations came from. That reasoning still holds for a *chain* of long-lived branches, and it is why there is exactly one intermediate branch here rather than three.
+
+What changed is the database. Vercel builds every pull request against whatever `DATABASE_URL` the project holds, so with a single database a PR carrying a destructive migration applies it to production **before the PR is reviewed** — the hazard named in Part 4. Splitting the flow gives that migration somewhere disposable to land first: `dev` writes to a Neon branch, which can be reset from production at any time.
+
+Per-PR preview deploys still exist and are still the place a single change is reviewed. `dev` answers a different question — whether several merged changes hang together — and gives a stable URL that is safe to show someone.
+
+**The failure mode to watch is drift.** `dev` and `main` diverge the moment something is merged into `main` without going through `dev`, and a hotfix under time pressure is exactly when that is tempting. The rule has no exceptions: everything reaches `main` through `dev`, and `dev` is deleted and re-cut from `main` if the two ever disagree. There is no reconciliation procedure, because a single developer maintaining one is how v1's three auth implementations survived as long as they did.
 
 ---
 

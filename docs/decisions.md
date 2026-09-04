@@ -571,3 +571,40 @@ and is in fact just louder in the wrong places.
 
 The guard itself is unchanged and still has no fallback value — a missing `DATABASE_URL`
 throws. Only its timing moved.
+
+---
+
+## 2026-09-03 — Branch flow: add `dev` between `feature/*` and `main`
+
+**Decided:** `feature/*` → `dev` → `main`. `dev` is the preview environment and deploys
+against a Neon branch database; `main` is production and deploys against the production
+database. Every change is merged twice.
+
+**Reverses:** the 2026-09-02 deployment entry, which specified `feature/*` → `main` with
+nothing in between.
+
+**What changed.** The original reasoning was that v1's `dev` → `preprod` → `change` chain
+produced three mutually-divergent auth implementations, and that per-PR preview deploys make
+a staging branch redundant. The first half still holds — which is why this is *one*
+intermediate branch and not three — but the second half missed something.
+
+Vercel builds every pull request against whatever `DATABASE_URL` the project holds. With a
+single database, a PR carrying a destructive migration applies it to production **before the
+PR is reviewed**, from a branch nobody has approved. That is the hazard already named in
+document 05, and it arrives for real in M1 when migrations start moving. Splitting the flow
+gives the migration somewhere disposable to land first.
+
+**Considered:** keeping `feature/*` → `main` and pointing preview builds at a Neon branch
+database directly. That solves the migration hazard with no second branch to keep in sync,
+and is the smaller change. It was not chosen because `dev` also provides a stable URL that
+several merged changes can be viewed on together — a question per-PR previews cannot answer,
+since each one shows a single change in isolation.
+
+**The cost, stated plainly.** Two merges per change, for one developer. And `dev` and `main`
+diverge the moment anything reaches `main` without passing through `dev` — which is most
+tempting during a hotfix, exactly when it is least likely to be noticed.
+
+**The rule that keeps it from becoming v1:** everything reaches `main` through `dev`, with no
+exceptions, and if the two ever disagree, `dev` is deleted and re-cut from `main` rather than
+reconciled. A reconciliation procedure maintained by one person is how v1's three auth
+implementations survived as long as they did.
