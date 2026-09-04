@@ -1,14 +1,13 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from 'ws';
 import * as schema from './schema';
-
-// WebSocket Pool, not the HTTP driver: ingest needs multi-statement transactions.
-// Node has no global WebSocket in every runtime we target, so hand Neon one.
-neonConfig.webSocketConstructor = ws;
 
 let instance: ReturnType<typeof connect> | undefined;
 
+// WebSocket Pool, not Neon's HTTP driver: the HTTP driver sends each statement
+// as an independent request and so cannot hold a multi-statement transaction,
+// which the ingest pipeline needs. Node has supplied a global WebSocket since
+// 22.4, so no polyfill is required — see engines in package.json.
 function connect() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error('DATABASE_URL is not set');
