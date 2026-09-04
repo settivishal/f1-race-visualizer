@@ -1,10 +1,10 @@
-import { db } from '@/db';
+import { getDb } from '@/db';
 
 // M0's vertical slice: database to page, no cache, no GraphQL yet.
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const lineup = await db.query.driverTeamAssignments.findMany({
+  const lineup = await getDb().query.driverTeamAssignments.findMany({
     with: { driver: true, teamSeason: { with: { team: true } } },
   });
 

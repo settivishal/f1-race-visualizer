@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { db } from '@/db';
+import { getDb } from '@/db';
 import { seasons, teams, drivers, teamSeasons, driverTeamAssignments } from '@/db/schema';
 
 const SEASON = 2025;
@@ -20,6 +20,8 @@ const GRID = [
 
 // Every write is an upsert on a unique key, so re-running changes no row counts.
 async function seed() {
+  const db = getDb();
+
   await db.insert(seasons).values({ year: SEASON }).onConflictDoNothing();
 
   for (const { team, color, lineup } of GRID) {
