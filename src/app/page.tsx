@@ -22,7 +22,7 @@ export default async function Home() {
     <main className="mx-auto max-w-2xl p-8 font-sans">
       <h1 className="text-2xl font-semibold">F1 Race Visualizer</h1>
       <p className="mt-2 text-sm text-gray-500">
-        M0 — {grid.length} seeded drivers, read from Neon at request time.
+        {grid.length} drivers, read from Neon at request time.
       </p>
 
       <ul className="mt-8 space-y-1">
@@ -39,7 +39,7 @@ export default async function Home() {
 
       {grid.length === 0 && (
         <p className="mt-8 text-sm text-red-600">
-          No drivers. Run <code>pnpm db:seed</code>.
+          No drivers. Run <code>pnpm tsx scripts/backfill.ts 2025</code>.
         </p>
       )}
     </main>
