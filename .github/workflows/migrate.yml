@@ -30,8 +30,22 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
-      # main -> the production database, dev -> the Neon dev branch. The branch
-      # decides the target, so there is no way to point a run at the wrong one.
-      - run: pnpm db:migrate
+      # One step per target rather than one step picking a target. An earlier
+      # version selected the URL with `ref == 'main' && A || B`, which silently
+      # falls through to B whenever A is empty — so a misconfigured production
+      # secret would have migrated the dev database from a push to main.
+      - name: Apply migrations to production
+        if: github.ref_name == 'main'
+        run: |
+          test -n "$DATABASE_URL" || { echo "::error::DATABASE_URL secret is empty"; exit 1; }
+          pnpm db:migrate
         env:
-          DATABASE_URL: ${{ github.ref_name == 'main' && secrets.DATABASE_URL || secrets.DATABASE_URL_DEV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Apply migrations to the dev branch database
+        if: github.ref_name != 'main'
+        run: |
+          test -n "$DATABASE_URL" || { echo "::error::DATABASE_URL_DEV secret is empty"; exit 1; }
+          pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_DEV }}
