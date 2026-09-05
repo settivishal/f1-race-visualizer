@@ -8,6 +8,10 @@ on:
     branches: [main, dev]
     paths:
       - 'src/db/migrations/**'
+  # Runnable by hand, so the runner and its secrets can be proven against dev
+  # before a real migration depends on them. Applying migrations is idempotent:
+  # drizzle-kit skips what the journal says is already applied.
+  workflow_dispatch:
 
 # Two pushes in quick succession must not apply migrations concurrently.
 concurrency:
