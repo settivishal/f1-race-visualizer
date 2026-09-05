@@ -18,6 +18,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm test
 
       # The v1 failure, detected automatically: schema.ts and the committed
       # migrations must agree. A diff here means the source of truth drifted.
