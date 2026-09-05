@@ -1,0 +1,37 @@
+name: Migrate
+
+# Migrations are applied from one runner, from reviewed code that is already on
+# a protected branch — never from a developer's machine, where DATABASE_URL is
+# whatever .env happens to hold.
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'src/db/migrations/**'
+  # Runnable by hand, so the runner and its secrets can be proven against dev
+  # before a real migration depends on them. Applying migrations is idempotent:
+  # drizzle-kit skips what the journal says is already applied.
+  workflow_dispatch:
+
+# Two pushes in quick succession must not apply migrations concurrently.
+concurrency:
+  group: migrate-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # main -> the production database, dev -> the Neon dev branch. The branch
+      # decides the target, so there is no way to point a run at the wrong one.
+      - run: pnpm db:migrate
+        env:
+          DATABASE_URL: ${{ github.ref_name == 'main' && secrets.DATABASE_URL || secrets.DATABASE_URL_DEV }}
