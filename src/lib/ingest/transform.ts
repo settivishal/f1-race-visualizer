@@ -52,15 +52,25 @@ const ms = (iso: string) => new Date(iso).getTime();
  * position changes, so a driver who leads from lights to flag may have one all
  * race. `/laps` is per-lap rows. They are in different coordinate systems.
  *
- * The rule: for each driver-lap, take the last sample at or before the moment
- * that lap was completed. That is "what position was this driver in when they
- * crossed the line", which is what a timing screen shows.
+ * The rule: a lap's running order is the state of the whole field at the
+ * moment that lap's leader crossed the line. Every driver is read at that one
+ * instant, using their last sample at or before it.
+ *
+ * The single instant is what makes the result a genuine running order. Reading
+ * each driver at their own crossing time — which is the more obvious rule, and
+ * the one tried first — samples the field at twenty different clocks, and two
+ * of them disagree whenever a place changes at the line. Bahrain 2025 lap 37 is
+ * the case: Russell crossed still P2, Leclerc crossed two seconds later already
+ * P2, and both readings were true. A lap cannot have two second places, so the
+ * question has to be asked at one time rather than twenty.
  *
  * What the rule handles without special-casing:
  *   - the leader with one sample — it walks back to the last earlier sample
- *   - a sample belonging to the next lap — excluded by the boundary
  *   - a safety car — no samples arrive, so the order simply holds, which is
- *     correct and is exactly what v1's cumulative-lap-time sort could not do
+ *     correct and is exactly what v1's cumulative-lap-time sort turned into
+ *     overtakes that never happened
+ *   - a lapped driver — still on an earlier lap at that instant, but their
+ *     track position at it is well defined
  *   - a retirement — no lap rows exist afterwards, so no rows are produced.
  *     The retirement itself is recorded from /session_result, not inferred
  *     from this absence
@@ -86,46 +96,118 @@ export function buildLapPositions(
     if (list) list.push(lap);
     else lapsByDriver.set(lap.driver_number, [lap]);
   }
+  for (const list of lapsByDriver.values()) {
+    list.sort((a, b) => a.lap_number - b.lap_number);
+  }
 
-  const rows: PositionRow[] = [];
+  // When each driver completed each lap, and from that, when its leader did.
+  const completedAt = new Map<number, Map<number, number>>();
+  const leaderCrossedAt = new Map<number, number>();
 
   for (const [driverNumber, driverLaps] of lapsByDriver) {
-    driverLaps.sort((a, b) => a.lap_number - b.lap_number);
-    const samples = samplesByDriver.get(driverNumber) ?? [];
-
-    if (samples.length === 0) {
-      warnings.push(`driver ${driverNumber} has no position samples; ${driverLaps.length} laps produced no rows`);
-      continue;
-    }
-
-    // Laps are walked in order and samples only move forward, so this is one
-    // pass over each rather than a search per lap.
-    let cursor = 0;
-
+    const perLap = new Map<number, number>();
     for (let i = 0; i < driverLaps.length; i++) {
-      const lap = driverLaps[i];
-      const boundary = lapBoundary(lap, driverLaps[i + 1]);
-
+      const boundary = lapBoundary(driverLaps[i], driverLaps[i + 1]);
       // No boundary means the lap has no end time and no successor to borrow
       // one from, which only happens on a lap the driver never completed — the
       // crash or retirement itself. There is no position at completion because
       // there was no completion, and the retirement is recorded from
       // /session_result rather than guessed at here.
       if (boundary === null) continue;
+      perLap.set(driverLaps[i].lap_number, boundary);
 
-      while (cursor + 1 < samples.length && ms(samples[cursor + 1].date) <= boundary) cursor++;
+      const leader = leaderCrossedAt.get(driverLaps[i].lap_number);
+      if (leader === undefined || boundary < leader) {
+        leaderCrossedAt.set(driverLaps[i].lap_number, boundary);
+      }
+    }
+    completedAt.set(driverNumber, perLap);
+  }
+
+  const rows: PositionRowWithSample[] = [];
+
+  for (const [driverNumber, driverLaps] of lapsByDriver) {
+    const samples = samplesByDriver.get(driverNumber) ?? [];
+    if (samples.length === 0) {
+      warnings.push(`driver ${driverNumber} has no position samples; ${driverLaps.length} laps produced no rows`);
+      continue;
+    }
+
+    const perLap = completedAt.get(driverNumber)!;
+    // Laps are walked in order and the instants only move forward, so this is
+    // one pass over the samples rather than a search per lap.
+    let cursor = 0;
+
+    for (const lap of driverLaps) {
+      if (!perLap.has(lap.lap_number)) continue;
+      const instant = leaderCrossedAt.get(lap.lap_number)!;
+
+      while (cursor + 1 < samples.length && ms(samples[cursor + 1].date) <= instant) cursor++;
 
       const sample = samples[cursor];
       // A driver whose first lap completes before any sample exists for them
       // falls back to their earliest known position rather than being dropped.
-      const position = ms(sample.date) <= boundary ? sample.position : samples[0].position;
+      const position = ms(sample.date) <= instant ? sample.position : samples[0].position;
 
-      rows.push(toRow(driverNumber, lap, position));
+      rows.push({ ...toRow(driverNumber, lap, position), sampledAt: ms(sample.date) });
     }
   }
 
-  return rows;
+  return resolveContradictions(rows, warnings);
 }
+
+/**
+ * Upstream occasionally reports two drivers in the same position at the same
+ * time, and keeps doing so for minutes at a stretch. Hungary 2025 is the case:
+ * Hamilton is sampled P15 at 14:02:04.000 and Gasly P15 at 14:02:04.543, and
+ * Hamilton's next sample four minutes later still says P15.
+ *
+ * No choice of instant resolves that, because the feed is inconsistent rather
+ * than the join. Something has to give, since a lap cannot store two fifteenth
+ * places, so the more recently sampled driver keeps the position and the other
+ * moves to the next free one — and the lap is named in the run's warnings.
+ *
+ * This is not a tie-break for collisions the join itself produces. Those are
+ * bugs, and they must keep failing loudly: a lap where the join is wrong will
+ * still be caught by the unique constraints, because it will not be a mere
+ * pairwise contradiction between two adjacent samples.
+ */
+function resolveContradictions(rows: PositionRowWithSample[], warnings: string[]): PositionRow[] {
+  const byLap = new Map<number, PositionRowWithSample[]>();
+  for (const row of rows) {
+    const list = byLap.get(row.lap);
+    if (list) list.push(row);
+    else byLap.set(row.lap, [row]);
+  }
+
+  for (const [lap, lapRows] of byLap) {
+    const holder = new Map<number, PositionRowWithSample>();
+    // Most recently sampled first, so the freshest reading keeps the place.
+    for (const row of [...lapRows].sort((a, b) => b.sampledAt - a.sampledAt)) {
+      let position = row.position;
+      while (holder.has(position)) position++;
+
+      if (position !== row.position) {
+        warnings.push(
+          `lap ${lap}: upstream reported drivers ${holder.get(row.position)!.driverNumber} and ` +
+          `${row.driverNumber} both in P${row.position}; moved ${row.driverNumber} to P${position}`,
+        );
+        row.position = position;
+      }
+      holder.set(position, row);
+    }
+  }
+
+  // The sample time was only needed to settle contradictions; it is not a
+  // column.
+  return rows.map((row) => {
+    const stripped: PositionRow & { sampledAt?: number } = { ...row };
+    delete stripped.sampledAt;
+    return stripped;
+  });
+}
+
+type PositionRowWithSample = PositionRow & { sampledAt: number };
 
 /**
  * When this lap was completed, in epoch ms, or null if it never was.

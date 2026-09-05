@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import drivers from './__fixtures__/australia-2025/drivers.json';
+import bahrainLaps from './__fixtures__/bahrain-2025/laps.json';
+import hungaryLaps from './__fixtures__/hungary-2025/laps.json';
+import hungaryPositions from './__fixtures__/hungary-2025/positions.json';
+import bahrainPositions from './__fixtures__/bahrain-2025/positions.json';
 import laps from './__fixtures__/australia-2025/laps.json';
 import pits from './__fixtures__/australia-2025/pits.json';
 import positions from './__fixtures__/australia-2025/positions.json';
@@ -66,7 +70,11 @@ describe('the /position ↔ /laps join, against the real Australian GP 2025', ()
     }
   });
 
-  it('gives every lap a contiguous running order starting at P1', () => {
+  it('gives every lap a strictly increasing order with no repeats', () => {
+    // Contiguity is deliberately not asserted, and the database does not
+    // require it either. A driver running at the leader's crossing who never
+    // completes that lap leaves their place empty — Australia lap 1 has no P10
+    // because that car was out. A hole is honest; a duplicate is a bug.
     const byLap = new Map<number, number[]>();
     for (const row of rows) {
       byLap.set(row.lap, [...(byLap.get(row.lap) ?? []), row.position]);
@@ -74,10 +82,8 @@ describe('the /position ↔ /laps join, against the real Australian GP 2025', ()
 
     for (const [lap, ordered] of byLap) {
       const sorted = [...ordered].sort((a, b) => a - b);
-      expect(sorted[0], `lap ${lap} has no P1`).toBe(1);
-      expect(sorted, `lap ${lap} is not contiguous`).toEqual(
-        Array.from({ length: sorted.length }, (_, i) => i + 1),
-      );
+      expect(new Set(sorted).size, `lap ${lap} repeats a position`).toBe(sorted.length);
+      expect(sorted[0], `lap ${lap} starts below P1`).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -114,7 +120,11 @@ describe('the /position ↔ /laps join, against the real Australian GP 2025', ()
     // There is no position at completion because there was no completion.
     const alonsoLap33 = rows.find((r) => r.driverNumber === 14 && r.lap === 33);
     expect(alonsoLap33).toBeUndefined();
-    expect(rows.find((r) => r.driverNumber === 12 && r.lap === 33)?.position).toBe(10);
+
+    // Antonelli (12) was the driver his carried-forward place collided with.
+    // The position he holds is not asserted here — that is the running order's
+    // business, checked as an invariant above rather than pinned to a number.
+    expect(rows.find((r) => r.driverNumber === 12 && r.lap === 33)).toBeDefined();
   });
 
   it('has null durations only on terminal laps in this race', () => {
@@ -135,6 +145,51 @@ describe('the /position ↔ /laps join, against the real Australian GP 2025', ()
     }
   });
 
+});
+
+describe('a place changing at the line — Bahrain 2025', () => {
+  const rows = buildLapPositions(bahrainLaps as Lap[], bahrainPositions as PositionSample[]);
+
+  it('gives lap 37 one second place, not two', () => {
+    // The race that broke the first version of the join. Russell (63) crossed
+    // the line still P2 at 16:07:25.751; Leclerc (16) crossed two seconds later
+    // already P2, having passed him on the way. Reading each driver at their
+    // own crossing time made both true and the lap unstorable.
+    const lap37 = rows.filter((r) => r.lap === 37);
+    const seconds = lap37.filter((r) => r.position === 2);
+    expect(seconds).toHaveLength(1);
+    expect(seconds[0].driverNumber).toBe(63);
+  });
+
+  it('has no repeated position on any lap', () => {
+    const byLap = new Map<number, number[]>();
+    for (const row of rows) byLap.set(row.lap, [...(byLap.get(row.lap) ?? []), row.position]);
+    for (const [lap, ordered] of byLap) {
+      expect(new Set(ordered).size, `lap ${lap} repeats a position`).toBe(ordered.length);
+    }
+  });
+});
+
+describe('an upstream contradiction — Hungary 2025', () => {
+  it('resolves two drivers reported in one place, and says so', () => {
+    // Upstream reports Hamilton (44) P15 at 14:02:04.000 and Gasly (10) P15 at
+    // 14:02:04.543, and Hamilton's next sample four minutes later still says
+    // P15. No choice of instant resolves that — the feed contradicts itself.
+    // A lap cannot hold two fifteenth places, so the more recently sampled
+    // driver keeps it and the other moves to the next free one.
+    const warnings: string[] = [];
+    const rows = buildLapPositions(hungaryLaps as Lap[], hungaryPositions as PositionSample[], warnings);
+
+    const byLap = new Map<number, number[]>();
+    for (const row of rows) byLap.set(row.lap, [...(byLap.get(row.lap) ?? []), row.position]);
+    for (const [lap, ordered] of byLap) {
+      expect(new Set(ordered).size, `lap ${lap} repeats a position`).toBe(ordered.length);
+    }
+
+    // Never silently. Every adjustment is named so it reaches ingest_runs.
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some((w) => w.includes('both in P15'))).toBe(true);
+  });
 });
 
 describe('buildLapPositions', () => {

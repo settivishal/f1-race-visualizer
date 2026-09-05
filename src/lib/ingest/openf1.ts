@@ -34,6 +34,10 @@ async function get(path: string, params: Record<string, string | number>): Promi
     const response = await throttle(() => fetch(url, { headers: { accept: 'application/json' } }));
     if (response.ok) return response.json();
 
+    // OpenF1 answers a query that matches nothing with 404, not an empty list.
+    // A sprint with no pit stops is a fact about the race, not a failure.
+    if (response.status === 404) return [];
+
     lastError = new Error(`OpenF1 ${path} returned ${response.status}`);
     if (!RETRYABLE.has(response.status)) throw lastError;
 
