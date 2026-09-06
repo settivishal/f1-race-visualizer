@@ -128,21 +128,44 @@ describe('the /position ↔ /laps join, against the real Australian GP 2025', ()
   });
 
   it('has null durations only on terminal laps in this race', () => {
-    // All seven null-duration laps here belong to a driver's final lap, so all
-    // seven are legitimately dropped. The mid-race case — where the next lap's
-    // start supplies the boundary — has no example in this fixture and is
-    // covered synthetically below. A red-flagged race would exercise it for
+    // All seven null-duration laps here belong to a driver's final lap. Which of
+    // them survive now depends on whether that lap is the race's last one: the
+    // chequered flag ended it, so it is kept on an estimated boundary, while a
+    // driver who stopped earlier is still dropped. The mid-race case — where the
+    // next lap's start supplies the boundary — has no example in this fixture and
+    // is covered synthetically below. A red-flagged race would exercise it for
     // real, and is the next fixture worth capturing.
     const nullDuration = (laps as Lap[]).filter((l) => l.lap_duration == null);
     expect(nullDuration).toHaveLength(7);
+
+    const finalLap = Math.max(...(laps as Lap[]).map((l) => l.lap_number));
 
     for (const lap of nullDuration) {
       const hasNext = (laps as Lap[]).some(
         (x) => x.driver_number === lap.driver_number && x.lap_number === lap.lap_number + 1,
       );
       expect(hasNext, `lap ${lap.lap_number} for driver ${lap.driver_number} is not terminal`).toBe(false);
-      expect(rows.find((r) => r.driverNumber === lap.driver_number && r.lap === lap.lap_number)).toBeUndefined();
+
+      const row = rows.find((r) => r.driverNumber === lap.driver_number && r.lap === lap.lap_number);
+      if (lap.lap_number === finalLap) {
+        expect(row, `flag-ended lap ${lap.lap_number} for driver ${lap.driver_number}`).toBeDefined();
+        expect(row!.lapTime).toBeNull();  // estimated crossing, never an invented lap time
+      } else {
+        expect(row, `retirement on lap ${lap.lap_number} for driver ${lap.driver_number}`).toBeUndefined();
+      }
     }
+  });
+
+  it('runs the race to its final lap', () => {
+    // Australia is the case that exposed this: upstream publishes no duration for
+    // lap 58, so the whole lap used to vanish and the replay stopped a lap early.
+    const finalLap = Math.max(...(laps as Lap[]).map((l) => l.lap_number));
+    expect(finalLap).toBe(58);
+
+    const onFinalLap = rows.filter((r) => r.lap === finalLap);
+    expect(onFinalLap.length).toBeGreaterThan(0);
+    // Whoever leads the last lap must be the winner in the classification.
+    expect(onFinalLap.find((r) => r.position === 1)!.driverNumber).toBe(4);
   });
 
 });
@@ -245,6 +268,41 @@ describe('buildLapPositions', () => {
     const rows = buildLapPositions([lap(99, 1, '2025-01-01T18:00:00.000Z', 60)], [], warnings);
     expect(rows).toHaveLength(0);
     expect(warnings[0]).toContain('driver 99');
+  });
+
+  it('keeps the final lap when the flag falls and upstream omits its duration', () => {
+    const rows = buildLapPositions(
+      [lap(1, 1, '2025-01-01T18:00:00.000Z', 60), lap(1, 2, '2025-01-01T18:01:00.000Z', null)],
+      [sample(1, 3, '2025-01-01T17:59:00.000Z'), sample(1, 1, '2025-01-01T18:01:30.000Z')],
+    );
+    // Lap 2 is estimated at 18:01:00 + lap 1's 60s, so the 18:01:30 sample counts.
+    expect(rows.map((r) => r.lap)).toEqual([1, 2]);
+    expect(rows[1]).toMatchObject({ position: 1, lapTime: null });
+  });
+
+  it('still drops an unfinished lap when the driver retires before the end', () => {
+    const rows = buildLapPositions(
+      [
+        lap(1, 1, '2025-01-01T18:00:00.000Z', 60), lap(1, 2, '2025-01-01T18:01:00.000Z', 60),
+        lap(2, 1, '2025-01-01T18:00:01.000Z', 61),
+        lap(2, 2, '2025-01-01T18:01:02.000Z', null), // crashed out; no lap 3 for anyone else either
+      ],
+      [sample(1, 1, '2025-01-01T17:59:00.000Z'), sample(2, 2, '2025-01-01T17:59:00.000Z')],
+    );
+    // Driver 2's lap 2 IS the final lap, so it is kept — the retirement case is
+    // the one below, where the race runs on without them.
+    expect(rows.filter((r) => r.driverNumber === 2).map((r) => r.lap)).toEqual([1, 2]);
+
+    const midRace = buildLapPositions(
+      [
+        lap(1, 1, '2025-01-01T18:00:00.000Z', 60), lap(1, 2, '2025-01-01T18:01:00.000Z', 60),
+        lap(1, 3, '2025-01-01T18:02:00.000Z', 60),
+        lap(2, 1, '2025-01-01T18:00:01.000Z', 61),
+        lap(2, 2, '2025-01-01T18:01:02.000Z', null), // retires on lap 2, race runs to lap 3
+      ],
+      [sample(1, 1, '2025-01-01T17:59:00.000Z'), sample(2, 2, '2025-01-01T17:59:00.000Z')],
+    );
+    expect(midRace.filter((r) => r.driverNumber === 2).map((r) => r.lap)).toEqual([1]);
   });
 
   it('tolerates non-contiguous lap numbers after a red flag', () => {
