@@ -1,0 +1,82 @@
+# The race library. `search` and `season` are resolver arguments rather than
+# client-side filters: the database is better at filtering than the browser is,
+# and a filtered result set the server produced is one the cache can hold.
+query RaceLibrary($season: Int, $search: String, $first: Int, $after: String) {
+  races(season: $season, search: $search, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        slug
+        date
+        laps
+        type
+        isFeatured
+        meeting {
+          name
+          country
+          circuitName
+          round
+          season
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+  seasons {
+    year
+  }
+}
+
+# The race detail header. The replay payload itself arrives in a separate
+# operation once the player lands, so this page renders without paying for
+# every lap of every driver.
+query RaceHeader($slug: String!) {
+  race(slug: $slug) {
+    id
+    slug
+    date
+    laps
+    type
+    meeting {
+      name
+      country
+      circuitName
+      round
+      season
+      weather
+    }
+    results {
+      finalPosition
+      lapsCompleted
+      points
+      status
+      fastestLap
+      driver {
+        code
+        name
+        number
+      }
+      team {
+        name
+        color
+      }
+    }
+  }
+}
+
+# Slugs for generateStaticParams. Deliberately just the slug — the pages are
+# built from it, and asking for anything more would fetch a season of data to
+# throw it away.
+query RaceSlugs($first: Int) {
+  races(first: $first) {
+    edges {
+      node {
+        slug
+      }
+    }
+  }
+}
