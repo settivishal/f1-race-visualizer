@@ -1,18 +1,21 @@
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { LoadingState } from '@/components/ui/loading-state';
 import { PageContainer } from '@/components/ui/page-container';
-import { getRaceHeader, getRaceSlugs } from '@/lib/queries';
+import { CircuitInfoPanel } from '@/components/replay/circuit-info-panel';
+import { RaceVisualizationPlayer } from '@/components/replay/race-visualization-player';
+import { toReplayView } from '@/components/replay/types';
+import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
 
 /**
  * The race detail page.
  *
- * The replay player lands in the next PR; what is here now is the header and
- * the classification, which is what the page needs to be a real destination
- * rather than a placeholder. The player will slot in below the header and read
- * a separate cached query, so the classification does not wait on a season of
- * lap rows.
+ * The replay is its own cached query and its own Suspense boundary. It is the
+ * one payload in the application large enough to matter — every lap of every
+ * driver — so the header and the classification render without waiting on it.
  */
 export async function generateStaticParams() {
   const { races } = await getRaceSlugs();
@@ -79,7 +82,21 @@ export default async function RacePage({ params }: { params: Promise<{ slug: str
         {race.type === 'SPRINT' ? <Badge>Sprint</Badge> : null}
       </header>
 
-      <Card className="mt-8 overflow-x-auto">
+      <div className="mt-8">
+        <Suspense fallback={<LoadingState label="Loading replay" />}>
+          <Replay slug={slug} />
+        </Suspense>
+      </div>
+
+      <div className="mt-6">
+        <CircuitInfoPanel
+          circuitName={meeting?.circuitName ?? null}
+          country={meeting?.country ?? null}
+          raceName={meeting?.name ?? null}
+        />
+      </div>
+
+      <Card className="mt-6 overflow-x-auto">
         <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Classification
         </h2>
@@ -126,4 +143,16 @@ export default async function RacePage({ params }: { params: Promise<{ slug: str
       </Card>
     </PageContainer>
   );
+}
+
+/**
+ * toReplayView narrows the payload once here: it drops entries whose driver row
+ * is missing, and fills a team colour where there is none. Both are conditions
+ * the schema is honest about and the renderer has nothing to draw for.
+ */
+async function Replay({ slug }: { slug: string }) {
+  const { race } = await getRaceReplay(slug);
+  if (!race) return null;
+
+  return <RaceVisualizationPlayer visualization={toReplayView(race)} />;
 }

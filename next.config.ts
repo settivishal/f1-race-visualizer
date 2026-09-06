@@ -10,6 +10,17 @@ const nextConfig: NextConfig = {
   //
   // See docs/decisions.md, "Rendering: ISR, revalidated by the ingest job".
   cacheComponents: true,
+
+  // The circuit maps in lib/circuit-data.ts are hotlinked from formula1.com.
+  // next/image refuses a remote host that is not listed here, so without this
+  // the circuit panel throws rather than degrading.
+  //
+  // Hotlinking is the v1 behaviour, kept for now. M4 downloads images at
+  // ingest into Vercel Blob (see docs/decisions.md, "Images: downloaded at
+  // ingest"), and this entry goes away with it.
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: 'media.formula1.com' }],
+  },
 };
 
 export default nextConfig;
