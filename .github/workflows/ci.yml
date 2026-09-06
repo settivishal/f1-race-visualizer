@@ -24,3 +24,9 @@ jobs:
       # migrations must agree. A diff here means the source of truth drifted.
       - run: pnpm db:generate
       - run: git diff --exit-code src/db/migrations
+
+      # The same check one layer up. Renaming or removing a GraphQL field
+      # leaves every operation still parsing and still sending — they simply
+      # start receiving null, which shows up as a blank area of the UI in
+      # production weeks later. Here it fails the build instead.
+      - run: pnpm gql:check

@@ -1,45 +1,60 @@
-import { getDb } from '@/db';
+import { executeQuery } from '@/graphql/execute';
+import type { HomeLineupQuery } from '@/graphql/generated/graphql';
 
-// M0's vertical slice: database to page, no cache, no GraphQL yet.
+// Reads through the schema, not around it. A server component could query
+// Drizzle directly and be quicker to write, but then GraphQL would be a facade
+// over one path rather than the data layer — and the resolvers, the loaders and
+// the query budget would go unexercised by the page people actually load.
+//
+// executeQuery runs in this process, so this costs no more than the direct
+// query it replaced.
 export const dynamic = 'force-dynamic';
 
-export default async function Home() {
-  const lineup = await getDb().query.driverTeamAssignments.findMany({
-    with: { driver: true, teamSeason: { with: { team: true } } },
-  });
+const HOME_LINEUP = /* GraphQL */ `
+  query HomeLineup($season: Int!) {
+    driverStandings(season: $season) {
+      position
+      points
+      driver { code name number }
+      team { name color }
+    }
+  }
+`;
 
-  const grid = lineup
-    .map((a) => ({
-      code: a.driver.code,
-      name: a.driver.name,
-      number: a.driver.number,
-      team: a.teamSeason.team.name,
-      color: a.teamSeason.color ?? a.teamSeason.team.color ?? '#888888',
-    }))
-    .sort((a, b) => a.team.localeCompare(b.team) || a.code.localeCompare(b.code));
+export default async function Home() {
+  const { driverStandings } = await executeQuery<HomeLineupQuery, { season: number }>(
+    HOME_LINEUP,
+    { season: 2025 },
+  );
 
   return (
     <main className="mx-auto max-w-2xl p-8 font-sans">
       <h1 className="text-2xl font-semibold">F1 Race Visualizer</h1>
       <p className="mt-2 text-sm text-gray-500">
-        {grid.length} drivers, read from Neon at request time.
+        2025 drivers&rsquo; championship — {driverStandings.length} drivers, derived from race
+        results at request time.
       </p>
 
-      <ul className="mt-8 space-y-1">
-        {grid.map((d) => (
-          <li key={d.code} className="flex items-center gap-3 text-sm">
-            <span className="h-4 w-1 rounded" style={{ backgroundColor: d.color }} aria-hidden />
-            <span className="w-10 font-mono">{d.code}</span>
-            <span className="w-8 text-right font-mono text-gray-500">{d.number}</span>
-            <span className="flex-1">{d.name}</span>
-            <span className="text-gray-500">{d.team}</span>
+      <ol className="mt-8 space-y-1">
+        {driverStandings.map((standing) => (
+          <li key={standing.driver.code} className="flex items-center gap-3 text-sm">
+            <span className="w-6 text-right font-mono text-gray-500">{standing.position}</span>
+            <span
+              className="h-4 w-1 rounded"
+              style={{ backgroundColor: standing.team.color ?? '#888888' }}
+              aria-hidden
+            />
+            <span className="w-10 font-mono">{standing.driver.code}</span>
+            <span className="flex-1">{standing.driver.name}</span>
+            <span className="text-gray-500">{standing.team.name}</span>
+            <span className="w-12 text-right font-mono">{standing.points}</span>
           </li>
         ))}
-      </ul>
+      </ol>
 
-      {grid.length === 0 && (
+      {driverStandings.length === 0 && (
         <p className="mt-8 text-sm text-red-600">
-          No drivers. Run <code>pnpm tsx scripts/backfill.ts 2025</code>.
+          No results. Run <code>pnpm tsx scripts/backfill.ts 2025</code>.
         </p>
       )}
     </main>

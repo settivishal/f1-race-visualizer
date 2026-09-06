@@ -1,0 +1,18 @@
+# The lineup shown on the home page. Deliberately narrow: the page declares
+# exactly what it needs, and codegen makes that a compile-time contract rather
+# than a shape it hopes the resolver still returns.
+query HomeLineup($season: Int!) {
+  driverStandings(season: $season) {
+    position
+    points
+    driver {
+      code
+      name
+      number
+    }
+    team {
+      name
+      color
+    }
+  }
+}
