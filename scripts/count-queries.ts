@@ -3,6 +3,7 @@ import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { execute, parse } from 'graphql';
 import * as dbSchema from '@/db/schema';
+import { createLoaders } from '@/graphql/loaders';
 import { schema } from '@/graphql/schema';
 
 /**
@@ -53,7 +54,7 @@ async function main() {
     schema,
     document: parse(REPLAY_QUERY),
     variableValues: { slug },
-    contextValue: { db, session: null },
+    contextValue: { db, loaders: createLoaders(db), session: null },
   });
   const elapsed = Date.now() - started;
 

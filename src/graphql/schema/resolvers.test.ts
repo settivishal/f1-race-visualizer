@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { beforeAll, describe, expect, it } from 'vitest';
 import * as dbSchema from '@/db/schema';
+import { createLoaders } from '../loaders';
 import { schema } from './index';
 
 /**
@@ -20,7 +21,7 @@ async function run<T>(document: string, variableValues?: Record<string, unknown>
     schema,
     document: parse(document),
     variableValues,
-    contextValue: { db, session: null },
+    contextValue: { db, loaders: createLoaders(db), session: null },
   });
   if (result.errors?.length) throw result.errors[0];
   return result.data as T;
