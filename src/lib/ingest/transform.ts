@@ -100,25 +100,49 @@ export function buildLapPositions(
     list.sort((a, b) => a.lap_number - b.lap_number);
   }
 
+  // The chequered flag ends the last lap without upstream always publishing a
+  // duration for it, and there is no successor lap to borrow a start from — so
+  // the final lap of a race would drop out entirely. Australia 2025 (lap 58)
+  // and the Miami 2025 sprint (lap 19) are both that case. Knowing which lap is
+  // last is what separates it from a retirement, which is the other way a lap
+  // ends up with no boundary.
+  const finalLap = laps.reduce((max, l) => (l.lap_number > max ? l.lap_number : max), 0);
+
   // When each driver completed each lap, and from that, when its leader did.
   const completedAt = new Map<number, Map<number, number>>();
   const leaderCrossedAt = new Map<number, number>();
 
   for (const [driverNumber, driverLaps] of lapsByDriver) {
     const perLap = new Map<number, number>();
+    // Only laps this driver actually completed contribute, so this is their own
+    // recent pace rather than the field's.
+    let lastDuration: number | null = null;
+
     for (let i = 0; i < driverLaps.length; i++) {
-      const boundary = lapBoundary(driverLaps[i], driverLaps[i + 1]);
-      // No boundary means the lap has no end time and no successor to borrow
-      // one from, which only happens on a lap the driver never completed — the
-      // crash or retirement itself. There is no position at completion because
-      // there was no completion, and the retirement is recorded from
+      const lap = driverLaps[i];
+      let boundary = lapBoundary(lap, driverLaps[i + 1]);
+
+      // No boundary on the last lap of the race means the flag fell, not that
+      // the driver stopped: a retirement leaves its driver short of `finalLap`,
+      // with laps still to come for everyone else. Estimating the crossing from
+      // their own previous lap is safe here because the position read at it is
+      // a step function of samples — being a second out does not change it.
+      if (boundary === null && lap.lap_number === finalLap && lap.date_start && lastDuration !== null) {
+        boundary = ms(lap.date_start) + lastDuration * 1000;
+      }
+
+      // Still no boundary means the lap has no end time and no successor to
+      // borrow one from, which only happens on a lap the driver never completed
+      // — the crash or retirement itself. There is no position at completion
+      // because there was no completion, and the retirement is recorded from
       // /session_result rather than guessed at here.
       if (boundary === null) continue;
-      perLap.set(driverLaps[i].lap_number, boundary);
+      if (lap.lap_duration != null) lastDuration = lap.lap_duration;
+      perLap.set(lap.lap_number, boundary);
 
-      const leader = leaderCrossedAt.get(driverLaps[i].lap_number);
+      const leader = leaderCrossedAt.get(lap.lap_number);
       if (leader === undefined || boundary < leader) {
-        leaderCrossedAt.set(driverLaps[i].lap_number, boundary);
+        leaderCrossedAt.set(lap.lap_number, boundary);
       }
     }
     completedAt.set(driverNumber, perLap);
