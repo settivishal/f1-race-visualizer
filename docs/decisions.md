@@ -643,3 +643,53 @@ satisfy a rule that catches nothing on that hop; and dropping the pull-request r
 **What this does not relax.** A pull request is still required to reach either branch, CI must
 still pass, the rules still apply to admins, and neither branch can be force-pushed or deleted.
 Only the up-to-date requirement on `main` is gone.
+
+---
+
+## 2026-09-06 — urql is deferred out of M2
+
+**Decided:** M2 ships with no client-side GraphQL client. The race library's search and
+filters are a `<form method="get">` read by a server component; the player receives its
+payload as a prop. `urql` arrives in M3, with the admin mutations.
+
+**Follow-up to** *The replay payload travels as server-component props* (2026-09-03), which
+said "urql covers race library filters, standings toggles, and admin forms". The player half
+of that entry stands. The library half does not.
+
+**Considered:** wiring urql now as designed, so the HTTP transport has a real consumer.
+
+`Query.races` already takes `season` and `search`, so the filtering the client would do is
+filtering the database does better and the ISR cache can hold. Fetching it on the client
+means shipping a cache, a provider and a round trip to re-derive a result the server can put
+in the HTML — and it makes each filtered view unshareable, because the state lives in memory
+rather than in the URL. A `<form method="get">` gives back the shareable URL, works before
+the JavaScript loads, and costs nothing to write.
+
+The cost of deferring is that `/api/graphql` has no browser consumer until M3, so the HTTP
+transport is exercised only by GraphiQL and by hand. That is worth naming, and it is not
+worth a dependency to fix.
+
+---
+
+## 2026-09-06 — The v1 explorer is replaced, not ported
+
+**Decided:** `race-visualization-explorer.tsx` — the largest file on the v1 branch at 17.9KB
+— is not ported. It becomes two server-rendered routes: `/races` (library) and
+`/races/[slug]` (detail).
+
+**Considered:** porting it near-verbatim like the rest of the replay tree, on the grounds
+that it works.
+
+It works by doing on the client what v2 does on the server: it fetches every race on mount,
+holds the selected visualization in component state, and filters and sorts in the browser.
+Everything M1.5 built exists so that the page can be rendered once, cached, and served
+without touching the database. Porting the explorer would route the site's main entry point
+around all of it.
+
+The parts worth keeping are inside it rather than the shape of it: the skeleton, empty and
+error states become Suspense boundaries on the new routes.
+
+**Named here** because a file that large disappearing from a port should read as a decision
+rather than an oversight.
+
+---
