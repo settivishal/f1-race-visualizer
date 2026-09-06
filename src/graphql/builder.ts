@@ -15,6 +15,7 @@ import type { Context } from './context';
  */
 export const builder = new SchemaBuilder<{
   Context: Context;
+  DefaultFieldNullability: false;
   Scalars: {
     DateTime: { Input: Date; Output: Date };
     // Points are fractional: half points have been awarded for a shortened
@@ -24,6 +25,11 @@ export const builder = new SchemaBuilder<{
   };
 }>({
   plugins: [RelayPlugin],
+  // Non-null unless a field says otherwise. The nullable fields here are
+  // nullable for a reason — a DNF has no finishing position, a safety car has
+  // no driver — and that distinction is worth carrying into the schema instead
+  // of making every consumer defend against a null that cannot happen.
+  defaultFieldNullability: false,
 });
 
 builder.queryType({});

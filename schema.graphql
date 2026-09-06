@@ -1,0 +1,148 @@
+type ConstructorStanding {
+  points: Float!
+  position: Int!
+  team: Team!
+  wins: Int!
+}
+
+scalar DateTime
+
+type Driver {
+  code: String!
+  country: String
+  headshotUrl: String
+  id: ID!
+  name: String!
+  number: Int
+}
+
+type DriverStanding {
+  driver: Driver!
+  podiums: Int!
+  points: Float!
+  position: Int!
+  team: Team!
+  wins: Int!
+}
+
+enum DriverStatus {
+  DNF
+  DNS
+  DSQ
+  FINISHED
+}
+
+type Meeting {
+  circuitName: String
+  country: String!
+  id: ID!
+  name: String!
+  races: [Race!]!
+  round: Int!
+  season: Int!
+  startDate: DateTime!
+  weather: String
+}
+
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+type Query {
+  constructorStandings(season: Int!): [ConstructorStanding!]!
+  driverStandings(season: Int!): [DriverStanding!]!
+  race(slug: String!): Race
+  races(after: String, first: Int, search: String, season: Int): RaceConnection!
+  seasons: [Season!]!
+}
+
+type Race {
+  date: DateTime!
+  events(lap: Int): [RaceEvent!]!
+  id: ID!
+  isFeatured: Boolean!
+  laps: Int!
+  meeting: Meeting
+  positions(lap: Int): [RacePosition!]!
+  replay: RaceReplay!
+  results: [RaceResult!]!
+  slug: String!
+  type: RaceType!
+}
+
+type RaceConnection {
+  edges: [RaceEdge!]!
+  pageInfo: PageInfo!
+}
+
+type RaceEdge {
+  cursor: String!
+  node: Race!
+}
+
+type RaceEvent {
+  details: String!
+  driver: Driver
+  lap: Int!
+  type: String!
+}
+
+type RacePosition {
+  driver: Driver
+  gap: String
+  lap: Int!
+  lapTime: Float
+  position: Int!
+  sector1: Float
+  sector2: Float
+  sector3: Float
+  team: Team
+}
+
+type RaceReplay {
+  drivers: [ReplayDriver!]!
+  events: [RaceEvent!]!
+  laps: [Int!]!
+  summary: ReplaySummary!
+}
+
+type RaceResult {
+  driver: Driver
+  fastestLap: Boolean!
+  finalPosition: Int
+  gridPosition: Int
+  lapsCompleted: Int!
+  points: Float!
+  status: DriverStatus!
+  team: Team
+}
+
+enum RaceType {
+  GRAND_PRIX
+  SPRINT
+}
+
+type ReplayDriver {
+  driver: Driver
+  positions: [RacePosition!]!
+  team: Team
+}
+
+type ReplaySummary {
+  driverCount: Int!
+  lapCount: Int!
+  maxLap: Int!
+  maxPosition: Int!
+}
+
+type Season {
+  year: Int!
+}
+
+type Team {
+  color: String
+  id: ID!
+  logoUrl: String
+  name: String!
+}

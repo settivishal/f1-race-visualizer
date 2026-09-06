@@ -1,8 +1,5 @@
 import { and, asc, eq, ilike, or, sql } from 'drizzle-orm';
-import {
-  driverTeamAssignments, drivers, meetings, raceEvents, racePositions,
-  raceResults, races, teamSeasons, teams,
-} from '@/db/schema';
+import { meetings, raceEvents, racePositions, raceResults, races } from '@/db/schema';
 import { builder } from '../builder';
 import type { Context } from '../context';
 import { Driver, Team } from './entity';
@@ -194,7 +191,13 @@ const RaceReplay = builder.objectRef<ReplayShape>('RaceReplay').implement({
 
 // ── Race ──────────────────────────────────────────────────────────────
 
-export const Race = builder.objectRef<RaceRow>('Race').implement({
+// Declared before it is implemented, and Meeting likewise: Race has a meeting
+// and a Meeting has races, so the two modules reference each other. Splitting
+// the ref from its fields breaks the cycle for the type checker, which cannot
+// infer a shape that depends on itself.
+export const Race = builder.objectRef<RaceRow>('Race');
+
+Race.implement({
   fields: (t) => ({
     id: t.exposeID('id'),
     slug: t.exposeString('slug'),

@@ -1,10 +1,13 @@
-import { asc } from 'drizzle-orm';
-import { meetings, seasons } from '@/db/schema';
+import { asc, eq } from 'drizzle-orm';
+import { meetings, races, seasons } from '@/db/schema';
 import { builder } from '../builder';
+import { Race } from './race';
 
 export type MeetingRow = typeof meetings.$inferSelect;
 
-export const Meeting = builder.objectRef<MeetingRow>('Meeting').implement({
+export const Meeting = builder.objectRef<MeetingRow>('Meeting');
+
+Meeting.implement({
   fields: (t) => ({
     id: t.exposeID('id'),
     round: t.exposeInt('round'),
@@ -20,6 +23,16 @@ export const Meeting = builder.objectRef<MeetingRow>('Meeting').implement({
       type: 'String',
       nullable: true,
       resolve: (m) => (m.weather === null ? null : JSON.stringify(m.weather)),
+    }),
+    // A weekend's sessions: the grand prix, and a sprint where there was one.
+    // This is the other half of the Race -> Meeting -> races cycle, which is
+    // why the endpoint carries a depth limit.
+    races: t.field({
+      type: [Race],
+      resolve: (meeting, _args, ctx) =>
+        ctx.db.select().from(races)
+          .where(eq(races.meetingId, meeting.id))
+          .orderBy(asc(races.date)),
     }),
   }),
 });
