@@ -693,3 +693,46 @@ error states become Suspense boundaries on the new routes.
 rather than an oversight.
 
 ---
+
+## 2026-09-06 — Cache Components, and why the ingest cannot revalidate yet
+
+**Decided:** `cacheComponents: true`. The cached reads live in `src/lib/queries.ts` as
+`use cache` scopes carrying `cacheTag('race' | 'standings')` and `cacheLife('days')`. The call
+that invalidates those tags arrives in M3 with the cron route, not in M2.
+
+**Follow-up to** *Rendering: ISR, revalidated by the ingest job* (2026-09-03), which described
+`revalidateTag('race')` as "the last step of the cron handler, after COMMIT". That is still the
+design. What changed is only when it can be written.
+
+`revalidateTag` runs in Server Functions and Route Handlers, because it needs a request context.
+In M2 the ingest runs from `scripts/backfill.ts`, a CLI process — `src/lib/ingest/run.ts` is a
+library it calls, and putting the call there would be code that cannot execute where it sits.
+`POST /api/cron/ingest` is the handler that call belongs in, and that route is M3.
+
+**Considered:** adding a `POST /api/revalidate` route now for the backfill script to hit over
+HTTP. It would close the loop, but it means a publicly reachable endpoint that evicts the cache,
+introduced one milestone before the auth that should guard it. A shortcut whose cost is an
+unguarded endpoint is not a shortcut.
+
+**What holds until then.** `cacheLife('days')` bounds the staleness at a day. The data changes
+weekly, so a race imported today is visible tomorrow at the latest, and ordinary traffic still
+never wakes Neon. The gap is that a fresh import is not visible *immediately*, which matters to
+whoever ran the import and to nobody else.
+
+---
+
+## 2026-09-06 — Grid position is not displayed
+
+**Decided:** the race classification table shows position, driver, team, laps and points. No
+grid column.
+
+`gridPosition` is null for every driver of every race in the database — verified across four
+races, 20 of 20 rows each. This is not a defect: `src/lib/ingest/transform.ts` leaves it unset
+because OpenF1 publishes no starting grid for these seasons, and the column is nullable so an
+unknown fact can be stored as unknown rather than as a zero.
+
+The schema field and the column stay. Only the rendering goes, because a column that reads
+"—" in every row for every race is furniture that looks like missing data. It comes back if a
+source for starting grids ever does.
+
+---

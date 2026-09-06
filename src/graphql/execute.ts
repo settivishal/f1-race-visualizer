@@ -37,5 +37,15 @@ export async function executeQuery<TData, TVariables extends Record<string, unkn
   });
 
   if (result.errors?.length) throw result.errors[0];
-  return result.data as TData;
+
+  // graphql-js builds every object in the result with `Object.create(null)`.
+  // React refuses to serialize a null-prototype object across a boundary —
+  // both into a `use cache` entry and into a client component — and the error
+  // it raises names neither the field nor the query, so it is worth removing
+  // here rather than at each of the places that would hit it.
+  //
+  // structuredClone is a deep copy, which costs something on the replay
+  // payload. It buys results that behave like the plain objects their
+  // generated types already claim they are.
+  return structuredClone(result.data) as TData;
 }

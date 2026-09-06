@@ -1,38 +1,30 @@
-import { executeQuery } from '@/graphql/execute';
-import type { HomeLineupQuery } from '@/graphql/generated/graphql';
+import Link from 'next/link';
+import { getDriverStandings } from '@/lib/queries';
 
 // Reads through the schema, not around it. A server component could query
 // Drizzle directly and be quicker to write, but then GraphQL would be a facade
 // over one path rather than the data layer — and the resolvers, the loaders and
 // the query budget would go unexercised by the page people actually load.
 //
-// executeQuery runs in this process, so this costs no more than the direct
-// query it replaced.
-export const dynamic = 'force-dynamic';
-
-const HOME_LINEUP = /* GraphQL */ `
-  query HomeLineup($season: Int!) {
-    driverStandings(season: $season) {
-      position
-      points
-      driver { code name number }
-      team { name color }
-    }
-  }
-`;
-
+// The query itself now lives in lib/queries.ts, inside a `use cache` scope
+// tagged `standings`. This page was `force-dynamic`, which re-derived the
+// championship from race_results on every single request; the standings change
+// once a week.
 export default async function Home() {
-  const { driverStandings } = await executeQuery<HomeLineupQuery, { season: number }>(
-    HOME_LINEUP,
-    { season: 2025 },
-  );
+  const { driverStandings } = await getDriverStandings(2025);
 
   return (
     <main className="mx-auto max-w-2xl p-8 font-sans">
       <h1 className="text-2xl font-semibold">F1 Race Visualizer</h1>
       <p className="mt-2 text-sm text-gray-500">
         2025 drivers&rsquo; championship — {driverStandings.length} drivers, derived from race
-        results at request time.
+        results rather than stored.
+      </p>
+
+      <p className="mt-4 text-sm">
+        <Link href="/races" className="text-accent underline underline-offset-4">
+          Browse every race →
+        </Link>
       </p>
 
       <ol className="mt-8 space-y-1">
