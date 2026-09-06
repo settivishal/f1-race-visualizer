@@ -1,0 +1,70 @@
+# The replay payload: one fragment, requested by the race page and consumed by
+# the player as a single typed object.
+#
+# v1 hand-wrote this shape as a TypeScript type and threaded it down through
+# seven components as props. The shape is the same; the difference is that here
+# it is derived from the schema, so a resolver change that breaks it is a
+# compile error rather than a blank panel discovered later.
+fragment RaceReplayFields on RaceReplay {
+  laps
+  summary {
+    lapCount
+    maxLap
+    maxPosition
+    driverCount
+  }
+  drivers {
+    driver {
+      id
+      code
+      name
+      number
+    }
+    team {
+      id
+      name
+      color
+    }
+    positions {
+      lap
+      position
+      gap
+      lapTime
+      sector1
+      sector2
+      sector3
+    }
+  }
+  events {
+    lap
+    type
+    details
+    driver {
+      id
+      code
+      name
+      number
+    }
+  }
+}
+
+query RaceReplay($slug: String!) {
+  race(slug: $slug) {
+    id
+    slug
+    laps
+    date
+    type
+    meeting {
+      name
+      country
+      circuitName
+      round
+      season
+      weather
+    }
+    replay {
+      ...RaceReplayFields
+    }
+  }
+}
