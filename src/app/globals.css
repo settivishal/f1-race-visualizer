@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
+/* The ported replay components are written against these token names — a class
+   like `bg-panel-strong` or `border-line` is inert without the @theme block at
+   the bottom of this file. Values carried over from v1's globals.css. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light — sandy/cream */
+  --background: #fbfaf8;
+  --foreground: #1e293b;
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: #ffffff;
+  --muted: #64748b;
+  --accent: #e10600;
+  --accent-strong: #b80500;
+  --accent-soft: rgba(225, 6, 0, 0.06);
+  --track: #0f172a;
+  --line: rgba(15, 23, 42, 0.08);
+}
+
+/* Dark is defined twice on purpose: once for the system preference, which is
+   what the site follows today, and once for an explicit `.dark` class, which is
+   what the M4 theme toggle will set. Neither needs the other to work. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: #08090c;
+    --foreground: #f1f5f9;
+    --panel: rgba(13, 16, 21, 0.65);
+    --panel-strong: rgba(22, 27, 34, 0.95);
+    --muted: #94a3b8;
+    --accent: #e10600;
+    --accent-strong: #ff1e18;
+    --accent-soft: rgba(225, 6, 0, 0.08);
+    --track: #0e1116;
+    --line: rgba(255, 255, 255, 0.08);
+  }
+}
+
+:root.dark {
+  --background: #08090c;
+  --foreground: #f1f5f9;
+  --panel: rgba(13, 16, 21, 0.65);
+  --panel-strong: rgba(22, 27, 34, 0.95);
+  --muted: #94a3b8;
+  --accent: #e10600;
+  --accent-strong: #ff1e18;
+  --accent-soft: rgba(225, 6, 0, 0.08);
+  --track: #0e1116;
+  --line: rgba(255, 255, 255, 0.08);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-panel: var(--panel);
+  --color-panel-strong: var(--panel-strong);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-track: var(--track);
+  --color-line: var(--line);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
