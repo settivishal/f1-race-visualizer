@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getReplayEventTone, type DriverReplayState, type ReplayRaceControl } from "./replay-state";
+import { getReplayEventTone, type ReplayRaceControl } from "./replay-state";
 import { RaceStoryTimeline } from "./race-story-timeline";
 import { activeMomentAt, buildStoryMoments, significanceOf, type StoryKind } from "./story-moments";
 import type { ReplayView } from "./types";
@@ -39,14 +39,12 @@ export function RaceStoryPanel({
   visualization,
   currentLap,
   raceControl,
-  driverStates,
   onJumpToLap,
 }: {
   visualization: ReplayView;
   currentLap: number;
   raceControl: ReplayRaceControl;
   /** Named drivers, not counts: the panel used to render bare integers. */
-  driverStates: Map<string, DriverReplayState>;
   onJumpToLap: (lap: number) => void;
 }) {
   const [filter, setFilter] = useState<FilterId>("key");
@@ -58,11 +56,6 @@ export function RaceStoryPanel({
     return moments.filter((moment) => moment.kind === filter);
   }, [filter, moments]);
   const active = useMemo(() => activeMomentAt(shown, currentLap), [shown, currentLap]);
-
-  const traffic = useMemo(
-    () => summarizeTraffic(visualization, driverStates),
-    [visualization, driverStates],
-  );
 
   return (
     <div className="space-y-3">
@@ -103,7 +96,6 @@ export function RaceStoryPanel({
           )}
         </p>
 
-        {traffic ? <p className="text-sm text-muted">{traffic}</p> : null}
 
         {/* Scrolls rather than wraps: five filters wrapping to three rows on a
             phone took more height than the thing they filter. */}
@@ -129,32 +121,3 @@ export function RaceStoryPanel({
   );
 }
 
-/**
- * "Lapped: STR, COL · Retired: HUL".
- *
- * The panel used to be handed three integers and print them as "Lapped 2". The
- * player already has the per-driver state; naming them costs one lookup and
- * turns a statistic into something you can go and look at on the canvas.
- */
-function summarizeTraffic(
-  visualization: ReplayView,
-  driverStates: Map<string, DriverReplayState>,
-): string | null {
-  const codeOf = new Map(visualization.drivers.map((entry) => [entry.driver.id, entry.driver.code]));
-  const lapped: string[] = [];
-  const retired: string[] = [];
-
-  for (const state of driverStates.values()) {
-    const code = codeOf.get(state.driverId);
-    if (!code) continue;
-    // Retired first: a retired car is also reported as lapped, and naming it
-    // twice would overstate how much traffic is still running.
-    if (state.isRetired) retired.push(code);
-    else if (state.isLapped) lapped.push(code);
-  }
-
-  const parts: string[] = [];
-  if (lapped.length > 0) parts.push(`Lapped: ${lapped.join(", ")}`);
-  if (retired.length > 0) parts.push(`Out: ${retired.join(", ")}`);
-  return parts.length > 0 ? parts.join(" · ") : null;
-}

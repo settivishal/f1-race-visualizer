@@ -1,4 +1,4 @@
-import type { ReplayEntry, ReplayEvent, ReplayPosition } from "./types";
+import type { ReplayEvent, ReplayPosition } from "./types";
 
 export type ReplayEventKind =
   | "pit"
@@ -33,18 +33,6 @@ export type ReplayRaceControl = {
   details: string | null;
 };
 
-export type DriverReplayState = {
-  driverId: string;
-  isLapped: boolean;
-  lapsDown: number;
-  isBackmarker: boolean;
-  isRetired: boolean;
-  statusLabel: string | null;
-  gapLabel: string | null;
-};
-
-const LAP_DOWN_PATTERN = /(\d+)\s*(?:lap|laps)/i;
-const RETIRED_PATTERN = /\b(dnf|dns|dnq|dsq|ret|retired)\b/i;
 const GREEN_FLAG_PATTERN = /\b(green|restart|resume|clear)\b/i;
 
 export function classifyReplayEvent(
@@ -246,77 +234,8 @@ export function buildRaceControlByLap(
   return result;
 }
 
-export function buildDriverReplayState(
-  drivers: ReplayEntry[],
-  lap: number,
-): Map<string, DriverReplayState> {
-  const states = new Map<string, DriverReplayState>();
 
-  for (const entry of drivers) {
-    const currentPoint = getDriverPointForLap(entry.positions, lap);
-    const gap = currentPoint?.gap ?? null;
-    const lapsDownMatch = gap ? gap.match(LAP_DOWN_PATTERN) : null;
-    const lapsDown = lapsDownMatch ? Number(lapsDownMatch[1]) || 0 : 0;
-    const isRetired = gap ? RETIRED_PATTERN.test(gap) : false;
-    const isLapped = lapsDown > 0;
-    
-    let gapSeconds = 0;
-    if (gap && gap.endsWith('s')) {
-      const match = gap.match(/\+?(\d+\.\d+)s?/);
-      if (match) gapSeconds = parseFloat(match[1]);
-    }
-    
-    // A driver is a backmarker if they are lapped or significantly far behind (e.g. > 60s)
-    const isBackmarker = !isRetired && (isLapped || gapSeconds > 60);
-
-    let statusLabel: string | null = null;
-    if (isRetired) {
-      statusLabel = "Retired";
-    } else if (isLapped) {
-      statusLabel = `${lapsDown} lap${lapsDown === 1 ? "" : "s"} down`;
-    } else if (isBackmarker) {
-      statusLabel = "Backmarker";
-    }
-
-    states.set(entry.driver.id, {
-      driverId: entry.driver.id,
-      isLapped,
-      lapsDown,
-      isBackmarker,
-      isRetired,
-      statusLabel,
-      gapLabel: gap,
-    });
-  }
-
-  return states;
-}
-
-export function summarizeDriverReplayState(states: Map<string, DriverReplayState>) {
-  let lappedCount = 0;
-  let backmarkerCount = 0;
-  let retiredCount = 0;
-
-  for (const state of states.values()) {
-    if (state.isLapped) {
-      lappedCount += 1;
-    }
-    if (state.isBackmarker) {
-      backmarkerCount += 1;
-    }
-    if (state.isRetired) {
-      retiredCount += 1;
-    }
-  }
-
-  return {
-    lappedCount,
-    backmarkerCount,
-    retiredCount,
-  };
-}
-
-function getDriverPointForLap(
+export function getDriverPointForLap(
   positions: ReplayPosition[],
   lap: number,
 ) {

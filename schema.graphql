@@ -251,7 +251,6 @@ type RaceEvent {
 
 type RacePosition {
   driver: Driver
-  gap: String
   lap: Int!
   lapTime: Float
   position: Int!

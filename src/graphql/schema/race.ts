@@ -3,13 +3,12 @@ import { meetings, raceEvents, racePositions, raceResults, races } from '@/db/sc
 import { builder } from '../builder';
 import type { Db } from '../context';
 import type { PodiumSlot } from '../loaders';
-import { RaceAnalysis, loadAnalysis } from './analysis';
+import { RaceAnalysis, loadAnalysis, positionColumns, type PositionRow } from './analysis';
 import { driverOfAssignment, teamOfAssignment } from './assignment';
 import { Driver, Team } from './entity';
 import { Meeting } from './meeting';
 
 export type RaceRow = typeof races.$inferSelect;
-type PositionRow = typeof racePositions.$inferSelect;
 type EventRow = typeof raceEvents.$inferSelect;
 type ResultRow = typeof raceResults.$inferSelect;
 
@@ -24,7 +23,6 @@ export const RacePosition = builder.objectRef<PositionRow>('RacePosition').imple
   fields: (t) => ({
     lap: t.exposeInt('lap'),
     position: t.exposeInt('position'),
-    gap: t.exposeString('gap', { nullable: true }),
     lapTime: t.exposeFloat('lapTime', { nullable: true }),
     sector1: t.exposeFloat('sector1', { nullable: true }),
     sector2: t.exposeFloat('sector2', { nullable: true }),
@@ -244,7 +242,7 @@ Race.implement({
       type: [RacePosition],
       args: { lap: t.arg.int() },
       resolve: (race, args, ctx) =>
-        ctx.db.select().from(racePositions)
+        ctx.db.select(positionColumns).from(racePositions)
           .where(
             args.lap == null
               ? eq(racePositions.raceId, race.id)
@@ -267,7 +265,7 @@ Race.implement({
       type: RaceReplay,
       resolve: async (race, _args, ctx) => ({
         raceId: race.id,
-        rows: await ctx.db.select().from(racePositions)
+        rows: await ctx.db.select(positionColumns).from(racePositions)
           .where(eq(racePositions.raceId, race.id))
           .orderBy(asc(racePositions.lap), asc(racePositions.position)),
       }),

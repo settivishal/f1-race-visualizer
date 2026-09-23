@@ -8,7 +8,6 @@ import { TIMING_TOWER_ID } from "./live-timing-tower";
 import {
   classifyReplayEvent,
   type ReplayEventKind,
-  DriverReplayState,
   easeLapProgress,
   getReplayEventMarkerColor,
   ReplayRaceControl,
@@ -271,7 +270,6 @@ export function RaceVisualizationCanvas({
   nextLap,
   lapProgress,
   raceControl,
-  driverStates,
   controls,
   className,
   focusedDriverId,
@@ -284,7 +282,6 @@ export function RaceVisualizationCanvas({
   nextLap: number;
   lapProgress: MotionValue<number>;
   raceControl: ReplayRaceControl;
-  driverStates: Map<string, DriverReplayState>;
   controls?: ReactNode;
   className?: string;
   /** The driver held by a click — what `aria-pressed` and the label report. */
@@ -704,12 +701,10 @@ export function RaceVisualizationCanvas({
               ),
               highlightedDriverId,
             ).map((frame) => {
-              const state = driverStates.get(frame.entry.driver.id);
               return (
                 <AnimatedCar
                   key={frame.entry.driver.id}
                   frame={frame}
-                  state={state}
                   isDimmed={
                     highlightedDriverId !== null && frame.entry.driver.id !== highlightedDriverId
                   }
@@ -765,7 +760,6 @@ type DriverFrame = {
 
 function AnimatedCar({
   frame,
-  state,
   isDimmed,
   raceControl,
   lapProgress,
@@ -776,7 +770,6 @@ function AnimatedCar({
   compact,
 }: {
   frame: DriverFrame;
-  state?: DriverReplayState;
   /** True when another driver is focused: this one drops back, it does not go. */
   isDimmed: boolean;
   raceControl: ReplayRaceControl;
@@ -842,7 +835,6 @@ function AnimatedCar({
       <title>
         {[
           `${driver.code} • ${driver.name}`,
-          state?.statusLabel,
           retirementEvent && `${retirementEvent.type} lap ${retirementEvent.lap}`,
         ]
           .filter(Boolean)
@@ -852,7 +844,7 @@ function AnimatedCar({
         d={fullPath}
         fill="none"
         stroke={team.color}
-        strokeOpacity={(isRetiredAtCurrentLap ? 0.08 : state?.isBackmarker ? 0.08 : 0.12) * dim}
+        strokeOpacity={(isRetiredAtCurrentLap ? 0.08 : 0.12) * dim}
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -865,11 +857,10 @@ function AnimatedCar({
           d={trail}
           fill="none"
           stroke={team.color}
-          strokeOpacity={(isRetiredAtCurrentLap ? 0.36 : state?.isBackmarker ? 0.5 : 0.8) * dim}
-          strokeWidth={state?.isLapped ? "2.5" : isRetiredAtCurrentLap ? "2.2" : "3.2"}
+          strokeOpacity={(isRetiredAtCurrentLap ? 0.36 : 0.8) * dim}
+          strokeWidth={isRetiredAtCurrentLap ? "2.2" : "3.2"}
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeDasharray={state?.isLapped ? "8 6" : undefined}
           className="transition-[opacity,stroke-opacity] duration-200 hover:opacity-100"
         />
       ) : null}
@@ -914,10 +905,9 @@ function AnimatedCar({
             x2={x}
             y2={y}
             stroke={team.color}
-            strokeOpacity={(state?.isBackmarker ? 0.5 : 0.8) * dim}
-            strokeWidth={state?.isLapped ? "2.5" : "3.2"}
+            strokeOpacity={0.8 * dim}
+            strokeWidth="3.2"
             strokeLinecap="round"
-            strokeDasharray={state?.isLapped ? "8 6" : undefined}
           />
         ) : null}
         {/* Kept mounted for the lap the car retires on, so it fades out under the
@@ -955,9 +945,8 @@ function AnimatedCar({
                   ? "down"
                   : false
             }
-            muted={Boolean(state?.isBackmarker)}
             dimmed={isDimmed}
-            caution={raceControl.status !== "green" || Boolean(state?.isLapped)}
+            caution={raceControl.status !== "green"}
           />
           </motion.g>
           </g>

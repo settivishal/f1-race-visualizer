@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { RaceStoryPanel } from "./race-story-panel";
 import { RaceVisualizationCanvas } from "./race-visualization-canvas";
 import {
-  buildDriverReplayState,
   buildRaceControlByLap,
   describeMissingLaps,
   nearestLapIndex,
@@ -71,14 +70,6 @@ export function RaceVisualizationPlayer({
   const missingLapsNotice = useMemo(
     () => describeMissingLaps(laps, visualization.race.laps),
     [laps, visualization.race.laps],
-  );
-  const driverReplayStates = useMemo(
-    () =>
-      buildDriverReplayState(
-        visualization.drivers,
-        currentLap,
-      ),
-    [currentLap, visualization.drivers],
   );
   // Hoisted out of the controls so the timeline's markers and the scrubber
   // are the same action rather than two copies of it.
@@ -272,7 +263,6 @@ export function RaceVisualizationPlayer({
                 onHoverDriver={setHoveredDriverId}
                 lapProgress={lapProgress}
                 raceControl={activeRaceControl}
-                driverStates={driverReplayStates}
                 controls={
                   <ReplayControls
                     currentLap={currentLap}
@@ -322,8 +312,7 @@ export function RaceVisualizationPlayer({
                     visualization={visualization}
                     currentLap={currentLap}
                     raceControl={activeRaceControl}
-                    driverStates={driverReplayStates}
-                    onJumpToLap={jumpToLap}
+                        onJumpToLap={jumpToLap}
                   />
                 </div>
               ) : null}

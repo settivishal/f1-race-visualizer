@@ -5,7 +5,7 @@ import {
 } from '@/db/schema';
 import { builder } from '../builder';
 import { Circuit } from './meeting';
-import { Driver, Team, type DriverRow, type TeamRow } from './entity';
+import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow } from './entity';
 
 /**
  * The archive: what the database knows about a driver, a team, a circuit or a
@@ -149,10 +149,10 @@ builder.queryField('drivers', (t) =>
     args: { season: t.arg.int() },
     resolve: async (_root, args, ctx) => {
       if (args.season == null) {
-        return ctx.db.select().from(drivers).orderBy(asc(drivers.name));
+        return ctx.db.select(driverColumns).from(drivers).orderBy(asc(drivers.name));
       }
       const rows = await ctx.db
-        .selectDistinct({ driver: drivers })
+        .selectDistinct({ driver: driverColumns })
         .from(drivers)
         .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.driverId, drivers.id))
         .innerJoin(teamSeasons, eq(teamSeasons.id, driverTeamAssignments.teamSeasonId))
@@ -230,10 +230,10 @@ builder.queryField('teams', (t) =>
     args: { season: t.arg.int() },
     resolve: async (_root, args, ctx) => {
       if (args.season == null) {
-        return ctx.db.select().from(teams).orderBy(asc(teams.name));
+        return ctx.db.select(teamColumns).from(teams).orderBy(asc(teams.name));
       }
       const rows = await ctx.db
-        .selectDistinct({ team: teams })
+        .selectDistinct({ team: teamColumns })
         .from(teams)
         .innerJoin(teamSeasons, eq(teamSeasons.teamId, teams.id))
         .where(eq(teamSeasons.seasonYear, args.season))

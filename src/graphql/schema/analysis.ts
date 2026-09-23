@@ -20,8 +20,35 @@ import { driverOfAssignment, teamOfAssignment } from './assignment';
 
 type StintRow = typeof stints.$inferSelect;
 type PitStopRow = typeof pitStops.$inferSelect;
-type PositionRow = typeof racePositions.$inferSelect;
 type ResultRow = typeof raceResults.$inferSelect;
+
+/**
+ * The position columns anything actually reads.
+ *
+ * `race_positions` is the largest table here — a full race is over a thousand
+ * rows — and a bare `select()` returns all ten columns of every one of them.
+ * `id` and `raceId` are read by nothing downstream, and they are the two
+ * expensive ones: the driver speaks Postgres over a WebSocket, where a uuid
+ * crosses as ~36 bytes of text, so the pair is ~72 bytes per row of egress
+ * that is thrown away on arrival.
+ *
+ * It lives here rather than in race.ts because race.ts already imports this
+ * module, and the reverse would be a cycle through the Pothos builder.
+ */
+export const positionColumns = {
+  lap: racePositions.lap,
+  position: racePositions.position,
+  lapTime: racePositions.lapTime,
+  sector1: racePositions.sector1,
+  sector2: racePositions.sector2,
+  sector3: racePositions.sector3,
+  // Not exposed: what `RacePosition.driver` and `.team` resolve through.
+  assignmentId: racePositions.assignmentId,
+};
+
+export type PositionRow = {
+  [K in keyof typeof positionColumns]: (typeof racePositions.$inferSelect)[K];
+};
 
 export type AnalysisShape = {
   raceId: string;
@@ -302,7 +329,7 @@ export const RaceAnalysis = builder.objectRef<AnalysisShape>('RaceAnalysis').imp
 /** The three reads the whole subtree is computed from. */
 export async function loadAnalysis(ctx: Context, raceId: string): Promise<AnalysisShape> {
   const [positions, stintRows, pitRows, resultRows] = await Promise.all([
-    ctx.db.select().from(racePositions)
+    ctx.db.select(positionColumns).from(racePositions)
       .where(eq(racePositions.raceId, raceId))
       .orderBy(asc(racePositions.lap), asc(racePositions.position)),
     ctx.db.select().from(stints)

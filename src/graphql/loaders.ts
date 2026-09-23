@@ -10,11 +10,10 @@ import {
   teams,
 } from '@/db/schema';
 import type { Db } from './context';
+import { driverColumns, teamColumns, type DriverRow, type TeamRow } from './schema/entity';
 
 type AssignmentRow = typeof driverTeamAssignments.$inferSelect;
-type DriverRow = typeof drivers.$inferSelect;
 type TeamSeasonRow = typeof teamSeasons.$inferSelect;
-type TeamRow = typeof teams.$inferSelect;
 type MeetingRow = typeof meetings.$inferSelect;
 type RaceRow = typeof races.$inferSelect;
 
@@ -99,13 +98,13 @@ export function createLoaders(db: Db) {
       db.select().from(driverTeamAssignments).where(inArray(driverTeamAssignments.id, ids)),
     ),
     driverById: byId<DriverRow>(db, (ids) =>
-      db.select().from(drivers).where(inArray(drivers.id, ids)),
+      db.select(driverColumns).from(drivers).where(inArray(drivers.id, ids)),
     ),
     teamSeasonById: byId<TeamSeasonRow>(db, (ids) =>
       db.select().from(teamSeasons).where(inArray(teamSeasons.id, ids)),
     ),
     teamById: byId<TeamRow>(db, (ids) =>
-      db.select().from(teams).where(inArray(teams.id, ids)),
+      db.select(teamColumns).from(teams).where(inArray(teams.id, ids)),
     ),
     // A page of race tiles asks for one meeting per tile, and a weekend's two
     // sessions share one — so this batches and dedupes both.

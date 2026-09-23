@@ -257,7 +257,7 @@ const RACE_REPLAY = /* GraphQL */ `
         drivers {
           driver { id code name number }
           team { id name color }
-          positions { lap position gap lapTime sector1 sector2 sector3 }
+          positions { lap position lapTime sector1 sector2 sector3 }
         }
         events {
           lap type details

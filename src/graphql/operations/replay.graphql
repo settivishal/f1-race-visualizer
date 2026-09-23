@@ -28,7 +28,6 @@ fragment RaceReplayFields on RaceReplay {
     positions {
       lap
       position
-      gap
       lapTime
       sector1
       sector2
