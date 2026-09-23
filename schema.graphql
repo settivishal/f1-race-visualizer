@@ -38,7 +38,6 @@ scalar DateTime
 type Driver {
   code: String!
   country: String
-  headshotUrl: String
   id: ID!
   name: String!
   number: Int
@@ -127,7 +126,6 @@ type Meeting {
   round: Int!
   season: Int!
   startDate: DateTime!
-  weather: String
 }
 
 type Mutation {
@@ -216,7 +214,6 @@ type Race {
   meeting: Meeting
   openf1SessionKey: Int
   podium: [PodiumSlot!]!
-  positions(lap: Int): [RacePosition!]!
   replay: RaceReplay!
   results: [RaceResult!]!
   slug: String!
@@ -342,13 +339,11 @@ type Stint {
   lapStart: Int!
   stintNumber: Int!
   team: Team
-  tyreAgeAtStart: Int
 }
 
 type Team {
   color: String
   id: ID!
-  logoUrl: String
   name: String!
 }
 

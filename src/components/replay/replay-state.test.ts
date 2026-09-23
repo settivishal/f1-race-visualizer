@@ -6,6 +6,8 @@ import {
   buildRaceControlByLap,
   classifyReplayEvent,
   easeLapProgress,
+  getReplayEventMarkerColor,
+  getReplayEventTone,
 } from './replay-state';
 import type { ReplayEntry, ReplayEvent, ReplayPosition } from './types';
 
@@ -70,6 +72,33 @@ describe('buildRaceControlByLap', () => {
     expect(control.get(2)?.status).toBe('green');
     expect(control.get(7)?.status).toBe('yellow');
     expect(control.get(8)?.status).toBe('yellow');
+  });
+});
+
+describe('event styling', () => {
+  const KINDS = [
+    'pit', 'dnf', 'dns', 'dnq', 'dsq', 'yellow', 'double-yellow', 'red-flag',
+    'safety-car', 'virtual-safety-car', 'penalty', 'green', 'chequered',
+    'overtake', 'fastest-lap', 'other',
+  ] as const;
+
+  it('gives every kind a tone and a colour', () => {
+    for (const kind of KINDS) {
+      expect(getReplayEventTone(kind)).toMatch(/^tone tone-/);
+      expect(getReplayEventMarkerColor(kind)).toMatch(/^var\(--/);
+    }
+  });
+
+  it('keeps the pairings that are not symmetrical', () => {
+    // A retirement is a red chip but a double-yellow marker, and an overtake
+    // has a colour with no chip of its own. Both were easy to lose when these
+    // were two switches; they are the reason the table is worth reading.
+    expect(getReplayEventTone('dnf')).toBe('tone tone-red');
+    expect(getReplayEventMarkerColor('dnf')).toBe('var(--flag-double-yellow)');
+    expect(getReplayEventTone('red-flag')).toBe('tone tone-red');
+    expect(getReplayEventMarkerColor('red-flag')).toBe('var(--flag-red)');
+    expect(getReplayEventTone('overtake')).toBe('tone tone-neutral');
+    expect(getReplayEventMarkerColor('overtake')).toBe('var(--accent)');
   });
 });
 

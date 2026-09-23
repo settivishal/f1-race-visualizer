@@ -337,14 +337,17 @@ describe('activeSeason', () => {
 
 describe('race', () => {
   it('resolves a driver and team through the assignment, which the schema never exposes', async () => {
-    const data = await run<{ race: { positions: { driver: { code: string }; team: { name: string; color: string } }[] } }>(`
-      query { race(slug: "2025-test") { positions(lap: 1) { position driver { code } team { name color } } } }
+    const data = await run<{
+      race: { replay: { drivers: { driver: { code: string }; team: { name: string; color: string } }[] } };
+    }>(`
+      query { race(slug: "2025-test") { replay { drivers { driver { code } team { name color } } } } }
     `);
-    expect(data.race.positions.map((p) => p.driver.code)).toEqual(['LEC', 'NOR']);
+    const entries = data.race.replay.drivers;
+    expect(entries.map((entry) => entry.driver.code)).toEqual(['LEC', 'NOR']);
     // The per-season livery wins over teams.color where one exists.
-    expect(data.race.positions[0].team).toEqual({ name: 'Ferrari', color: '#E8002D' });
+    expect(entries[0].team).toEqual({ name: 'Ferrari', color: '#E8002D' });
     // McLaren's team_season has no colour, so it falls back to the team's.
-    expect(data.race.positions[1].team).toEqual({ name: 'McLaren', color: '#FF8000' });
+    expect(entries[1].team).toEqual({ name: 'McLaren', color: '#FF8000' });
   });
 
   it('reports the laps that exist rather than a 1..N range', async () => {

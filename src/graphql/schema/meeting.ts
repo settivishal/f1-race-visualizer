@@ -53,14 +53,6 @@ Meeting.implement({
     season: t.exposeInt('seasonYear'),
     adminEdited: t.exposeStringList('adminEdited'),
     startDate: t.field({ type: 'DateTime', resolve: (m) => m.startDate }),
-    // Upstream's shape, passed through unread. Nothing in this codebase
-    // depends on its keys, so modelling it as types would be inventing a
-    // contract we do not have.
-    weather: t.field({
-      type: 'String',
-      nullable: true,
-      resolve: (m) => (m.weather === null ? null : JSON.stringify(m.weather)),
-    }),
     // A weekend's sessions: the grand prix, and a sprint where there was one.
     // This is the other half of the Race -> Meeting -> races cycle, which is
     // why the endpoint carries a depth limit.

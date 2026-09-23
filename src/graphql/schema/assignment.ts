@@ -1,4 +1,5 @@
 import type { Context } from '../context';
+import { withSeasonColor } from './entity';
 
 /**
  * The assignment is how storage links a driver to a team for a season
@@ -25,7 +26,5 @@ export async function teamOfAssignment(ctx: Context, assignmentId: string) {
   if (!teamSeason) return null;
   const team = await ctx.loaders.teamById.load(teamSeason.teamId);
   if (!team) return null;
-  // The per-season livery is the more specific fact, so it wins where it
-  // exists and teams.color is the fallback.
-  return { ...team, color: teamSeason.color ?? team.color };
+  return withSeasonColor(team, teamSeason.color);
 }

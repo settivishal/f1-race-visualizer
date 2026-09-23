@@ -3,7 +3,7 @@ import {
   driverTeamAssignments, drivers, meetings, raceResults, races, teamSeasons, teams,
 } from '@/db/schema';
 import { builder } from '../builder';
-import { Driver, Team } from './entity';
+import { Driver, Team, withSeasonColor, seasonColorSql } from './entity';
 import type { DriverRow, TeamRow } from './entity';
 
 /**
@@ -116,7 +116,7 @@ builder.queryField('driverStandings', (t) =>
 
       const byDriver = new Map<string, DriverStandingShape & { teamPoints: number }>();
       for (const row of rows) {
-        const team = { ...row.team, color: row.teamColor ?? row.team.color };
+        const team = withSeasonColor(row.team, row.teamColor);
         const existing = byDriver.get(row.driver.id);
         if (!existing) {
           byDriver.set(row.driver.id, {
@@ -168,7 +168,7 @@ builder.queryField('constructorStandings', (t) =>
       return rows
         .map((row) => ({
           position: 0,
-          team: { ...row.team, color: row.teamColor ?? row.team.color },
+          team: withSeasonColor(row.team, row.teamColor),
           points: row.points,
           wins: row.wins,
           finishes: row.finishes,
@@ -232,7 +232,7 @@ builder.queryField('seasonPulse', (t) =>
           status: races.status,
           winnerCode: drivers.code,
           teamName: teams.name,
-          teamColor: sql<string | null>`coalesce(${teamSeasons.color}, ${teams.color})`,
+          teamColor: seasonColorSql,
         })
         .from(meetings)
         .leftJoin(

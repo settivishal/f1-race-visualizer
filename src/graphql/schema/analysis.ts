@@ -64,7 +64,6 @@ const Stint = builder.objectRef<StintRow>('Stint').implement({
     lapStart: t.exposeInt('lapStart'),
     lapEnd: t.exposeInt('lapEnd'),
     compound: t.exposeString('compound', { nullable: true }),
-    tyreAgeAtStart: t.exposeInt('tyreAgeAtStart', { nullable: true }),
     driver: t.field({
       type: Driver,
       nullable: true,

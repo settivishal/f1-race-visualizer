@@ -231,29 +231,6 @@ Race.implement({
     }),
 
     /**
-     * Flat, one row per driver per lap — the shape the database stores and the
-     * shape the timing tower wants.
-     *
-     * This is also where the N+1 lives: this resolver runs once and returns
-     * ~1,200 rows, and then RacePosition.driver runs once *per row*, unaware
-     * that it is one of 1,200 calls asking for the same twenty drivers.
-     */
-    positions: t.field({
-      type: [RacePosition],
-      args: { lap: t.arg.int() },
-      resolve: (race, args, ctx) =>
-        ctx.db.select(positionColumns).from(racePositions)
-          .where(
-            args.lap == null
-              ? eq(racePositions.raceId, race.id)
-              : and(eq(racePositions.raceId, race.id), eq(racePositions.lap, args.lap)),
-          )
-          // Ordering by position, never indexing by it: retirements leave the
-          // places inside a lap non-contiguous.
-          .orderBy(asc(racePositions.lap), asc(racePositions.position)),
-    }),
-
-    /**
      * The same rows pivoted by driver, which is what an animation interpolates
      * along. Deliberately redundant with `positions`.
      *

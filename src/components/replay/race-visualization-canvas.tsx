@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { linearScale, type Scale } from "@/lib/scale";
 import type { ReplayEntry, ReplayEvent, ReplayPosition, ReplayView } from "./types";
 import { RaceCar } from "./race-car";
 import { TIMING_TOWER_ID } from "./live-timing-tower";
@@ -9,6 +10,7 @@ import {
   classifyReplayEvent,
   type ReplayEventKind,
   easeLapProgress,
+  getDriverPointForLap,
   getReplayEventMarkerColor,
   ReplayRaceControl,
   withFocusLast,
@@ -119,18 +121,15 @@ const CHART_EVENT_KINDS = new Set<ReplayEventKind>([
  */
 export type LapWindow = { from: number; to: number };
 
-type LapScale = (lap: number) => number;
+type LapScale = Scale;
 
-function makeLapX({ from, to }: LapWindow, layout: ChartLayout): LapScale {
-  const { margin } = layout;
-  const innerWidth = layout.width - margin.left - margin.right;
-  const span = to - from;
-
-  if (span <= 0) {
-    return () => margin.left + innerWidth / 2;
-  }
-
-  return (lap: number) => margin.left + ((lap - from) / span) * innerWidth;
+/**
+ * Laps across the plot. `linearScale` already handles the one-lap window the
+ * same way this used to by hand — a zero-width domain lands in the middle of
+ * the range.
+ */
+function makeLapX({ from, to }: LapWindow, { width, margin }: ChartLayout): LapScale {
+  return linearScale([from, to], [margin.left, width - margin.right]);
 }
 
 /** Laps per screen at a spacing a finger and an eye can both deal with. */
@@ -157,17 +156,11 @@ export function lapWindowFor(containerWidth: number, currentLap: number, maxLap:
   return { from, to };
 }
 
-type PositionScale = (position: number) => number;
+type PositionScale = Scale;
 
-function makePositionY(maxPosition: number, layout: ChartLayout): PositionScale {
-  const { margin } = layout;
-  const innerHeight = layout.height - margin.top - margin.bottom;
-
-  if (maxPosition <= 1) {
-    return () => margin.top + innerHeight / 2;
-  }
-
-  return (position: number) => margin.top + ((position - 1) / (maxPosition - 1)) * innerHeight;
+/** P1 at the top of the plot, the last classified position at the bottom. */
+function makePositionY(maxPosition: number, { height, margin }: ChartLayout): PositionScale {
+  return linearScale([1, maxPosition], [margin.top, height - margin.bottom]);
 }
 
 function buildPath(
@@ -184,32 +177,6 @@ function buildPath(
     .join(" ");
 }
 
-function getPointForLap(
-  positions: ReplayPosition[],
-  lap: number,
-) {
-  let candidate = positions[0];
-
-  for (const entry of positions) {
-    if (entry.lap === lap) {
-      return entry;
-    }
-
-    if (entry.lap < lap) {
-      candidate = entry;
-    }
-  }
-
-  return candidate ?? positions[0];
-}
-
-/**
- * As many lap labels as fit, rather than a fixed eight.
- *
- * The count used to be constant because the chart was, and on a 390px phone
- * that put nine "Lap 33" labels along 340 pixels of axis and they overlapped
- * into one grey smear.
- */
 function getVisibleLapTicks(laps: number[], maxTicks: number) {
   if (laps.length <= maxTicks) {
     return laps;
@@ -377,10 +344,10 @@ export function RaceVisualizationCanvas({
         const visiblePositions = entry.positions.filter(
           (position) => retirementLap === null || position.lap <= retirementLap,
         );
-        const currentPoint = getPointForLap(entry.positions, currentLap);
-        const nextPoint = getPointForLap(entry.positions, isCarActive ? nextLap : currentLap);
+        const currentPoint = getDriverPointForLap(entry.positions, currentLap);
+        const nextPoint = getDriverPointForLap(entry.positions, isCarActive ? nextLap : currentLap);
         const markerPoint =
-          retirementLap !== null ? getPointForLap(entry.positions, retirementLap) : null;
+          retirementLap !== null ? getDriverPointForLap(entry.positions, retirementLap) : null;
         const fullPath = buildPath(visiblePositions, lapX, positionY);
         const trail = buildPath(
           visiblePositions.filter((position) => position.lap <= currentLap),

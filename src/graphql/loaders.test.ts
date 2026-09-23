@@ -97,19 +97,25 @@ describe('query count', () => {
     const result = await execute({
       schema,
       document: parse(`
-        query { race(slug: "2025-count") { positions { position driver { code } team { name } } } }
+        query {
+          race(slug: "2025-count") {
+            replay { drivers { driver { code } team { name } positions { position } } }
+          }
+        }
       `),
       contextValue: { db, loaders: createLoaders(db), session: null },
     });
     Object.assign(client, { query: realQuery });
 
     expect(result.errors).toBeUndefined();
-    const positions = (result.data as { race: { positions: unknown[] } }).race.positions;
-    expect(positions).toHaveLength(200);
+    const { drivers: entries } = (result.data as {
+      race: { replay: { drivers: { positions: unknown[] }[] } };
+    }).race.replay;
+    expect(entries.reduce((total, entry) => total + entry.positions.length, 0)).toBe(200);
 
     // One for the race, one for its positions, then one per entity type:
     // assignments, drivers, team_seasons, teams. Without the loaders this same
-    // query costs 200 x 5 + 2 = 1,002.
+    // query costs one per entity per driver instead of one per entity.
     expect(count).toBe(6);
   });
 });

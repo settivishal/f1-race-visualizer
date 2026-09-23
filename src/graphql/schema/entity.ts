@@ -1,4 +1,5 @@
-import { drivers, teams } from '@/db/schema';
+import { sql } from 'drizzle-orm';
+import { drivers, teamSeasons, teams } from '@/db/schema';
 import { builder } from '../builder';
 
 /**
@@ -17,14 +18,12 @@ export const driverColumns = {
   name: drivers.name,
   number: drivers.number,
   country: drivers.country,
-  headshotUrl: drivers.headshotUrl,
 };
 
 export const teamColumns = {
   id: teams.id,
   name: teams.name,
   color: teams.color,
-  logoUrl: teams.logoUrl,
 };
 
 export type DriverRow = { [K in keyof typeof driverColumns]: (typeof drivers.$inferSelect)[K] };
@@ -37,7 +36,6 @@ export const Driver = builder.objectRef<DriverRow>('Driver').implement({
     name: t.exposeString('name'),
     number: t.exposeInt('number', { nullable: true }),
     country: t.exposeString('country', { nullable: true }),
-    headshotUrl: t.exposeString('headshotUrl', { nullable: true }),
   }),
 });
 
@@ -48,6 +46,22 @@ export const Team = builder.objectRef<TeamRow>('Team').implement({
     // Per-season livery wins where one exists; this is the fallback. The
     // resolver that had the team_season in hand has already applied it.
     color: t.exposeString('color', { nullable: true }),
-    logoUrl: t.exposeString('logoUrl', { nullable: true }),
   }),
 });
+
+/**
+ * The per-season livery where a team has one, the team's standing colour
+ * otherwise. The season is the more specific fact, so it wins.
+ *
+ * Written six ways before this: four object spreads and two SQL coalesces, one
+ * of which carried a comment pointing at another. Both forms are here so the
+ * rule has one definition whichever side of the wire it is applied on.
+ */
+export function withSeasonColor<T extends { color: string | null }>(
+  team: T,
+  seasonColor: string | null,
+): T {
+  return { ...team, color: seasonColor ?? team.color };
+}
+
+export const seasonColorSql = sql<string | null>`coalesce(${teamSeasons.color}, ${teams.color})`;

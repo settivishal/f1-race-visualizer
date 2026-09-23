@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import {
   driverTeamAssignments,
   drivers,
@@ -10,7 +10,7 @@ import {
   teams,
 } from '@/db/schema';
 import type { Db } from './context';
-import { driverColumns, teamColumns, type DriverRow, type TeamRow } from './schema/entity';
+import { driverColumns, teamColumns, type DriverRow, type TeamRow, seasonColorSql } from './schema/entity';
 
 type AssignmentRow = typeof driverTeamAssignments.$inferSelect;
 type TeamSeasonRow = typeof teamSeasons.$inferSelect;
@@ -65,9 +65,7 @@ function podiumLoader(db: Db) {
         raceId: raceResults.raceId,
         position: raceResults.finalPosition,
         code: drivers.code,
-        // Per-season livery first, the team's standing colour otherwise —
-        // the same coalesce seasonPulse uses.
-        teamColor: sql<string | null>`coalesce(${teamSeasons.color}, ${teams.color})`,
+        teamColor: seasonColorSql,
       })
       .from(raceResults)
       .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))

@@ -35,3 +35,12 @@ export function pointsStillAvailable({ grandsPrix, sprints }: RemainingRounds): 
 export function isTitleSettled(pointsGap: number, remaining: RemainingRounds): boolean {
   return pointsGap > pointsStillAvailable(remaining);
 }
+
+/**
+ * Points as a person writes them.
+ *
+ * Half points exist — a shortened race pays them — so the column is a Float,
+ * and a whole total should still read as a whole number rather than "25.0".
+ */
+export const formatPoints = (points: number) =>
+  Number.isInteger(points) ? String(points) : points.toFixed(1);

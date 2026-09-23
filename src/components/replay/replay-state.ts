@@ -108,83 +108,54 @@ export function classifyReplayEvent(
 }
 
 /**
- * The chip styling for a race control event.
+ * How each kind of event is drawn: the chip's styling, and the marker's fill.
+ *
+ * One table rather than two switches over the same union in the same order.
+ * The pairings are not symmetrical and that is deliberate — a retirement is a
+ * red chip but a double-yellow marker, and an overtake has a colour with no
+ * chip — so a table also makes the odd ones visible instead of hiding them
+ * eleven cases apart.
  *
  * `tone` carries the shared treatment and the modifier names the signal; both
  * are defined in globals.css, derived from the `--flag-*` tokens with
- * color-mix. Previously this returned raw Tailwind palette classes with a
+ * color-mix. This used to return raw Tailwind palette classes with a
  * hand-written `dark:` variant on each — eighteen spellings for nine signals,
  * none of which applied, because the `dark` variant was gated on a class
- * nothing ever set.
+ * nothing ever set. The colour is a `var()` reference rather than a hex
+ * literal so a marker and its chip cannot drift apart, and so both follow the
+ * theme.
  *
  * See docs/decisions.md, "Flag colours are tokens, not palette classes".
  */
+const NEUTRAL = { tone: "tone tone-neutral", color: "var(--muted)" };
+
+const EVENT_STYLE: Record<ReplayEventKind, { tone: string; color: string }> = {
+  pit: { tone: "tone tone-pit", color: "var(--flag-pit)" },
+  dnf: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
+  dns: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
+  dnq: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
+  dsq: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
+  yellow: { tone: "tone tone-yellow", color: "var(--flag-yellow)" },
+  "double-yellow": { tone: "tone tone-double-yellow", color: "var(--flag-double-yellow)" },
+  "red-flag": { tone: "tone tone-red", color: "var(--flag-red)" },
+  "safety-car": { tone: "tone tone-safety-car", color: "var(--flag-safety-car)" },
+  "virtual-safety-car": { tone: "tone tone-vsc", color: "var(--flag-vsc)" },
+  penalty: { tone: "tone tone-penalty", color: "var(--flag-penalty)" },
+  green: { tone: "tone tone-green", color: "var(--flag-green)" },
+  chequered: { tone: "tone tone-chequered", color: "var(--flag-chequered)" },
+  // No chip of their own: both appear on the chart, not in the race control
+  // strip, so they take the neutral tone and a colour that is not a flag.
+  overtake: { tone: NEUTRAL.tone, color: "var(--accent)" },
+  "fastest-lap": { tone: NEUTRAL.tone, color: "var(--timing-best)" },
+  other: NEUTRAL,
+};
+
 export function getReplayEventTone(kind: ReplayEventKind) {
-  switch (kind) {
-    case "pit":
-      return "tone tone-pit";
-    case "dnf":
-    case "dns":
-    case "dnq":
-    case "dsq":
-    case "red-flag":
-      return "tone tone-red";
-    case "yellow":
-      return "tone tone-yellow";
-    case "double-yellow":
-      return "tone tone-double-yellow";
-    case "safety-car":
-      return "tone tone-safety-car";
-    case "virtual-safety-car":
-      return "tone tone-vsc";
-    case "penalty":
-      return "tone tone-penalty";
-    case "green":
-      return "tone tone-green";
-    case "chequered":
-      return "tone tone-chequered";
-    default:
-      return "tone tone-neutral";
-  }
+  return (EVENT_STYLE[kind] ?? NEUTRAL).tone;
 }
 
-/**
- * The marker fill on the chart. Returns a `var()` reference rather than a hex
- * literal so a marker and its chip cannot drift apart, and so both follow the
- * theme.
- */
 export function getReplayEventMarkerColor(kind: ReplayEventKind) {
-  switch (kind) {
-    case "pit":
-      return "var(--flag-pit)";
-    case "dnf":
-    case "dns":
-    case "dnq":
-    case "dsq":
-      return "var(--flag-double-yellow)";
-    case "yellow":
-      return "var(--flag-yellow)";
-    case "double-yellow":
-      return "var(--flag-double-yellow)";
-    case "red-flag":
-      return "var(--flag-red)";
-    case "safety-car":
-      return "var(--flag-safety-car)";
-    case "virtual-safety-car":
-      return "var(--flag-vsc)";
-    case "penalty":
-      return "var(--flag-penalty)";
-    case "green":
-      return "var(--flag-green)";
-    case "chequered":
-      return "var(--flag-chequered)";
-    case "fastest-lap":
-      return "var(--timing-best)";
-    case "overtake":
-      return "var(--accent)";
-    default:
-      return "var(--muted)";
-  }
+  return (EVENT_STYLE[kind] ?? NEUTRAL).color;
 }
 
 export function buildRaceControlByLap(

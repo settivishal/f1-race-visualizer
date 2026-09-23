@@ -5,7 +5,7 @@ import {
 } from '@/db/schema';
 import { builder } from '../builder';
 import { Circuit } from './meeting';
-import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow } from './entity';
+import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow, withSeasonColor } from './entity';
 
 /**
  * The archive: what the database knows about a driver, a team, a circuit or a
@@ -114,7 +114,7 @@ const DriverProfile = builder.objectRef<DriverProfileShape>('DriverProfile').imp
         return {
           seasons: rows.map((row) => ({
             season: row.season,
-            team: { ...row.team, color: row.teamColor ?? row.team.color },
+            team: withSeasonColor(row.team, row.teamColor),
             starts: row.starts,
             wins: row.wins,
             podiums: row.podiums,
