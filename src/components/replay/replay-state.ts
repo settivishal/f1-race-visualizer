@@ -1,4 +1,4 @@
-import type { ReplayEntry, ReplayEvent, ReplayPosition } from "./types";
+import type { ReplayEvent, ReplayPosition } from "./types";
 
 export type ReplayEventKind =
   | "pit"
