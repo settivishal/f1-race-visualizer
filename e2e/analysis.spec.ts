@@ -95,7 +95,11 @@ test('head to head compares two drivers and follows the picker', async ({ page }
   await page.getByRole('link', { name: /analysis/i }).click();
 
   await expect(page.getByText('Two drivers, lap by lap')).toBeVisible();
-  await expect(page.getByText(/laps ahead/).first()).toBeVisible();
+
+  // Nothing is compared until someone asks: a default pair would be a second
+  // cache miss, and each miss re-runs the whole-race analysis scan.
+  await expect(page.getByText('Choose two drivers')).toBeVisible();
+  await expect(page.getByText(/laps ahead/)).toHaveCount(0);
 
   // Switching the second driver keeps the Analysis view — the tab lives in the
   // query string, so the form has to carry it.
@@ -105,6 +109,7 @@ test('head to head compares two drivers and follows the picker', async ({ page }
   await page.getByRole('button', { name: 'Compare' }).click();
 
   await expect(page.getByText('Two drivers, lap by lap')).toBeVisible();
+  await expect(page.getByText(/laps ahead/).first()).toBeVisible();
   expect(page.url()).toContain('view=analysis');
 });
 
