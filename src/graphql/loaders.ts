@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import {
   driverTeamAssignments,
   drivers,
