@@ -9,10 +9,6 @@ import {
 } from './replay-state';
 import type { ReplayEntry, ReplayEvent, ReplayPosition } from './types';
 
-function position(lap: number, pos: number): ReplayPosition {
-  return { lap, position: pos, lapTime: null, sector1: null, sector2: null, sector3: null };
-}
-
 function entry(id: string, positions: ReplayPosition[]): ReplayEntry {
   return {
     driver: { id, code: id.toUpperCase(), name: `Driver ${id}`, number: 1 },
