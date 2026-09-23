@@ -170,10 +170,8 @@ const SEASON_PULSE = /* GraphQL */ `
 `;
 
 const RACE_SLUGS = /* GraphQL */ `
-  query RaceSlugs($first: Int) {
-    races(first: $first) {
-      edges { node { slug date } }
-    }
+  query RaceSlugs {
+    raceSlugs { slug date }
   }
 `;
 
@@ -554,10 +552,10 @@ export async function getSeasonPulse(season: number) {
   return seasonPulse;
 }
 
-export async function getRaceSlugs(first = 100) {
+export async function getRaceSlugs() {
   'use cache';
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceSlugsQuery, Record<string, unknown>>(RACE_SLUGS, { first });
+  return executeQuery<RaceSlugsQuery, Record<string, unknown>>(RACE_SLUGS, {});
 }

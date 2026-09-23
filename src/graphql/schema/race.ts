@@ -477,6 +477,38 @@ const RaceConnection = builder
     }),
   });
 
+/**
+ * Every race's slug and date, newest first.
+ *
+ * `generateStaticParams` and the sitemap both want the whole list, and both used
+ * to ask `races(first:)` for it. That resolver is a keyset connection: with no
+ * cursor it orders *ascending* and clamps to 100, so the prerendered set was the
+ * hundred oldest races and the current season — the pages anyone actually visits
+ * — was neither prerendered nor in the sitemap.
+ *
+ * A list is not a page, so this is not a connection. It reads two columns rather
+ * than dragging whole race rows through an edge type to spell a slug, and the
+ * bound is a ceiling nobody is near rather than a page size.
+ */
+const RaceSlug = builder.objectRef<{ slug: string; date: Date }>('RaceSlug').implement({
+  fields: (t) => ({
+    slug: t.exposeString('slug'),
+    date: t.field({ type: 'DateTime', resolve: (r) => r.date }),
+  }),
+});
+
+builder.queryField('raceSlugs', (t) =>
+  t.field({
+    type: [RaceSlug],
+    resolve: (_root, _args, ctx) =>
+      ctx.db
+        .select({ slug: races.slug, date: races.date })
+        .from(races)
+        .orderBy(desc(races.date), desc(races.id))
+        .limit(1000),
+  }),
+);
+
 builder.queryField('races', (t) =>
   t.field({
     type: RaceConnection,

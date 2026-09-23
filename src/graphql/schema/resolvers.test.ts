@@ -296,6 +296,23 @@ describe('races paging', () => {
   });
 });
 
+describe('raceSlugs', () => {
+  it('returns the newest race first, which is what the build has to prerender', async () => {
+    // `races(first:)` orders ascending with no cursor and clamps at 100, so
+    // asking it for the build's slug list prerendered the oldest hundred races
+    // and left the current season rendering on demand. This is the fix, and the
+    // ordering is the whole of it.
+    const { raceSlugs } = await run<{ raceSlugs: { slug: string; date: string }[] }>(
+      'query { raceSlugs { slug date } }',
+    );
+
+    const dates = raceSlugs.map((race) => new Date(race.date).getTime());
+    expect(dates).toEqual([...dates].sort((a, b) => b - a));
+    // Every race, not a page of them.
+    expect(raceSlugs.length).toBeGreaterThan(1);
+  });
+});
+
 describe('activeSeason', () => {
   it('falls back to the newest season that has a race when nothing is configured', async () => {
     // The fixture inserts no app_config row, which is also the state of a fresh

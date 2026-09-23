@@ -120,16 +120,13 @@ query RaceHeader($slug: String!) {
   }
 }
 
-# Slugs for generateStaticParams, and dates for the sitemap's <lastmod>. Still
-# deliberately narrow — two scalars per race rather than a season of data to
-# throw away.
-query RaceSlugs($first: Int) {
-  races(first: $first) {
-    edges {
-      node {
-        slug
-        date
-      }
-    }
+# Slugs for generateStaticParams, and dates for the sitemap's <lastmod>. Two
+# scalars per race, newest first, and no pagination — `races(first:)` is a keyset
+# connection that clamps to 100 ascending, which prerendered the oldest hundred
+# races and left the current season out of both the build and the sitemap.
+query RaceSlugs {
+  raceSlugs {
+    slug
+    date
   }
 }

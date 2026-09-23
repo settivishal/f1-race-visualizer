@@ -195,6 +195,7 @@ type Query {
   latestRace: Race
   nextRace: Race
   race(slug: String!): Race
+  raceSlugs: [RaceSlug!]!
   races(after: String, before: String, first: Int, search: String, season: Int, type: RaceType): RaceConnection!
   search(query: String!): [SearchHit!]!
   seasonPulse(season: Int!): [PulseRound!]!
@@ -276,6 +277,11 @@ type RaceResult {
   points: Float!
   status: DriverStatus!
   team: Team
+}
+
+type RaceSlug {
+  date: DateTime!
+  slug: String!
 }
 
 enum RaceStatus {

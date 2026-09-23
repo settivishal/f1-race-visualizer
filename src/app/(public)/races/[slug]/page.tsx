@@ -22,8 +22,8 @@ import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
  * driver — so the header and the classification render without waiting on it.
  */
 export async function generateStaticParams() {
-  const { races } = await getRaceSlugs();
-  return races.edges.map(({ node }) => ({ slug: node.slug }));
+  const { raceSlugs } = await getRaceSlugs();
+  return raceSlugs.map(({ slug }) => ({ slug }));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
