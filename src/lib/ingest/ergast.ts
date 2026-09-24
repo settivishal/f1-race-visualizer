@@ -9,9 +9,10 @@ import { createThrottle } from './throttle';
  * Ergast's vocabulary — season, round, driverId, constructorId — and nothing
  * downstream does, so a change to its shape has a blast radius of two files.
  *
- * It is deliberately never called from a request or from the cron path. The
- * live weekend still has exactly one upstream and one failure mode; this one
- * runs from a backfill, against seasons that are closed and will not change.
+ * It is never called from a request. It runs from the archive backfill, from
+ * the offline feature builder (qualifying), and from the OpenF1 import, which
+ * reads it to repair zeroed points and — per decisions.md 2026-09-24, "Ergast
+ * is now read on every OpenF1 grand-prix import" — will read it for the grid.
  */
 const BASE_URL = 'https://api.jolpi.ca/ergast/f1';
 
@@ -114,6 +115,21 @@ export const ErgastRaceSchema = z.object({
   Results: z.array(ErgastResultSchema).optional(),
 });
 
+/**
+ * One qualifying classification. Q1–Q3 lap times are left out: the feature
+ * builder reads the order, and nothing reads the times.
+ */
+export const ErgastQualifyingResultSchema = z.object({
+  number: z.string().optional(),
+  position: numeric,
+  Driver: ErgastDriverSchema,
+  Constructor: ErgastConstructorSchema,
+});
+
+export const ErgastQualifyingRaceSchema = ErgastRaceSchema.omit({ Results: true }).extend({
+  QualifyingResults: z.array(ErgastQualifyingResultSchema),
+});
+
 export const ErgastLapSchema = z.object({
   number: numeric,
   Timings: z.array(
@@ -135,6 +151,7 @@ export const ErgastPitStopSchema = z.object({
 });
 
 export type ErgastRace = z.infer<typeof ErgastRaceSchema>;
+export type ErgastQualifyingRace = z.infer<typeof ErgastQualifyingRaceSchema>;
 export type ErgastLap = z.infer<typeof ErgastLapSchema>;
 export type ErgastPitStop = z.infer<typeof ErgastPitStopSchema>;
 export type ErgastResult = z.infer<typeof ErgastResultSchema>;
@@ -240,37 +257,66 @@ export async function fetchSeasonCircuits(year: number): Promise<ErgastCircuit[]
   return parsed.data.MRData.CircuitTable.Circuits;
 }
 
-/** Every race of a season, with results, drivers, constructors and the circuit. */
-export async function fetchSeasonResults(year: number): Promise<ErgastRace[]> {
+/**
+ * Every race of one season-scoped endpoint, each race whole.
+ *
+ * A season paginates by *row*, so one race can arrive split across two pages —
+ * twenty results, twenty-first on the next page; with a 22-car grid it happens
+ * on most pages. Merging by round is what makes a page boundary invisible
+ * instead of silently truncating a race. `merge` appends the second slice's
+ * rows onto the first.
+ */
+async function fetchSeasonRaces<R extends { round: number }>(
+  year: number,
+  path: string,
+  schema: z.ZodType<R>,
+  merge: (into: R, from: R) => void,
+): Promise<R[]> {
   const races: unknown[] = [];
   let offset = 0;
   let total = Infinity;
 
   while (offset < total) {
-    const page = await getPage(`/${year}/results.json`, offset);
+    const page = await getPage(path, offset);
     total = page.total;
     races.push(...page.races);
     if (page.races.length === 0) break;
     offset += PAGE_SIZE;
   }
 
-  // A season paginates by *result* row, so one race can arrive split across two
-  // pages — twenty results, twenty-first on the next page. Merging by round is
-  // what makes a page boundary invisible instead of silently truncating a race.
-  const byRound = new Map<number, ErgastRace>();
+  const byRound = new Map<number, R>();
   for (const raw of races) {
-    const parsed = ErgastRaceSchema.safeParse(raw);
+    const parsed = schema.safeParse(raw);
     if (!parsed.success) {
       throw new Error(`Ergast season ${year} failed validation: ${parsed.error.issues[0].message}`);
     }
     const race = parsed.data;
     const existing = byRound.get(race.round);
-    if (existing) existing.Results = [...(existing.Results ?? []), ...(race.Results ?? [])];
+    if (existing) merge(existing, race);
     else byRound.set(race.round, race);
   }
 
   return [...byRound.values()].sort((a, b) => a.round - b.round);
 }
+
+/** Every race of a season, with results, drivers, constructors and the circuit. */
+export const fetchSeasonResults = (year: number): Promise<ErgastRace[]> =>
+  fetchSeasonRaces(year, `/${year}/results.json`, ErgastRaceSchema, (into, from) => {
+    into.Results = [...(into.Results ?? []), ...(from.Results ?? [])];
+  });
+
+/**
+ * Every qualifying session of a season that Ergast has published, in round
+ * order. A round that has not been qualified yet is simply absent — whether
+ * that is acceptable is the caller's decision, not this client's.
+ *
+ * Not stored: the feature builder is the only reader (see decisions.md,
+ * 2026-09-24), and nothing on the site shows qualifying.
+ */
+export const fetchSeasonQualifying = (year: number): Promise<ErgastQualifyingRace[]> =>
+  fetchSeasonRaces(year, `/${year}/qualifying.json`, ErgastQualifyingRaceSchema, (into, from) => {
+    into.QualifyingResults = [...into.QualifyingResults, ...from.QualifyingResults];
+  });
 
 /**
  * Every lap of one race: position and lap time per driver per lap.
