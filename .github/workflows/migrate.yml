@@ -5,18 +5,17 @@ name: Migrate
 # whatever .env happens to hold.
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
     paths:
       - 'src/db/migrations/**'
   # Runnable by hand, so the runner and its secrets can be proven against dev
   # before a real migration depends on them. Applying migrations is idempotent:
   # drizzle-kit skips what the journal says is already applied.
   #
-  # The target is an input rather than the branch, because at release time the
-  # two disagree: the migration files reach `dev` first, and production has to
-  # be migrated *before* the merge to `main` deploys code that reads the new
-  # columns. Without this, the only ordering available is the merge itself,
-  # which races the Vercel deploy.
+  # A pull request carrying a migration needs both targets by hand before it
+  # merges: dev, so its preview and e2e run against the new schema; prod, because
+  # the merge to `main` deploys code that reads the new columns, and the push
+  # below would otherwise race the Vercel deploy.
   workflow_dispatch:
     inputs:
       target:
@@ -54,11 +53,11 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
-      # A push to any branch but main, or a hand run that did not ask for prod.
-      # Spelled out rather than `!` of the step above, so a future third target
-      # cannot fall through to the dev database by default.
+      # A hand run that asked for dev. Spelled out rather than `!` of the step
+      # above, so a future third target cannot fall through to the dev database
+      # by default.
       - name: Apply migrations to the dev branch database
-        if: (github.event_name == 'push' && github.ref_name != 'main') || (github.event_name == 'workflow_dispatch' && inputs.target == 'dev')
+        if: github.event_name == 'workflow_dispatch' && inputs.target == 'dev'
         run: |
           test -n "$DATABASE_URL" || { echo "::error::DATABASE_URL_DEV secret is empty"; exit 1; }
           pnpm db:migrate
