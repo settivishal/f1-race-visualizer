@@ -6,6 +6,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RecordTable, StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getDriverProfile } from '@/lib/queries';
+import { prerenderParams } from '@/lib/prerender';
 
 /**
  * A driver's record across the seasons in the database.
@@ -16,7 +17,7 @@ import { getArchiveIndex, getDriverProfile } from '@/lib/queries';
  */
 export async function generateStaticParams() {
   const { drivers } = await getArchiveIndex();
-  return drivers.map((driver) => ({ code: driver.code.toLowerCase() }));
+  return prerenderParams(drivers.map((driver) => ({ code: driver.code.toLowerCase() })));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
