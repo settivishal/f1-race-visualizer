@@ -6,10 +6,11 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getCircuitProfile } from '@/lib/queries';
+import { prerenderParams } from '@/lib/prerender';
 
 export async function generateStaticParams() {
   const { circuits } = await getArchiveIndex();
-  return circuits.map((circuit) => ({ id: circuit.ergastId }));
+  return prerenderParams(circuits.map((circuit) => ({ id: circuit.ergastId })));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {

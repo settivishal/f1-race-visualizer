@@ -6,6 +6,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RecordTable, StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getTeamProfile } from '@/lib/queries';
+import { prerenderParams } from '@/lib/prerender';
 
 /**
  * A constructor's record.
@@ -18,7 +19,7 @@ import { getArchiveIndex, getTeamProfile } from '@/lib/queries';
  */
 export async function generateStaticParams() {
   const { teams } = await getArchiveIndex();
-  return teams.map((team) => ({ name: encodeURIComponent(team.name) }));
+  return prerenderParams(teams.map((team) => ({ name: encodeURIComponent(team.name) })));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
