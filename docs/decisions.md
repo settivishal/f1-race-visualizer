@@ -1496,3 +1496,47 @@ the name of the box it ships in are allowed to differ.
 
 **What would change this:** a custom domain, which is where the deployed URL stops being
 an implementation detail and starts being the name people type.
+
+---
+
+## 2026-09-24 — Pre-race win prediction, and the archive hold is lifted
+
+**Decided:** RaceLines publishes a win probability for every driver after qualifying, from
+a gradient-boosted model trained offline. This is the machine half of the Armchair
+Strategist, which the 2026-09-07 entry kept deferred; the user-facing game stays deferred.
+The plan is `docs/ml-prediction-plan.md`.
+
+**The 2018–2022 hold is lifted.** 2023 onward is about 90 grands prix and about 90
+winners, most of them one driver. Every archive season doubles as training data, so they
+are imported through the existing `backfill-archive.yml`, season by season, dev first.
+
+**The model reads qualifying position, not the grid.** The grid is the stronger signal, but
+Ergast publishes it only with the race result, so it does not exist when a prediction is
+published. Training on the grid and serving on qualifying order would score the model on
+information it never has. Qualifying comes from Ergast's `/qualifying`, read by the
+feature builder and not stored: nothing on the site shows it.
+
+**Two CSV hand-offs, no ML table.** `scripts/build-features.ts` writes the feature table to
+a file; Python (`ml/`, its own project, never imported by the app) reads it and writes
+`predictions.csv`; `scripts/import-predictions.ts` validates and upserts that into
+`race_predictions`. Python never connects to Postgres, so the schema has one owner and a
+local run cannot write to production by accident. The feature table is not in Neon because
+only an offline job reads it, and every read would cost transfer on the free plan.
+
+**Ergast is now read on every OpenF1 grand-prix import.** This relaxes a rule stated in
+`system-design.md` and in the 2026-09-07 entry: the live cron path talks to exactly one
+upstream. The grid is the reason. OpenF1 publishes none, and `race_results.grid_position`
+has been null for every 2023+ race since M1. The points repair from #112 already read Ergast
+on this path, but only when a suspect row existed; the grid fill reads it for every grand
+prix. The cost is a second failure mode on the weekend path, and Ergast usually lags the
+race by hours. It is contained by making the read best-effort. Races are matched by date,
+never round. A miss is a warning and a null grid, never a failed import. `sqlCoalesce`
+keeps a grid that an earlier import found. The model never reads the grid, so a null costs
+an analysis column, not a prediction.
+
+**Considered:** a `driver_race_features` Drizzle table (the first draft of the plan), and
+Python writing predictions straight to Neon. Both put ML output into the schema before
+anything needed it.
+
+**What would change this:** a page that needs qualifying or features at request time, or
+a model good enough to justify running before qualifying, where only form is known.
