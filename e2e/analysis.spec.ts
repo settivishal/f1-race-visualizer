@@ -22,14 +22,14 @@ const RACE = '2025-melbourne';
  * tests below assert is what the page renders, not how fast it warms.
  */
 test.beforeAll(async ({ request }) => {
-  await request.get(`/races/${RACE}?view=analysis`);
+  await request.get(`/races/${RACE}/analysis`);
 });
 
 test('the analysis tab charts lap times and tyre strategy', async ({ page }) => {
   await page.goto(`/races/${RACE}`);
 
   await page.getByRole('link', { name: 'Analysis' }).click();
-  await expect(page).toHaveURL(/view=analysis/);
+  await expect(page).toHaveURL(/\/analysis$/);
 
   // The chart names the drivers it is drawing, so an empty one fails here.
   const chart = page.getByRole('img', { name: /^lap times for .+/i });
@@ -48,7 +48,7 @@ test('the analysis tab charts lap times and tyre strategy', async ({ page }) => 
 });
 
 test('the selected view survives a reload, because it lives in the URL', async ({ page }) => {
-  await page.goto(`/races/${RACE}?view=analysis`);
+  await page.goto(`/races/${RACE}/analysis`);
 
   const analysisTab = page.getByRole('link', { name: 'Analysis' });
   await expect(analysisTab).toHaveAttribute('aria-current', 'page');
@@ -56,7 +56,7 @@ test('the selected view survives a reload, because it lives in the URL', async (
 });
 
 test('a driver can be added to and removed from the lap-time chart', async ({ page }) => {
-  await page.goto(`/races/${RACE}?view=analysis`);
+  await page.goto(`/races/${RACE}/analysis`);
 
   const chart = page.getByRole('img', { name: /^lap times for .+/i });
   await expect(chart).toBeVisible({ timeout: 30_000 });
@@ -101,8 +101,8 @@ test('head to head compares two drivers and follows the picker', async ({ page }
   await expect(page.getByText('Choose two drivers')).toBeVisible();
   await expect(page.getByText(/laps ahead/)).toHaveCount(0);
 
-  // Switching the second driver keeps the Analysis view — the tab lives in the
-  // query string, so the form has to carry it.
+  // Switching the second driver keeps the Analysis view: the form submits to
+  // the analysis route itself.
   const against = page.locator('select[name="b"]');
   const options = await against.locator('option').all();
   await against.selectOption(await options[options.length - 1].getAttribute('value') ?? '');
@@ -110,13 +110,13 @@ test('head to head compares two drivers and follows the picker', async ({ page }
 
   await expect(page.getByText('Two drivers, lap by lap')).toBeVisible();
   await expect(page.getByText(/laps ahead/).first()).toBeVisible();
-  expect(page.url()).toContain('view=analysis');
+  expect(new URL(page.url()).pathname).toMatch(/\/analysis$/);
 });
 
 test('the lap-time chart reads out every shown driver for the lap under the pointer', async ({
   page,
 }) => {
-  await page.goto(`/races/${RACE}?view=analysis`);
+  await page.goto(`/races/${RACE}/analysis`);
 
   const chart = page.getByRole('img', { name: /^lap times for .+/i });
   await expect(chart).toBeVisible({ timeout: 30_000 });
@@ -135,4 +135,15 @@ test('the lap-time chart reads out every shown driver for the lap under the poin
   // Off the plot, it goes away rather than sticking to the last lap hovered.
   await page.mouse.move(0, 0);
   await expect(readout).toBeHidden();
+});
+
+test('an old ?view=analysis link lands on the analysis route, pair included', async ({ page }) => {
+  // The tab was a query parameter before it was a route, and links to it are
+  // out in the world. next.config.ts redirects them.
+  await page.goto(`/races/${RACE}?view=analysis&a=VER&b=NOR`);
+
+  const url = new URL(page.url());
+  expect(url.pathname).toBe(`/races/${RACE}/analysis`);
+  expect(url.searchParams.get('a')).toBe('VER');
+  expect(url.searchParams.get('b')).toBe('NOR');
 });

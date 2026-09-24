@@ -46,6 +46,21 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // The Analysis tab used to be `?view=analysis` on the race page and is its own
+  // route now, so the page never reads its query string and can be prerendered.
+  // Links already out there keep working; the rest of the query string (a
+  // head-to-head's `a` and `b`) carries across on its own.
+  async redirects() {
+    return [
+      {
+        source: '/races/:slug',
+        has: [{ type: 'query', key: 'view', value: 'analysis' }],
+        destination: '/races/:slug/analysis',
+        permanent: true,
+      },
+    ];
+  },
+
   // No `serverActions.allowedOrigins`, deliberately. Next compares a Server
   // Action's Origin against the Host and rejects a mismatch on its own; the
   // option exists for proxy and CDN domains, where the two legitimately differ
