@@ -3,13 +3,12 @@ import { meetings, raceEvents, racePositions, raceResults, races } from '@/db/sc
 import { builder } from '../builder';
 import type { Db } from '../context';
 import type { PodiumSlot } from '../loaders';
-import { RaceAnalysis, loadAnalysis } from './analysis';
+import { RaceAnalysis, loadAnalysis, positionColumns, type PositionRow } from './analysis';
 import { driverOfAssignment, teamOfAssignment } from './assignment';
 import { Driver, Team } from './entity';
 import { Meeting } from './meeting';
 
 export type RaceRow = typeof races.$inferSelect;
-type PositionRow = typeof racePositions.$inferSelect;
 type EventRow = typeof raceEvents.$inferSelect;
 type ResultRow = typeof raceResults.$inferSelect;
 
@@ -24,7 +23,6 @@ export const RacePosition = builder.objectRef<PositionRow>('RacePosition').imple
   fields: (t) => ({
     lap: t.exposeInt('lap'),
     position: t.exposeInt('position'),
-    gap: t.exposeString('gap', { nullable: true }),
     lapTime: t.exposeFloat('lapTime', { nullable: true }),
     sector1: t.exposeFloat('sector1', { nullable: true }),
     sector2: t.exposeFloat('sector2', { nullable: true }),
@@ -233,29 +231,6 @@ Race.implement({
     }),
 
     /**
-     * Flat, one row per driver per lap — the shape the database stores and the
-     * shape the timing tower wants.
-     *
-     * This is also where the N+1 lives: this resolver runs once and returns
-     * ~1,200 rows, and then RacePosition.driver runs once *per row*, unaware
-     * that it is one of 1,200 calls asking for the same twenty drivers.
-     */
-    positions: t.field({
-      type: [RacePosition],
-      args: { lap: t.arg.int() },
-      resolve: (race, args, ctx) =>
-        ctx.db.select().from(racePositions)
-          .where(
-            args.lap == null
-              ? eq(racePositions.raceId, race.id)
-              : and(eq(racePositions.raceId, race.id), eq(racePositions.lap, args.lap)),
-          )
-          // Ordering by position, never indexing by it: retirements leave the
-          // places inside a lap non-contiguous.
-          .orderBy(asc(racePositions.lap), asc(racePositions.position)),
-    }),
-
-    /**
      * The same rows pivoted by driver, which is what an animation interpolates
      * along. Deliberately redundant with `positions`.
      *
@@ -267,7 +242,7 @@ Race.implement({
       type: RaceReplay,
       resolve: async (race, _args, ctx) => ({
         raceId: race.id,
-        rows: await ctx.db.select().from(racePositions)
+        rows: await ctx.db.select(positionColumns).from(racePositions)
           .where(eq(racePositions.raceId, race.id))
           .orderBy(asc(racePositions.lap), asc(racePositions.position)),
       }),
@@ -476,6 +451,38 @@ const RaceConnection = builder
       }),
     }),
   });
+
+/**
+ * Every race's slug and date, newest first.
+ *
+ * `generateStaticParams` and the sitemap both want the whole list, and both used
+ * to ask `races(first:)` for it. That resolver is a keyset connection: with no
+ * cursor it orders *ascending* and clamps to 100, so the prerendered set was the
+ * hundred oldest races and the current season — the pages anyone actually visits
+ * — was neither prerendered nor in the sitemap.
+ *
+ * A list is not a page, so this is not a connection. It reads two columns rather
+ * than dragging whole race rows through an edge type to spell a slug, and the
+ * bound is a ceiling nobody is near rather than a page size.
+ */
+const RaceSlug = builder.objectRef<{ slug: string; date: Date }>('RaceSlug').implement({
+  fields: (t) => ({
+    slug: t.exposeString('slug'),
+    date: t.field({ type: 'DateTime', resolve: (r) => r.date }),
+  }),
+});
+
+builder.queryField('raceSlugs', (t) =>
+  t.field({
+    type: [RaceSlug],
+    resolve: (_root, _args, ctx) =>
+      ctx.db
+        .select({ slug: races.slug, date: races.date })
+        .from(races)
+        .orderBy(desc(races.date), desc(races.id))
+        .limit(1000),
+  }),
+);
 
 builder.queryField('races', (t) =>
   t.field({

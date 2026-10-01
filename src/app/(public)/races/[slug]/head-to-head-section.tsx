@@ -11,19 +11,32 @@ import { getHeadToHead, getRaceHeader } from '@/lib/queries';
  * the URL is the state, which keeps this a server component and makes a
  * particular comparison a link someone can send.
  *
- * It defaults to the top two finishers rather than nothing. A picker that opens
- * empty asks the reader to do work before showing them what the thing is, and
- * the podium fight is the comparison most people came for anyway.
+ * The picker opens on the top two finishers, but it does not *fetch* them: the
+ * comparison is rendered only once the reader has asked for one, which is what
+ * `a` and `b` in the URL mean.
+ *
+ * That is a cost decision. `getHeadToHead` is its own cache scope keyed by the
+ * pair, so a default comparison is a second, independent miss — and each miss
+ * re-runs `loadAnalysis`, the full-race scan over positions, stints, pit stops
+ * and results. Opening the Analysis tab was paying for that race twice, the
+ * second time for a comparison nobody had asked for.
+ *
+ * It also matches the picker beside it: two selects and a Compare button say a
+ * comparison needs two choices, which is why AutoSubmit was taken off this form.
  */
 export async function HeadToHeadSection({
   slug,
-  driverA,
-  driverB,
+  searchParams,
 }: {
   slug: string;
-  driverA: string | null;
-  driverB: string | null;
+  searchParams: Promise<{ a?: string | string[]; b?: string | string[] }>;
 }) {
+  const { a, b } = await searchParams;
+  // A repeated key arrives as an array; nothing the form submits does that, so
+  // it is treated as no choice rather than guessed at.
+  const driverA = typeof a === 'string' ? a : null;
+  const driverB = typeof b === 'string' ? b : null;
+
   // The driver list comes from the header, which the page has already fetched
   // and cached — asking the head-to-head query for it first would mean two
   // round trips to learn who is even in the race.
@@ -46,8 +59,12 @@ export async function HeadToHeadSection({
   const codeA = driverA ?? classified[0].driver!.code;
   const codeB = driverB ?? classified[1].driver!.code;
 
-  const { race } = await getHeadToHead(slug, codeA, codeB);
-  const comparison = race?.analysis.headToHead ?? null;
+  // Only when the reader has picked. Both come from the same submit, so one
+  // present and the other missing is not a state the form can produce.
+  const asked = driverA !== null && driverB !== null;
+  const comparison = asked
+    ? (await getHeadToHead(slug, codeA, codeB)).race?.analysis.headToHead ?? null
+    : null;
 
   return (
     <div className="space-y-5">
@@ -56,10 +73,7 @@ export async function HeadToHeadSection({
           having lost sight of the thing they just changed. This navigates on
           the client and `scroll={false}` leaves the page where it was. Still a
           GET to the same URL, so it degrades to the native form without JS. */}
-      <Form action={`/races/${slug}`} scroll={false} className="flex flex-wrap items-end gap-3">
-        {/* The tab lives in the query string too, so choosing a driver must not
-            navigate away from the Analysis view. */}
-        <input type="hidden" name="view" value="analysis" />
+      <Form action={`/races/${slug}/analysis`} scroll={false} className="flex flex-wrap items-end gap-3">
         <Picker label="Driver" name="a" value={codeA} drivers={classified} />
         <Picker label="Against" name="b" value={codeB} drivers={classified} />
         <Button type="submit" variant="secondary">
@@ -71,11 +85,13 @@ export async function HeadToHeadSection({
         <HeadToHead data={comparison} />
       ) : (
         <EmptyState
-          title="Pick two different drivers"
+          title={asked ? 'Pick two different drivers' : 'Choose two drivers'}
           description={
-            codeA === codeB
-              ? 'A driver is not much of a rival to themselves.'
-              : 'At least one of them did not start this race.'
+            !asked
+              ? 'Pick a pair and press Compare to see who was in front, lap by lap.'
+              : codeA === codeB
+                ? 'A driver is not much of a rival to themselves.'
+                : 'At least one of them did not start this race.'
           }
         />
       )}

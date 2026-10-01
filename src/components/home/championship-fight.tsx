@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { CountUp } from '@/components/home/count-up';
 import { Card } from '@/components/ui/card';
-import { isTitleSettled, pointsStillAvailable, type RemainingRounds } from '@/lib/championship';
+import { formatPoints, isTitleSettled, pointsStillAvailable, type RemainingRounds } from '@/lib/championship';
 
 /**
  * The title race, as a sentence rather than a table.
@@ -107,8 +107,3 @@ function Contender({ contender, label }: { contender: Contender; label: string }
     </div>
   );
 }
-
-// Half points exist — a shortened race pays them — so the column is a Float and
-// a whole total should still read as a whole number.
-const formatPoints = (points: number) =>
-  Number.isInteger(points) ? String(points) : points.toFixed(1);

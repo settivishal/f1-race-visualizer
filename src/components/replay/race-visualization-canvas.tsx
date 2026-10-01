@@ -2,14 +2,15 @@
 
 import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { linearScale, type Scale } from "@/lib/scale";
 import type { ReplayEntry, ReplayEvent, ReplayPosition, ReplayView } from "./types";
 import { RaceCar } from "./race-car";
 import { TIMING_TOWER_ID } from "./live-timing-tower";
 import {
   classifyReplayEvent,
   type ReplayEventKind,
-  DriverReplayState,
   easeLapProgress,
+  getDriverPointForLap,
   getReplayEventMarkerColor,
   ReplayRaceControl,
   withFocusLast,
@@ -120,18 +121,15 @@ const CHART_EVENT_KINDS = new Set<ReplayEventKind>([
  */
 export type LapWindow = { from: number; to: number };
 
-type LapScale = (lap: number) => number;
+type LapScale = Scale;
 
-function makeLapX({ from, to }: LapWindow, layout: ChartLayout): LapScale {
-  const { margin } = layout;
-  const innerWidth = layout.width - margin.left - margin.right;
-  const span = to - from;
-
-  if (span <= 0) {
-    return () => margin.left + innerWidth / 2;
-  }
-
-  return (lap: number) => margin.left + ((lap - from) / span) * innerWidth;
+/**
+ * Laps across the plot. `linearScale` already handles the one-lap window the
+ * same way this used to by hand — a zero-width domain lands in the middle of
+ * the range.
+ */
+function makeLapX({ from, to }: LapWindow, { width, margin }: ChartLayout): LapScale {
+  return linearScale([from, to], [margin.left, width - margin.right]);
 }
 
 /** Laps per screen at a spacing a finger and an eye can both deal with. */
@@ -158,17 +156,11 @@ export function lapWindowFor(containerWidth: number, currentLap: number, maxLap:
   return { from, to };
 }
 
-type PositionScale = (position: number) => number;
+type PositionScale = Scale;
 
-function makePositionY(maxPosition: number, layout: ChartLayout): PositionScale {
-  const { margin } = layout;
-  const innerHeight = layout.height - margin.top - margin.bottom;
-
-  if (maxPosition <= 1) {
-    return () => margin.top + innerHeight / 2;
-  }
-
-  return (position: number) => margin.top + ((position - 1) / (maxPosition - 1)) * innerHeight;
+/** P1 at the top of the plot, the last classified position at the bottom. */
+function makePositionY(maxPosition: number, { height, margin }: ChartLayout): PositionScale {
+  return linearScale([1, maxPosition], [margin.top, height - margin.bottom]);
 }
 
 function buildPath(
@@ -185,32 +177,6 @@ function buildPath(
     .join(" ");
 }
 
-function getPointForLap(
-  positions: ReplayPosition[],
-  lap: number,
-) {
-  let candidate = positions[0];
-
-  for (const entry of positions) {
-    if (entry.lap === lap) {
-      return entry;
-    }
-
-    if (entry.lap < lap) {
-      candidate = entry;
-    }
-  }
-
-  return candidate ?? positions[0];
-}
-
-/**
- * As many lap labels as fit, rather than a fixed eight.
- *
- * The count used to be constant because the chart was, and on a 390px phone
- * that put nine "Lap 33" labels along 340 pixels of axis and they overlapped
- * into one grey smear.
- */
 function getVisibleLapTicks(laps: number[], maxTicks: number) {
   if (laps.length <= maxTicks) {
     return laps;
@@ -271,7 +237,6 @@ export function RaceVisualizationCanvas({
   nextLap,
   lapProgress,
   raceControl,
-  driverStates,
   controls,
   className,
   focusedDriverId,
@@ -284,7 +249,6 @@ export function RaceVisualizationCanvas({
   nextLap: number;
   lapProgress: MotionValue<number>;
   raceControl: ReplayRaceControl;
-  driverStates: Map<string, DriverReplayState>;
   controls?: ReactNode;
   className?: string;
   /** The driver held by a click — what `aria-pressed` and the label report. */
@@ -380,10 +344,10 @@ export function RaceVisualizationCanvas({
         const visiblePositions = entry.positions.filter(
           (position) => retirementLap === null || position.lap <= retirementLap,
         );
-        const currentPoint = getPointForLap(entry.positions, currentLap);
-        const nextPoint = getPointForLap(entry.positions, isCarActive ? nextLap : currentLap);
+        const currentPoint = getDriverPointForLap(entry.positions, currentLap);
+        const nextPoint = getDriverPointForLap(entry.positions, isCarActive ? nextLap : currentLap);
         const markerPoint =
-          retirementLap !== null ? getPointForLap(entry.positions, retirementLap) : null;
+          retirementLap !== null ? getDriverPointForLap(entry.positions, retirementLap) : null;
         const fullPath = buildPath(visiblePositions, lapX, positionY);
         const trail = buildPath(
           visiblePositions.filter((position) => position.lap <= currentLap),
@@ -704,12 +668,10 @@ export function RaceVisualizationCanvas({
               ),
               highlightedDriverId,
             ).map((frame) => {
-              const state = driverStates.get(frame.entry.driver.id);
               return (
                 <AnimatedCar
                   key={frame.entry.driver.id}
                   frame={frame}
-                  state={state}
                   isDimmed={
                     highlightedDriverId !== null && frame.entry.driver.id !== highlightedDriverId
                   }
@@ -765,7 +727,6 @@ type DriverFrame = {
 
 function AnimatedCar({
   frame,
-  state,
   isDimmed,
   raceControl,
   lapProgress,
@@ -776,7 +737,6 @@ function AnimatedCar({
   compact,
 }: {
   frame: DriverFrame;
-  state?: DriverReplayState;
   /** True when another driver is focused: this one drops back, it does not go. */
   isDimmed: boolean;
   raceControl: ReplayRaceControl;
@@ -842,7 +802,6 @@ function AnimatedCar({
       <title>
         {[
           `${driver.code} • ${driver.name}`,
-          state?.statusLabel,
           retirementEvent && `${retirementEvent.type} lap ${retirementEvent.lap}`,
         ]
           .filter(Boolean)
@@ -852,7 +811,7 @@ function AnimatedCar({
         d={fullPath}
         fill="none"
         stroke={team.color}
-        strokeOpacity={(isRetiredAtCurrentLap ? 0.08 : state?.isBackmarker ? 0.08 : 0.12) * dim}
+        strokeOpacity={(isRetiredAtCurrentLap ? 0.08 : 0.12) * dim}
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -865,11 +824,10 @@ function AnimatedCar({
           d={trail}
           fill="none"
           stroke={team.color}
-          strokeOpacity={(isRetiredAtCurrentLap ? 0.36 : state?.isBackmarker ? 0.5 : 0.8) * dim}
-          strokeWidth={state?.isLapped ? "2.5" : isRetiredAtCurrentLap ? "2.2" : "3.2"}
+          strokeOpacity={(isRetiredAtCurrentLap ? 0.36 : 0.8) * dim}
+          strokeWidth={isRetiredAtCurrentLap ? "2.2" : "3.2"}
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeDasharray={state?.isLapped ? "8 6" : undefined}
           className="transition-[opacity,stroke-opacity] duration-200 hover:opacity-100"
         />
       ) : null}
@@ -914,10 +872,9 @@ function AnimatedCar({
             x2={x}
             y2={y}
             stroke={team.color}
-            strokeOpacity={(state?.isBackmarker ? 0.5 : 0.8) * dim}
-            strokeWidth={state?.isLapped ? "2.5" : "3.2"}
+            strokeOpacity={0.8 * dim}
+            strokeWidth="3.2"
             strokeLinecap="round"
-            strokeDasharray={state?.isLapped ? "8 6" : undefined}
           />
         ) : null}
         {/* Kept mounted for the lap the car retires on, so it fades out under the
@@ -955,9 +912,8 @@ function AnimatedCar({
                   ? "down"
                   : false
             }
-            muted={Boolean(state?.isBackmarker)}
             dimmed={isDimmed}
-            caution={raceControl.status !== "green" || Boolean(state?.isLapped)}
+            caution={raceControl.status !== "green"}
           />
           </motion.g>
           </g>

@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildDriverReplayState,
   describeMissingLaps,
   nearestLapIndex,
   withFocusLast,
   buildRaceControlByLap,
   classifyReplayEvent,
   easeLapProgress,
-  summarizeDriverReplayState,
+  getReplayEventMarkerColor,
+  getReplayEventTone,
 } from './replay-state';
 import type { ReplayEntry, ReplayEvent, ReplayPosition } from './types';
-
-function position(lap: number, pos: number, gap: string | null = null): ReplayPosition {
-  return { lap, position: pos, gap, lapTime: null, sector1: null, sector2: null, sector3: null };
-}
 
 function entry(id: string, positions: ReplayPosition[]): ReplayEntry {
   return {
@@ -79,68 +75,30 @@ describe('buildRaceControlByLap', () => {
   });
 });
 
-describe('buildDriverReplayState', () => {
-  it('holds the last known position for a driver missing from the current lap', () => {
-    // The reason this matters: lap rows are not guaranteed for every driver on
-    // every lap. Dropping the driver would make a car vanish mid-replay.
-    const states = buildDriverReplayState(
-      [entry('a', [position(1, 1, 'LEADER'), position(5, 3, '+12.0s')])],
-      3,
-    );
+describe('event styling', () => {
+  const KINDS = [
+    'pit', 'dnf', 'dns', 'dnq', 'dsq', 'yellow', 'double-yellow', 'red-flag',
+    'safety-car', 'virtual-safety-car', 'penalty', 'green', 'chequered',
+    'overtake', 'fastest-lap', 'other',
+  ] as const;
 
-    expect(states.get('a')?.gapLabel).toBe('LEADER');
+  it('gives every kind a tone and a colour', () => {
+    for (const kind of KINDS) {
+      expect(getReplayEventTone(kind)).toMatch(/^tone tone-/);
+      expect(getReplayEventMarkerColor(kind)).toMatch(/^var\(--/);
+    }
   });
 
-  it('reads a lapped driver out of the gap string', () => {
-    const states = buildDriverReplayState([entry('a', [position(1, 12, '2 laps')])], 1);
-    const state = states.get('a');
-
-    expect(state?.isLapped).toBe(true);
-    expect(state?.lapsDown).toBe(2);
-    expect(state?.statusLabel).toBe('2 laps down');
-  });
-
-  it('marks a retired driver retired rather than lapped', () => {
-    const states = buildDriverReplayState([entry('a', [position(1, 20, 'DNF')])], 1);
-    const state = states.get('a');
-
-    expect(state?.isRetired).toBe(true);
-    expect(state?.isBackmarker).toBe(false);
-    expect(state?.statusLabel).toBe('Retired');
-  });
-
-  it('treats a driver far behind as a backmarker without lapping them', () => {
-    const states = buildDriverReplayState([entry('a', [position(1, 18, '+90.5s')])], 1);
-    const state = states.get('a');
-
-    expect(state?.isBackmarker).toBe(true);
-    expect(state?.isLapped).toBe(false);
-    expect(state?.statusLabel).toBe('Backmarker');
-  });
-
-  it('leaves a driver on the lead lap unlabelled', () => {
-    const states = buildDriverReplayState([entry('a', [position(1, 1, 'LEADER')])], 1);
-    expect(states.get('a')?.statusLabel).toBeNull();
-  });
-});
-
-describe('summarizeDriverReplayState', () => {
-  it('counts each condition independently', () => {
-    const states = buildDriverReplayState(
-      [
-        entry('a', [position(1, 1, 'LEADER')]),
-        entry('b', [position(1, 12, '1 lap')]),
-        entry('c', [position(1, 20, 'DNF')]),
-      ],
-      1,
-    );
-
-    // The lapped driver is also a backmarker; the retired one is neither.
-    expect(summarizeDriverReplayState(states)).toEqual({
-      lappedCount: 1,
-      backmarkerCount: 1,
-      retiredCount: 1,
-    });
+  it('keeps the pairings that are not symmetrical', () => {
+    // A retirement is a red chip but a double-yellow marker, and an overtake
+    // has a colour with no chip of its own. Both were easy to lose when these
+    // were two switches; they are the reason the table is worth reading.
+    expect(getReplayEventTone('dnf')).toBe('tone tone-red');
+    expect(getReplayEventMarkerColor('dnf')).toBe('var(--flag-double-yellow)');
+    expect(getReplayEventTone('red-flag')).toBe('tone tone-red');
+    expect(getReplayEventMarkerColor('red-flag')).toBe('var(--flag-red)');
+    expect(getReplayEventTone('overtake')).toBe('tone tone-neutral');
+    expect(getReplayEventMarkerColor('overtake')).toBe('var(--accent)');
   });
 });
 

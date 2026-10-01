@@ -296,6 +296,23 @@ describe('races paging', () => {
   });
 });
 
+describe('raceSlugs', () => {
+  it('returns the newest race first, which is what the build has to prerender', async () => {
+    // `races(first:)` orders ascending with no cursor and clamps at 100, so
+    // asking it for the build's slug list prerendered the oldest hundred races
+    // and left the current season rendering on demand. This is the fix, and the
+    // ordering is the whole of it.
+    const { raceSlugs } = await run<{ raceSlugs: { slug: string; date: string }[] }>(
+      'query { raceSlugs { slug date } }',
+    );
+
+    const dates = raceSlugs.map((race) => new Date(race.date).getTime());
+    expect(dates).toEqual([...dates].sort((a, b) => b - a));
+    // Every race, not a page of them.
+    expect(raceSlugs.length).toBeGreaterThan(1);
+  });
+});
+
 describe('activeSeason', () => {
   it('falls back to the newest season that has a race when nothing is configured', async () => {
     // The fixture inserts no app_config row, which is also the state of a fresh
@@ -320,14 +337,17 @@ describe('activeSeason', () => {
 
 describe('race', () => {
   it('resolves a driver and team through the assignment, which the schema never exposes', async () => {
-    const data = await run<{ race: { positions: { driver: { code: string }; team: { name: string; color: string } }[] } }>(`
-      query { race(slug: "2025-test") { positions(lap: 1) { position driver { code } team { name color } } } }
+    const data = await run<{
+      race: { replay: { drivers: { driver: { code: string }; team: { name: string; color: string } }[] } };
+    }>(`
+      query { race(slug: "2025-test") { replay { drivers { driver { code } team { name color } } } } }
     `);
-    expect(data.race.positions.map((p) => p.driver.code)).toEqual(['LEC', 'NOR']);
+    const entries = data.race.replay.drivers;
+    expect(entries.map((entry) => entry.driver.code)).toEqual(['LEC', 'NOR']);
     // The per-season livery wins over teams.color where one exists.
-    expect(data.race.positions[0].team).toEqual({ name: 'Ferrari', color: '#E8002D' });
+    expect(entries[0].team).toEqual({ name: 'Ferrari', color: '#E8002D' });
     // McLaren's team_season has no colour, so it falls back to the team's.
-    expect(data.race.positions[1].team).toEqual({ name: 'McLaren', color: '#FF8000' });
+    expect(entries[1].team).toEqual({ name: 'McLaren', color: '#FF8000' });
   });
 
   it('reports the laps that exist rather than a 1..N range', async () => {

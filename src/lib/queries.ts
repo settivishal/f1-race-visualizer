@@ -170,10 +170,8 @@ const SEASON_PULSE = /* GraphQL */ `
 `;
 
 const RACE_SLUGS = /* GraphQL */ `
-  query RaceSlugs($first: Int) {
-    races(first: $first) {
-      edges { node { slug date } }
-    }
+  query RaceSlugs {
+    raceSlugs { slug date }
   }
 `;
 
@@ -259,7 +257,7 @@ const RACE_REPLAY = /* GraphQL */ `
         drivers {
           driver { id code name number }
           team { id name color }
-          positions { lap position gap lapTime sector1 sector2 sector3 }
+          positions { lap position lapTime sector1 sector2 sector3 }
         }
         events {
           lap type details
@@ -554,10 +552,10 @@ export async function getSeasonPulse(season: number) {
   return seasonPulse;
 }
 
-export async function getRaceSlugs(first = 100) {
+export async function getRaceSlugs() {
   'use cache';
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceSlugsQuery, Record<string, unknown>>(RACE_SLUGS, { first });
+  return executeQuery<RaceSlugsQuery, Record<string, unknown>>(RACE_SLUGS, {});
 }

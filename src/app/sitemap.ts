@@ -12,11 +12,13 @@ import { siteUrl } from '@/lib/site-url';
  * `getRaceSlugs` is the same cached read `generateStaticParams` uses, so
  * building the sitemap costs no extra query — and it carries the race date,
  * which is the honest `lastModified` for a page whose content is a finished
- * race.
+ * race. It asks for no page size: this used to request 500 races from a keyset
+ * connection that clamps to 100, so the twenty newest races were missing from
+ * the sitemap altogether.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Both are cached reads the pages already make, so the sitemap adds no query.
-  const [{ races }, archive] = await Promise.all([getRaceSlugs(500), getArchiveIndex()]);
+  const [{ raceSlugs }, archive] = await Promise.all([getRaceSlugs(), getArchiveIndex()]);
 
   return [
     { url: siteUrl, changeFrequency: 'weekly', priority: 1 },
@@ -42,9 +44,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'yearly' as const,
       priority: 0.4,
     })),
-    ...races.edges.map(({ node }) => ({
-      url: `${siteUrl}/races/${node.slug}`,
-      lastModified: new Date(node.date),
+    ...raceSlugs.map((race) => ({
+      url: `${siteUrl}/races/${race.slug}`,
+      lastModified: new Date(race.date),
       changeFrequency: 'yearly' as const,
       priority: 0.7,
     })),

@@ -33,16 +33,19 @@ Object.assign(pool, {
 
 const db = drizzle(pool, { schema: dbSchema });
 
+// `replay` rather than the flat `positions` list: it is the field the race page
+// actually reads, so what this counts is what a visitor costs.
 const REPLAY_QUERY = /* GraphQL */ `
   query CountReplay($slug: String!) {
     race(slug: $slug) {
       slug
       laps
-      positions {
-        lap
-        position
-        driver { code name }
-        team { name color }
+      replay {
+        drivers {
+          driver { code name }
+          team { name color }
+          positions { lap position }
+        }
       }
     }
   }

@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import {
   driverTeamAssignments,
   drivers,
@@ -10,11 +10,10 @@ import {
   teams,
 } from '@/db/schema';
 import type { Db } from './context';
+import { driverColumns, teamColumns, type DriverRow, type TeamRow, seasonColorSql } from './schema/entity';
 
 type AssignmentRow = typeof driverTeamAssignments.$inferSelect;
-type DriverRow = typeof drivers.$inferSelect;
 type TeamSeasonRow = typeof teamSeasons.$inferSelect;
-type TeamRow = typeof teams.$inferSelect;
 type MeetingRow = typeof meetings.$inferSelect;
 type RaceRow = typeof races.$inferSelect;
 
@@ -66,9 +65,7 @@ function podiumLoader(db: Db) {
         raceId: raceResults.raceId,
         position: raceResults.finalPosition,
         code: drivers.code,
-        // Per-season livery first, the team's standing colour otherwise —
-        // the same coalesce seasonPulse uses.
-        teamColor: sql<string | null>`coalesce(${teamSeasons.color}, ${teams.color})`,
+        teamColor: seasonColorSql,
       })
       .from(raceResults)
       .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))
@@ -99,13 +96,13 @@ export function createLoaders(db: Db) {
       db.select().from(driverTeamAssignments).where(inArray(driverTeamAssignments.id, ids)),
     ),
     driverById: byId<DriverRow>(db, (ids) =>
-      db.select().from(drivers).where(inArray(drivers.id, ids)),
+      db.select(driverColumns).from(drivers).where(inArray(drivers.id, ids)),
     ),
     teamSeasonById: byId<TeamSeasonRow>(db, (ids) =>
       db.select().from(teamSeasons).where(inArray(teamSeasons.id, ids)),
     ),
     teamById: byId<TeamRow>(db, (ids) =>
-      db.select().from(teams).where(inArray(teams.id, ids)),
+      db.select(teamColumns).from(teams).where(inArray(teams.id, ids)),
     ),
     // A page of race tiles asks for one meeting per tile, and a weekend's two
     // sessions share one — so this batches and dedupes both.

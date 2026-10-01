@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { animate, useReducedMotion } from 'framer-motion';
+import { formatPoints as format } from '@/lib/championship';
 
 /**
  * A number that arrives by counting to itself.
@@ -24,12 +25,10 @@ import { animate, useReducedMotion } from 'framer-motion';
  * fractional total keeps one decimal and a whole one stays whole — the same
  * rule championship-fight.tsx applies to every other number beside this one.
  *
- * Formatting lives here rather than arriving as a prop: a server component
- * cannot hand a function to a client one, and the alternative — making the
- * caller a client component too — is a bundle for a rounding rule.
+ * The rounding is imported rather than passed in: a server component cannot
+ * hand a function to a client one, and the alternative — making the caller a
+ * client component too — is a bundle for a rounding rule.
  */
-const format = (points: number) =>
-  Number.isInteger(points) ? String(points) : points.toFixed(1);
 
 export function CountUp({
   value,
