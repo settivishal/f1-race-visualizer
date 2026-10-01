@@ -34,7 +34,12 @@ jobs:
   # The one browser test: load a race, press play, assert the order changed.
   # Separate from `check` because it needs a database and a built app, and
   # because a browser download should not sit in front of typecheck and lint.
+  #
+  # Pull requests only. A push to main is the tree its pull request already
+  # built and tested, and each run is a full build reading the dev database,
+  # whose transfer allowance is shared with previews and production.
   e2e:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     needs: check
     steps:

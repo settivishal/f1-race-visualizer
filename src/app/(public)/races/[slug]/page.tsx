@@ -13,6 +13,7 @@ import { AnalysisPanel } from './analysis-panel';
 import { RaceVisualizationPlayer } from '@/components/replay/race-visualization-player';
 import { toReplayView } from '@/components/replay/types';
 import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
+import { prerenderParams } from '@/lib/prerender';
 
 /**
  * The race detail page.
@@ -23,7 +24,7 @@ import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
  */
 export async function generateStaticParams() {
   const { raceSlugs } = await getRaceSlugs();
-  return raceSlugs.map(({ slug }) => ({ slug }));
+  return prerenderParams(raceSlugs.map(({ slug }) => ({ slug })));
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
