@@ -1496,3 +1496,32 @@ the name of the box it ships in are allowed to differ.
 
 **What would change this:** a custom domain, which is where the deployed URL stops being
 an implementation detail and starts being the name people type.
+
+---
+
+## 2026-09-23 — Branch flow: back to `feature/*` → `main`
+
+**Decided:** `dev` is deleted. Pull requests target `main`, and merging one deploys it. The
+Neon `dev` branch database stays: it is what previews and CI's e2e run against.
+
+**Reverses:** the 2026-09-03 branch-flow entry and, with it, the 2026-09-04 protection entry
+for `dev`.
+
+**What changed.** The 2026-09-03 entry had two reasons. The first, a preview build migrating
+production, was solved separately on 2026-09-06, when an unscoped `Preview` `DATABASE_URL`
+gave every branch's preview a database, not only `dev`'s. The second, a stable URL showing
+several merged changes together, is worth less to one developer than a second merge per
+change costs.
+
+The cost the entry named came due in full. Every change built and ran CI twice, and both
+runs read the dev database; that second run is part of how the Neon transfer allowance ran
+out on 2026-09-10. Releases needed their own rules: merge commits only, production migrated
+before the merge, and `main` 149 commits behind `dev` by the end.
+
+**What replaces the release ordering.** A pull request with a migration runs the Migrate
+workflow by hand before merging, `target=dev` first and then `target=prod`. The push to
+`main` re-runs it against production, which is a no-op by then. Additive migrations, which
+all of them so far have been, are safe to apply before the code that reads them.
+
+**The cost, stated plainly.** Nothing sits between a merge and production any more. The
+check that used to live in the release PR now lives in each pull request's own preview.
