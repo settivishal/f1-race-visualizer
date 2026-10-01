@@ -25,7 +25,7 @@ const PAGES = [
   '/compare',
   '/about',
   '/races/2026-monza',
-  '/races/2026-monza?view=analysis',
+  '/races/2026-monza/analysis',
 ];
 
 test.use({ viewport: { width: 390, height: 844 } });

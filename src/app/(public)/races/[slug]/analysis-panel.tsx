@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { LapTimeChart, type LapTimeSeries } from "@/components/analysis/lap-time-chart";
 import { PaceTable, type PaceRow } from "@/components/analysis/pace-table";
 import { StrategyChart, type StrategyRow } from "@/components/analysis/strategy-chart";
@@ -20,12 +22,11 @@ const FALLBACK_COLOR = "#8892a0";
  */
 export async function AnalysisPanel({
   slug,
-  driverA,
-  driverB,
+  searchParams,
 }: {
   slug: string;
-  driverA: string | null;
-  driverB: string | null;
+  /** Only the head-to-head reads it, inside its own boundary — see there. */
+  searchParams: Promise<{ a?: string | string[]; b?: string | string[] }>;
 }) {
   const { race } = await getRaceAnalysis(slug);
   if (!race) return null;
@@ -150,7 +151,12 @@ export async function AnalysisPanel({
           description="Who was in front, for how long, and what it cost in pace. Pick any two who started."
         />
         <div className="mt-5">
-          <HeadToHeadSection slug={slug} driverA={driverA} driverB={driverB} />
+          {/* The one part of the tab that depends on the URL, so the one part
+              that renders per request. Everything above and below it is
+              prerendered with the page. */}
+          <Suspense fallback={<Skeleton className="h-40 w-full rounded-xl" />}>
+            <HeadToHeadSection slug={slug} searchParams={searchParams} />
+          </Suspense>
         </div>
       </section>
 

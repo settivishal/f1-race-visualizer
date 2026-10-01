@@ -1525,3 +1525,23 @@ all of them so far have been, are safe to apply before the code that reads them.
 
 **The cost, stated plainly.** Nothing sits between a merge and production any more. The
 check that used to live in the release PR now lives in each pull request's own preview.
+
+---
+
+## 2026-09-23 — The race page never reads its query string
+
+**Decided:** Analysis is its own route, `/races/[slug]/analysis`, instead of `?view=analysis`.
+The player reads `?lap=` in the browser. Only the head-to-head reads `?a=&b=`, inside its own
+Suspense boundary. A race page therefore depends on its slug alone and is prerendered,
+replay payload included.
+
+**Why.** `RaceDetail` awaited `searchParams` first, which made everything below it render per
+request: the header, the classification, the replay, the analysis. `use cache` did not save
+those reads. On serverless hosting its default in-memory store rarely outlives a request (Next's
+`use cache` reference says so), so each visit to a race could re-run the largest query on the
+site against a Neon allowance of 5 GB a month.
+
+**The cost.** A prerendered race is one replay read and one analysis read per production
+deploy, and every merge is a deploy. Production prerenders the newest 30 races; older ones
+render on their first visit and are cached from then on. Old `?view=analysis` links redirect in
+`next.config.ts`.
