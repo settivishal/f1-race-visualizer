@@ -8,7 +8,7 @@ The repository, the Vercel project and the deployed URL are all still
 `f1-race-visualizer`; only what the site calls itself changed. See
 [`docs/decisions.md`](docs/decisions.md), "The site is called RaceLines".
 
-**Status:** design complete, implementation starting. See [`docs/system-design.md`](docs/system-design.md).
+**Status:** live at [f1-race-visualizer-alpha.vercel.app](https://f1-race-visualizer-alpha.vercel.app).
 
 ## Why this repo exists
 
@@ -33,7 +33,7 @@ geometry, and OpenF1 import logic are ported from it rather than rewritten.
 | Client data | urql + graphql-codegen |
 | Database | Neon Postgres + Drizzle ORM |
 | Auth | Auth.js credentials, single admin account |
-| Data source | OpenF1, ingested on a schedule into our own database |
+| Data source | OpenF1, ingested on a schedule; Ergast (via Jolpica) backfills seasons before 2023 and starting grids |
 | Hosting | Vercel (app + cron), Vercel Blob (images) |
 
 One deployable. No separate API service. No external API is ever called during a page
@@ -42,7 +42,7 @@ request — a scheduled job writes everything to Postgres first.
 ## Architecture
 
 ```text
-OpenF1 · Wikipedia                   (touched only by the ingest job)
+OpenF1 · Ergast · Wikipedia          (touched only by ingest jobs)
             │
             ▼
      lib/ingest  ──────►  Neon Postgres  ◄────── Drizzle
