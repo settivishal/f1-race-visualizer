@@ -70,7 +70,9 @@ async function main() {
   await db.insert(schema.appConfig).values({
     id: 1,
     ingestEnabled: true,
-    runDays: ['mon'],
+    // Every day: a run with nothing to import costs one OpenF1 call, and a
+    // weekly run turned a three-week outage into months of catching up.
+    runDays: ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'],
     activeSeason,
     hoursAfterRace: 12,
   });
