@@ -26,19 +26,12 @@ export type PulseRound = {
 export function SeasonPulse({ season, rounds }: { season: number; rounds: PulseRound[] }) {
   if (rounds.length === 0) return null;
 
-  const run = rounds.filter((round) => round.status === 'COMPLETED').length;
-  // A cancelled round is not one still to come, so it is not counted in the
-  // denominator either — "13 of 23" is the honest 2026 season.
-  const scheduled = rounds.filter((round) => round.status !== 'CANCELLED').length;
-
+  // No "n of m run" here: the season card above owns that count. This one
+  // counted imported results and that one counted dates, so the two disagreed
+  // whenever an import lagged a race.
   return (
     <section className="reveal mt-14">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-eyebrow font-bold uppercase text-muted">{season} at a glance</h2>
-        <p className="tabular text-eyebrow font-semibold uppercase text-subtle">
-          {run} of {scheduled} run
-        </p>
-      </div>
+      <h2 className="text-eyebrow font-bold uppercase text-muted">{season} at a glance</h2>
 
       <ol className="mt-4 flex flex-wrap gap-1.5">
         {rounds.map((round, index) => {
