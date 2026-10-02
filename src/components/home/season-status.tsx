@@ -55,7 +55,9 @@ export function SeasonStatus({ season, races }: { season: number; races: Schedul
   const next = now === 0 ? null : races.find((race) => Date.parse(race.date) > now) ?? null;
 
   return (
-    <section className="mt-14">
+    // No top margin: this is always the first section, and the container's own
+    // padding already separates it from the hero.
+    <section>
       <h2 className="text-eyebrow font-bold uppercase text-muted">{season} season</h2>
       <Card className="mt-3 p-7">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
