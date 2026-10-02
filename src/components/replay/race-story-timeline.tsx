@@ -193,19 +193,21 @@ export function RaceStoryTimeline({
               aria-label={label}
               className={`tap group absolute -bottom-[3px] flex -translate-x-1/2 flex-col-reverse items-center gap-0.5 rounded-sm px-1.5 transition-transform hover:scale-110 ${
                 isActive ? "scale-110" : ""
-              } ${isPast ? "" : "opacity-45"}`}
+              }`}
               style={{ left: `${cluster.offset}%` }}
             >
               {shown.map((moment) => (
                 <span
                   key={moment.id}
                   aria-hidden
-                  className="block h-2.5 w-2.5 rounded-full ring-2 ring-panel"
+                  // The dots fade for laps still ahead, not the whole button:
+                  // faded, the "+n" label fell to 2:1 contrast.
+                  className={`block h-2.5 w-2.5 rounded-full ring-2 ring-panel ${isPast ? "" : "opacity-45"}`}
                   style={{ backgroundColor: getReplayEventMarkerColor(moment.eventKind) }}
                 />
               ))}
               {hidden > 0 ? (
-                <span aria-hidden className="tabular text-[9px] font-bold leading-none text-muted">
+                <span aria-hidden className="tabular text-[10px] font-bold leading-none text-muted">
                   +{hidden}
                 </span>
               ) : null}
