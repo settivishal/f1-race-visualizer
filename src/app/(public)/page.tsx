@@ -74,13 +74,17 @@ export default function Home() {
 /**
  * Grands prix only. A sprint is a session inside a round, not a round of its
  * own, so counting it would make a 24-race season read as 30.
+ *
+ * Cancelled rounds are left out too, for the reason the season strip gives:
+ * they are not still to come, so they are not in the denominator, and a date
+ * that passed without a race is not a round "complete".
  */
 async function SeasonProgress() {
   const season = await getActiveSeason();
   const { races } = await getSeasonSchedule(season);
 
   const scheduled: ScheduledRace[] = races.edges
-    .filter((edge) => edge.node.type === 'GRAND_PRIX')
+    .filter((edge) => edge.node.type === 'GRAND_PRIX' && edge.node.status !== 'CANCELLED')
     .map((edge) => ({
       slug: edge.node.slug,
       date: edge.node.date,
