@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getRaceHeader } from '@/lib/queries';
 import { sessionTitle } from '@/lib/session-title';
+import { raceHeaderFact } from '@/lib/schedule';
 
 /**
  * The share card for a race.
@@ -36,7 +37,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     : '';
   const subtitle = [
     meeting?.circuitName ?? meeting?.country ?? '',
-    race ? `${race.laps} laps` : '',
+    race ? raceHeaderFact(race) : '',
   ]
     .filter(Boolean)
     .join(' · ');

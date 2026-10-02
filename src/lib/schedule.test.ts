@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { untilLabel } from '@/lib/schedule';
+import { raceHeaderFact, untilLabel } from '@/lib/schedule';
 
 const at = (minutesFromNow: number) => new Date(NOW + minutesFromNow * 60_000).toISOString();
 const NOW = Date.parse('2026-03-01T12:00:00Z');
@@ -24,5 +24,21 @@ describe('untilLabel', () => {
     // A race already under way is still "starting now" — the countdown does not
     // run backwards, and this component stops caring once the race has begun.
     expect(untilLabel(at(-90), NOW)).toBe('Starting now');
+  });
+});
+
+describe('raceHeaderFact', () => {
+  const date = '2026-12-06T13:00:00Z';
+
+  it('gives a run race its lap count', () => {
+    expect(raceHeaderFact({ status: 'COMPLETED', date, laps: 58 })).toBe('58 laps');
+  });
+
+  it('gives a race still to come its date, never "0 laps"', () => {
+    expect(raceHeaderFact({ status: 'SCHEDULED', date, laps: 0 })).toBe('Sun 6 Dec');
+  });
+
+  it('says a cancelled race was cancelled', () => {
+    expect(raceHeaderFact({ status: 'CANCELLED', date, laps: 0 })).toBe('Cancelled');
   });
 });

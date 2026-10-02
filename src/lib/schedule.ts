@@ -25,3 +25,29 @@ export function untilLabel(date: string, now: number): string {
 }
 
 const plural = (n: number, unit: string) => (n === 1 ? unit : `${unit}s`);
+
+/**
+ * The one fact a race header carries after the circuit name.
+ *
+ * A run race has a lap count. One that has not run has `laps = 0`, and
+ * printing "0 laps" reads as a broken import rather than as a race still to
+ * come, so it gets its date instead, or the word that explains why it never
+ * will. Shared by the page header and the share card so the two cannot drift.
+ *
+ * UTC, because this renders on the server into a cached page: a local
+ * timezone would be the build machine's, not the reader's.
+ */
+export function raceHeaderFact(race: {
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  date: string;
+  laps: number;
+}): string {
+  if (race.status === 'CANCELLED') return 'Cancelled';
+  if (race.status === 'COMPLETED' && race.laps > 0) return `${race.laps} laps`;
+  return new Date(race.date).toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
