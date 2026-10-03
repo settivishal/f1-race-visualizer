@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getReplayEventMarkerColor } from "./replay-state";
+import { getReplayEventMarkerColor, isHollowMarker, type ReplayEventKind } from "./replay-state";
 import type { StoryMoment } from "./story-moments";
 
 /**
@@ -28,6 +28,14 @@ import type { StoryMoment } from "./story-moments";
  * so the window is one too, and the rail measures itself to convert.
  */
 const COLLISION_PX = 22;
+
+/** A dot's fill, or for a hollow marker its outline over the panel. */
+function markerStyle(kind: ReplayEventKind) {
+  const color = getReplayEventMarkerColor(kind);
+  return isHollowMarker(kind)
+    ? { border: `2px solid ${color}`, backgroundColor: "var(--panel)" }
+    : { backgroundColor: color };
+}
 
 type Cluster = {
   /** Percent along the axis. */
@@ -64,6 +72,43 @@ export function clusterMoments(
 
   return clusters;
 }
+
+/**
+ * Lap labels under the rail: every 10 laps, or every 5 in a race short enough
+ * (a sprint) that 10 would leave only the two ends. The first and last laps
+ * are always labelled, and a regular tick closer than half a step to the last
+ * one is dropped rather than printed on top of it.
+ */
+export function timelineTicks(firstLap: number, lastLap: number): number[] {
+  if (lastLap <= firstLap) return [firstLap];
+  const step = lastLap - firstLap + 1 <= 30 ? 5 : 10;
+  const ticks = [firstLap];
+  for (let lap = Math.ceil((firstLap + 1) / step) * step; lap < lastLap; lap += step) {
+    if (lastLap - lap >= step / 2) ticks.push(lap);
+  }
+  ticks.push(lastLap);
+  return ticks;
+}
+
+/** How many dots one lap stacks before the rest become "+n". */
+const MAX_STACK = 4;
+
+/**
+ * The colour key. Kinds that share a colour on the chart share an entry here,
+ * so the key never names two things a reader cannot tell apart.
+ */
+const KEY: { label: string; kinds: ReplayEventKind[] }[] = [
+  { label: "Safety car", kinds: ["safety-car"] },
+  { label: "VSC", kinds: ["virtual-safety-car"] },
+  { label: "Red flag", kinds: ["red-flag"] },
+  { label: "Yellow", kinds: ["yellow"] },
+  { label: "Pit stop", kinds: ["pit"] },
+  { label: "Double yellow", kinds: ["double-yellow"] },
+  { label: "Out of the race", kinds: ["dnf", "dns", "dnq", "dsq"] },
+  { label: "Penalty", kinds: ["penalty"] },
+  { label: "Overtake", kinds: ["overtake"] },
+  { label: "Fastest lap", kinds: ["fastest-lap"] },
+];
 
 export function RaceStoryTimeline({
   moments,
@@ -106,6 +151,13 @@ export function RaceStoryTimeline({
   );
 
   const playhead = ((currentLap - firstLap) / Math.max(1, lastLap - firstLap)) * 100;
+  const ticks = timelineTicks(firstLap, lastLap);
+  // Only what this race has: a key listing red flags under a race without one
+  // is a legend for a different chart.
+  const key = useMemo(() => {
+    const present = new Set(moments.map((moment) => moment.eventKind));
+    return KEY.filter((entry) => entry.kinds.some((kind) => present.has(kind)));
+  }, [moments]);
 
   return (
     <div className="rounded-xl border border-line bg-panel px-5 pb-4 pt-5">
@@ -116,13 +168,12 @@ export function RaceStoryTimeline({
         </span>
       </div>
 
-      {/* Tall enough for a marker to sit above the rail and still be a
-          comfortable target on a touchscreen. */}
-      <div ref={rail} className="relative mt-4 h-11">
-        <div className="absolute inset-x-0 top-8 h-1 rounded-full bg-panel-strong" />
+      {/* Tall enough for a four-moment lap to stack above the rail. */}
+      <div ref={rail} className="relative mt-4 h-16">
+        <div className="absolute inset-x-0 bottom-0 h-1 rounded-full bg-panel-strong" />
         {/* The race so far, so the rail reads as filling up. */}
         <div
-          className="absolute top-8 left-0 h-1 rounded-full bg-accent/50"
+          className="absolute bottom-0 left-0 h-1 rounded-full bg-accent/50"
           style={{ width: `${Math.max(0, Math.min(100, playhead))}%` }}
         />
 
@@ -135,57 +186,79 @@ export function RaceStoryTimeline({
               : `${cluster.moments.length} moments on lap ${cluster.lap}: ${cluster.moments
                   .map((moment) => moment.title)
                   .join(", ")}`;
+          const shown = cluster.moments.slice(0, MAX_STACK);
+          const hidden = cluster.moments.length - shown.length;
 
           return (
+            // One dot per moment, each in its own colour, stacked up from the
+            // rail: a busy lap is taller, and a pit stop and a retirement on
+            // the same lap look like two things rather than one.
             <button
               key={`${cluster.lap}-${cluster.moments[0].id}`}
               type="button"
               onClick={() => onJumpToLap(cluster.lap)}
               title={label}
               aria-label={label}
-              className="tap group absolute top-0 -translate-x-1/2 rounded-sm px-2 pb-1 pt-0.5"
+              className={`tap group absolute -bottom-[3px] flex -translate-x-1/2 flex-col-reverse items-center gap-0.5 rounded-sm px-1.5 transition-transform hover:scale-110 ${
+                isActive ? "scale-110" : ""
+              }`}
               style={{ left: `${cluster.offset}%` }}
             >
-              {/* The stalk ties the dot to the rail; without it a row of dots
-                  floats above the axis rather than belonging to it. */}
-              <span
-                aria-hidden
-                className={`mx-auto block w-px transition-[height] ${
-                  isActive ? "h-6" : "h-4 group-hover:h-6"
-                }`}
-                style={{ backgroundColor: getReplayEventMarkerColor(cluster.moments[0].eventKind) }}
-              />
-              <span
-                aria-hidden
-                className={`mx-auto mt-0.5 block rounded-full ring-2 ring-panel transition-transform group-hover:scale-125 ${
-                  isActive ? "h-3 w-3 scale-125" : "h-2.5 w-2.5"
-                } ${isPast ? "" : "opacity-45"}`}
-                style={{ backgroundColor: getReplayEventMarkerColor(cluster.moments[0].eventKind) }}
-              />
-              {cluster.moments.length > 1 ? (
+              {shown.map((moment) => (
                 <span
+                  key={moment.id}
                   aria-hidden
-                  className="tabular absolute -right-1.5 top-3.5 rounded-full bg-foreground px-1 text-[9px] font-bold leading-tight text-background"
-                >
-                  {cluster.moments.length}
+                  // The dots fade for laps still ahead, not the whole button:
+                  // faded, the "+n" label fell to 2:1 contrast.
+                  className={`block h-2.5 w-2.5 rounded-full ring-2 ring-panel ${isPast ? "" : "opacity-45"}`}
+                  style={markerStyle(moment.eventKind)}
+                />
+              ))}
+              {hidden > 0 ? (
+                <span aria-hidden className="tabular text-[10px] font-bold leading-none text-muted">
+                  +{hidden}
                 </span>
               ) : null}
             </button>
           );
         })}
 
-        {/* The playhead sits above the markers: it is the thing that moves. */}
+        {/* The playhead crosses the rail: it is the thing that moves. */}
         <div
           aria-hidden
-          className="absolute top-6 h-5 w-0.5 -translate-x-1/2 rounded-full bg-foreground"
+          className="pointer-events-none absolute -bottom-2 h-5 w-0.5 -translate-x-1/2 rounded-full bg-foreground"
           style={{ left: `${Math.max(0, Math.min(100, playhead))}%` }}
         />
       </div>
 
-      <div className="flex justify-between text-eyebrow font-semibold uppercase text-subtle">
-        <span className="tabular">Lap {firstLap}</span>
-        <span className="tabular">Lap {lastLap}</span>
+      <div className="relative mt-3 h-4 text-eyebrow font-semibold uppercase text-subtle">
+        {ticks.map((lap, index) => (
+          <span
+            key={lap}
+            className={`tabular absolute top-0 ${
+              index === 0 ? "" : index === ticks.length - 1 ? "-translate-x-full" : "-translate-x-1/2"
+            }`}
+            style={{ left: `${((lap - firstLap) / Math.max(1, lastLap - firstLap)) * 100}%` }}
+          >
+            {index === 0 ? `Lap ${lap}` : lap}
+          </span>
+        ))}
       </div>
+
+      {key.length > 0 ? (
+        <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted">
+          {key.map((entry) => (
+            <li key={entry.label} className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className="h-2 w-2 rounded-full"
+                style={markerStyle(entry.kinds[0])}
+              />
+              {entry.label}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

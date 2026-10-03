@@ -129,12 +129,15 @@ export function classifyReplayEvent(
  */
 const NEUTRAL = { tone: "tone tone-neutral", color: "var(--muted)" };
 
+// Retirements are a red chip but a grey marker: their race is over. Orange
+// would sit beside the safety car and VSC in the timeline key, and it used to
+// be the double yellow's exact colour.
 const EVENT_STYLE: Record<ReplayEventKind, { tone: string; color: string }> = {
   pit: { tone: "tone tone-pit", color: "var(--flag-pit)" },
-  dnf: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
-  dns: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
-  dnq: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
-  dsq: { tone: "tone tone-red", color: "var(--flag-double-yellow)" },
+  dnf: { tone: "tone tone-red", color: "var(--flag-chequered)" },
+  dns: { tone: "tone tone-red", color: "var(--flag-chequered)" },
+  dnq: { tone: "tone tone-red", color: "var(--flag-chequered)" },
+  dsq: { tone: "tone tone-red", color: "var(--flag-chequered)" },
   yellow: { tone: "tone tone-yellow", color: "var(--flag-yellow)" },
   "double-yellow": { tone: "tone tone-double-yellow", color: "var(--flag-double-yellow)" },
   "red-flag": { tone: "tone tone-red", color: "var(--flag-red)" },
@@ -156,6 +159,15 @@ export function getReplayEventTone(kind: ReplayEventKind) {
 
 export function getReplayEventMarkerColor(kind: ReplayEventKind) {
   return (EVENT_STYLE[kind] ?? NEUTRAL).color;
+}
+
+/**
+ * The VSC marker is drawn as an outline: a lighter safety car, same family.
+ * Its colour alone is a near-identical orange, so the shape carries the
+ * difference — which also holds for a reader who can't tell the two apart.
+ */
+export function isHollowMarker(kind: ReplayEventKind) {
+  return kind === "virtual-safety-car";
 }
 
 export function buildRaceControlByLap(
