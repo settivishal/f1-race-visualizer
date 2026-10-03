@@ -240,7 +240,10 @@ export function RaceStoryTimeline({
             }`}
             style={{ left: `${((lap - firstLap) / Math.max(1, lastLap - firstLap)) * 100}%` }}
           >
-            {index === 0 ? `Lap ${lap}` : lap}
+            {/* A bare number on a phone, as on the chart's axis: "Lap 1" is wide
+                enough there to run into the next tick. */}
+            {index === 0 ? <span className="hidden sm:inline">Lap </span> : null}
+            {lap}
           </span>
         ))}
       </div>
