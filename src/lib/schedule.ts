@@ -11,8 +11,14 @@
  * page, so the smallest unit is the minute and "starting now" covers the hour
  * either side of a green light rather than counting down to zero and stopping.
  */
+/** How long after its start a race still counts as on, for every label here. */
+export const RACE_WINDOW_MINUTES = 180;
+
 export function untilLabel(date: string, now: number): string {
   const minutes = Math.floor((Date.parse(date) - now) / 60_000);
+  // Past the race window and still not imported: saying "Starting now" for
+  // weeks is what a stalled import used to look like on the race list.
+  if (minutes < -RACE_WINDOW_MINUTES) return 'Results pending';
   if (minutes < 1) return 'Starting now';
 
   const days = Math.floor(minutes / 1440);
@@ -50,4 +56,18 @@ export function raceHeaderFact(race: {
     month: 'short',
     timeZone: 'UTC',
   });
+}
+
+/**
+ * The race the reader should see as next: the first whose start is less than
+ * the race window ago, or still ahead. By the clock rather than by `status`,
+ * so it moves on time whether or not the previous race has been imported yet.
+ */
+export function nextByClock<T extends { date: string }>(races: T[], now: number): T | null {
+  const cutoff = now - RACE_WINDOW_MINUTES * 60_000;
+  return (
+    [...races]
+      .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+      .find((race) => Date.parse(race.date) > cutoff) ?? null
+  );
 }

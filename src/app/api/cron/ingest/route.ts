@@ -1,11 +1,9 @@
 import { timingSafeEqual } from 'node:crypto';
 import { revalidateTag } from 'next/cache';
-import { asc, eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { appConfig, racePositions, races } from '@/db/schema';
-import { fetchSessions } from '@/lib/ingest/openf1';
-import { ingestRace } from '@/lib/ingest/run';
-import { isScoredSession } from '@/lib/ingest/transform';
+import { appConfig } from '@/db/schema';
+import { drainPending } from '@/lib/ingest/pending';
 
 /**
  * The scheduled import.
@@ -15,9 +13,10 @@ import { isScoredSession } from '@/lib/ingest/transform';
  * which the admin can edit. So changing when this runs needs no deploy, and the
  * static schedule never becomes the place a decision hides.
  *
- * One race per invocation. That keeps every run well inside the function
- * timeout regardless of how far behind the season is; a backlog drains a race a
- * day, and `scripts/backfill.ts` exists for anything larger.
+ * As many races per invocation as fit in a time budget. It used to be one,
+ * which with a weekly run day meant a three-week outage took months to clear —
+ * and a cancelled round with no laps was "the next race" forever. See
+ * `lib/ingest/pending.ts` for what counts as still to import.
  *
  * Logic is `docs/system-design.md`, "Ingest scheduling".
  *
@@ -32,6 +31,10 @@ import { isScoredSession } from '@/lib/ingest/transform';
  * variable is set, which is exactly what `isAuthorized` expects, so the
  * scheduled call and the manual one authenticate identically.
  */
+// The drain loop stops starting new races at 45s (see drainPending); this is
+// the ceiling the last one finishes under.
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   return handle(request);
 }
@@ -61,31 +64,31 @@ async function handle(request: Request) {
     return skip(`not a run day (${weekdayUtc()}; runs on ${config.runDays.join(', ')})`);
   }
 
-  const sessionKey = await nextSessionToImport(db, config);
-  if (sessionKey === null) {
+  const result = await drainPending(db, config);
+  for (const sessionKey of result.abandoned) {
+    console.log(`[cron/ingest] gave up on session ${sessionKey}: still no laps a week after it ended`);
+  }
+  if (result.imported.length === 0 && result.failed.length === 0) {
     return skip('up to date');
   }
 
-  const result = await ingestRace(sessionKey);
-
-  // Last, and only now. If this ran before the import and the import then
-  // failed, the cache would be dropped and not replaced: the next visitor takes
-  // a miss, re-renders from unchanged data, and the site has lost a page that
-  // was working. A failed ingest must leave things exactly as they were — which
-  // is what the throw above guarantees, since it never reaches this line.
+  // Last, and only if something landed. If this ran before the imports and
+  // they then failed, the cache would be dropped and not replaced: the next
+  // visitor takes a miss, re-renders from unchanged data, and the site has lost
+  // a page that was working.
   //
   // `revalidateTag`, not `updateTag`. updateTag is Server-Action-only, and its
   // semantics are wrong here anyway: it expires the entry so the next request
   // blocks, and nobody is waiting on a 6am cron. 'max' serves the last good
   // page while the new one builds in the background.
-  revalidateTag('race', 'max');
-  revalidateTag('standings', 'max');
+  if (result.imported.length > 0) {
+    revalidateTag('race', 'max');
+    revalidateTag('standings', 'max');
+  }
 
-  return Response.json({
-    ingested: result.slug,
-    rowsWritten: result.rowsWritten,
-    warnings: result.warnings,
-  });
+  // A failure is still a failed cron, so Vercel reports it — but only after
+  // the races that did import are live. Each failure is in ingest_runs.
+  return Response.json(result, { status: result.failed.length > 0 ? 500 : 200 });
 }
 
 function skip(reason: string) {
@@ -130,53 +133,4 @@ const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
  */
 function weekdayUtc(now = new Date()): string {
   return WEEKDAYS[now.getUTCDay()];
-}
-
-/**
- * The next scored session of the active season that is not yet in the database.
- *
- * "Not yet in the database" means: no race row for that session key, **or** a
- * race row with no positions. The second case is a previous import that failed
- * partway or wrote nothing — leaving it out would make one bad import a
- * permanent hole that the cron walks past every day.
- *
- * `hoursAfterRace` is why the check is not simply "the earliest missing one":
- * OpenF1 publishes results progressively, and importing a race the moment it
- * ends produces a partial replay that then looks like a successful run.
- */
-async function nextSessionToImport(
-  db: ReturnType<typeof getDb>,
-  config: typeof appConfig.$inferSelect,
-): Promise<number | null> {
-  const sessions = (await fetchSessions(config.activeSeason))
-    .filter(isScoredSession)
-    .sort((left, right) => left.date_start.localeCompare(right.date_start));
-
-  if (sessions.length === 0) return null;
-
-  const cutoff = Date.now() - config.hoursAfterRace * 60 * 60 * 1000;
-  const settled = sessions.filter((session) => Date.parse(session.date_end) <= cutoff);
-  if (settled.length === 0) return null;
-
-  const keys = settled.map((session) => session.session_key);
-
-  const existing = await db
-    .select({ id: races.id, sessionKey: races.openf1SessionKey })
-    .from(races)
-    .where(inArray(races.openf1SessionKey, keys));
-
-  const complete = new Set<number>();
-  for (const race of existing) {
-    if (race.sessionKey === null) continue;
-    const [row] = await db
-      .select({ id: racePositions.id })
-      .from(racePositions)
-      .where(eq(racePositions.raceId, race.id))
-      .orderBy(asc(racePositions.id))
-      .limit(1);
-    if (row) complete.add(race.sessionKey);
-  }
-
-  const next = settled.find((session) => !complete.has(session.session_key));
-  return next?.session_key ?? null;
 }

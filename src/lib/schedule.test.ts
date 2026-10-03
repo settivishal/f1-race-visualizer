@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { raceHeaderFact, untilLabel } from '@/lib/schedule';
+import { nextByClock, raceHeaderFact, untilLabel } from '@/lib/schedule';
 
 const at = (minutesFromNow: number) => new Date(NOW + minutesFromNow * 60_000).toISOString();
 const NOW = Date.parse('2026-03-01T12:00:00Z');
@@ -40,5 +40,31 @@ describe('raceHeaderFact', () => {
 
   it('says a cancelled race was cancelled', () => {
     expect(raceHeaderFact({ status: 'CANCELLED', date, laps: 0 })).toBe('Cancelled');
+  });
+});
+
+describe('untilLabel after the race window', () => {
+  it('says results are pending rather than "Starting now" for weeks', () => {
+    expect(untilLabel(at(-181), NOW)).toBe('Results pending');
+    expect(untilLabel(at(-19 * 1440), NOW)).toBe('Results pending');
+  });
+});
+
+describe('nextByClock', () => {
+  const madring = { slug: 'madring', date: at(-19 * 1440) };
+  const baku = { slug: 'baku', date: at(-6 * 1440) };
+  const sepang = { slug: 'sepang', date: at(2 * 1440) };
+
+  it('skips races that have run, imported or not', () => {
+    expect(nextByClock([sepang, madring, baku], NOW)?.slug).toBe('sepang');
+  });
+
+  it('keeps a race that is on right now', () => {
+    const live = { slug: 'live', date: at(-60) };
+    expect(nextByClock([sepang, live], NOW)?.slug).toBe('live');
+  });
+
+  it('is null once the season is over', () => {
+    expect(nextByClock([madring, baku], NOW)).toBeNull();
   });
 });

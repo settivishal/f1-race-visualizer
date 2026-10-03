@@ -1,7 +1,5 @@
-import { desc, eq } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { appConfig, ingestRuns, meetings, races } from '@/db/schema';
-import { checkHealth } from '@/lib/health';
+import { readHealth } from '@/lib/health';
 import { clientKey, consume } from '@/lib/rate-limit';
 
 /**
@@ -33,42 +31,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'Too many requests' }, { status: 429 });
   }
 
-  const db = getDb();
-
-  const [config] = await db
-    .select({ activeSeason: appConfig.activeSeason })
-    .from(appConfig)
-    .where(eq(appConfig.id, 1))
-    .limit(1);
-
-  // No config row is the state of a fresh database, which the cron treats as
-  // "not configured" and skips. Saying so is more useful than guessing a year.
-  if (!config) {
-    return Response.json(
-      { ok: false, problems: ['no app_config row: the active season is not set'] },
-      { status: 503 },
-    );
-  }
-
-  const [season, lastRun] = await Promise.all([
-    db
-      .select({ slug: races.slug, date: races.date, status: races.status })
-      .from(races)
-      .innerJoin(meetings, eq(meetings.id, races.meetingId))
-      .where(eq(meetings.seasonYear, config.activeSeason)),
-    db
-      .select({ status: ingestRuns.status, startedAt: ingestRuns.startedAt })
-      .from(ingestRuns)
-      .orderBy(desc(ingestRuns.startedAt))
-      .limit(1),
-  ]);
-
-  const report = checkHealth({
-    activeSeason: config.activeSeason,
-    races: season,
-    lastRun: lastRun[0] ?? null,
-    now: new Date(),
-  });
+  const report = await readHealth(getDb());
 
   // 503 rather than 200-with-a-flag: a monitor should not have to parse a body
   // to know something is wrong, and every uptime checker understands a status.

@@ -41,7 +41,7 @@ export default function SettingsPage() {
 
 async function SettingsForm() {
   const config = await getAppConfig();
-  const runDays: string[] = config?.runDays ?? ['mon'];
+  const runDays: string[] = config?.runDays ?? ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   return (
     <>

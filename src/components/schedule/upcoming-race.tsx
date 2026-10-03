@@ -1,7 +1,8 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { untilLabel } from '@/lib/schedule';
+import { Badge } from '@/components/ui/badge';
+import { nextByClock, untilLabel } from '@/lib/schedule';
 
 /**
  * A race that has not been run yet.
@@ -66,6 +67,31 @@ export function RaceStartTime({ date }: { date: string }) {
       <span className="text-subtle"> · {untilLabel(date, now)}</span>
     </span>
   );
+}
+
+/**
+ * The "Upcoming" badge on the race list, placed by the reader's clock.
+ *
+ * The server's `nextRace` follows `status`, which only an import changes — so
+ * while an import lags, the badge sat on a race weeks gone. The server's pick
+ * is still what renders first (no clock yet, and hydration must match); the
+ * clock takes over the moment it arrives.
+ *
+ * ponytail: picks among the races on screen, so a search that hides the true
+ * next race badges a later one. Pass the full season list if that matters.
+ */
+export function UpcomingBadge({
+  slug,
+  serverNext,
+  scheduled,
+}: {
+  slug: string;
+  serverNext: string | null;
+  scheduled: { slug: string; date: string }[];
+}) {
+  const now = useNow();
+  const next = now === 0 ? serverNext : (nextByClock(scheduled, now)?.slug ?? null);
+  return next === slug ? <Badge tone="accent">Upcoming</Badge> : null;
 }
 
 /**
