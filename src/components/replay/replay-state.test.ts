@@ -8,6 +8,7 @@ import {
   easeLapProgress,
   getReplayEventMarkerColor,
   getReplayEventTone,
+  isHollowMarker,
 } from './replay-state';
 import type { ReplayEntry, ReplayEvent, ReplayPosition } from './types';
 
@@ -90,15 +91,20 @@ describe('event styling', () => {
   });
 
   it('keeps the pairings that are not symmetrical', () => {
-    // A retirement is a red chip but a double-yellow marker, and an overtake
+    // A retirement is a red chip but a grey marker, and an overtake
     // has a colour with no chip of its own. Both were easy to lose when these
     // were two switches; they are the reason the table is worth reading.
     expect(getReplayEventTone('dnf')).toBe('tone tone-red');
-    expect(getReplayEventMarkerColor('dnf')).toBe('var(--flag-double-yellow)');
+    expect(getReplayEventMarkerColor('dnf')).toBe('var(--flag-chequered)');
     expect(getReplayEventTone('red-flag')).toBe('tone tone-red');
     expect(getReplayEventMarkerColor('red-flag')).toBe('var(--flag-red)');
     expect(getReplayEventTone('overtake')).toBe('tone tone-neutral');
     expect(getReplayEventMarkerColor('overtake')).toBe('var(--accent)');
+  });
+
+  it('draws the VSC as an outline so it is not a second safety car', () => {
+    expect(isHollowMarker('virtual-safety-car')).toBe(true);
+    expect(isHollowMarker('safety-car')).toBe(false);
   });
 });
 

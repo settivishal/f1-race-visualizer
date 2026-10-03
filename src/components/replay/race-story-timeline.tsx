@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getReplayEventMarkerColor, type ReplayEventKind } from "./replay-state";
+import { getReplayEventMarkerColor, isHollowMarker, type ReplayEventKind } from "./replay-state";
 import type { StoryMoment } from "./story-moments";
 
 /**
@@ -28,6 +28,14 @@ import type { StoryMoment } from "./story-moments";
  * so the window is one too, and the rail measures itself to convert.
  */
 const COLLISION_PX = 22;
+
+/** A dot's fill, or for a hollow marker its outline over the panel. */
+function markerStyle(kind: ReplayEventKind) {
+  const color = getReplayEventMarkerColor(kind);
+  return isHollowMarker(kind)
+    ? { border: `2px solid ${color}`, backgroundColor: "var(--panel)" }
+    : { backgroundColor: color };
+}
 
 type Cluster = {
   /** Percent along the axis. */
@@ -203,7 +211,7 @@ export function RaceStoryTimeline({
                   // The dots fade for laps still ahead, not the whole button:
                   // faded, the "+n" label fell to 2:1 contrast.
                   className={`block h-2.5 w-2.5 rounded-full ring-2 ring-panel ${isPast ? "" : "opacity-45"}`}
-                  style={{ backgroundColor: getReplayEventMarkerColor(moment.eventKind) }}
+                  style={markerStyle(moment.eventKind)}
                 />
               ))}
               {hidden > 0 ? (
@@ -244,7 +252,7 @@ export function RaceStoryTimeline({
               <span
                 aria-hidden
                 className="h-2 w-2 rounded-full"
-                style={{ backgroundColor: getReplayEventMarkerColor(entry.kinds[0]) }}
+                style={markerStyle(entry.kinds[0])}
               />
               {entry.label}
             </li>
