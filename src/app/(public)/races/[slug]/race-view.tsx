@@ -9,6 +9,7 @@ import { sessionTitle } from '@/lib/session-title';
 import { Tabs } from '@/components/ui/tabs';
 import { UpcomingRace } from '@/components/schedule/upcoming-race';
 import { CircuitInfoPanel } from '@/components/replay/circuit-info-panel';
+import { raceHeaderFact } from '@/lib/schedule';
 import { ReplayAtLap } from '@/components/replay/replay-at-lap';
 import { toReplayView } from '@/components/replay/types';
 import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
@@ -131,7 +132,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
           description={
             <>
               {meeting?.circuitName ?? meeting?.country ?? '—'} ·{' '}
-              <span className="tabular">{race.laps}</span> laps
+              <span className="tabular">{raceHeaderFact(race)}</span>
             </>
           }
           // The weekend, as two sessions you can switch between: this one, and

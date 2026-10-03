@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clusterMoments } from './race-story-timeline';
+import { clusterMoments, timelineTicks } from './race-story-timeline';
 import {
   activeMomentAt, buildStoryMoments, describeMoment, significanceOf, type StoryMoment,
 } from './story-moments';
@@ -244,5 +244,21 @@ describe('clusterMoments', () => {
 
   it('does not divide by zero on a race with one lap', () => {
     expect(clusterMoments([at(1, 'a')], 1, 1, DESKTOP)[0].offset).toBe(0);
+  });
+});
+
+describe('timelineTicks', () => {
+  it('labels every 10 laps, and the last lap without crowding it', () => {
+    // 50 is three laps from 53: under half a step, so it would collide.
+    expect(timelineTicks(1, 53)).toEqual([1, 10, 20, 30, 40, 53]);
+    expect(timelineTicks(1, 58)).toEqual([1, 10, 20, 30, 40, 50, 58]);
+  });
+
+  it('labels every 5 laps in a sprint', () => {
+    expect(timelineTicks(1, 19)).toEqual([1, 5, 10, 15, 19]);
+  });
+
+  it('does not repeat a one-lap race', () => {
+    expect(timelineTicks(1, 1)).toEqual([1]);
   });
 });

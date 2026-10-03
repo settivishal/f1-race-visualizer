@@ -45,8 +45,10 @@ export function CircuitInfoPanel({
     facts.push({ label: "Length", value: `${circuit.lengthKm.toFixed(3)} km` });
   }
   if (circuit?.turns != null) facts.push({ label: "Turns", value: String(circuit.turns) });
-  facts.push({ label: "Laps", value: String(laps) });
-  if (circuit?.lengthKm != null) {
+  // `laps` is 0 until a race has run. A "0" and a "0.0 km" race distance are
+  // not facts about the race, so a race still to come shows neither.
+  if (laps > 0) facts.push({ label: "Laps", value: String(laps) });
+  if (circuit?.lengthKm != null && laps > 0) {
     facts.push({
       label: "Race distance",
       value: `${(circuit.lengthKm * laps).toFixed(1)} km`,
@@ -74,18 +76,22 @@ export function CircuitInfoPanel({
         ) : null}
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
-        {facts.map((fact) => (
-          <div key={fact.label}>
-            <dt className="text-[11px] uppercase tracking-wider text-muted">{fact.label}</dt>
-            <dd className="font-heading mt-1 text-xl tracking-wide">{fact.value}</dd>
-          </div>
-        ))}
-      </dl>
+      {facts.length > 0 ? (
+        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
+          {facts.map((fact) => (
+            <div key={fact.label}>
+              <dt className="text-[11px] uppercase tracking-wider text-muted">{fact.label}</dt>
+              <dd className="font-heading mt-1 text-xl tracking-wide">{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
 
-      {circuit === null ? (
+      {/* Only on a race that has run, where the missing figures are a gap in
+          what we hold. Before the race there is nothing more to say. */}
+      {circuit === null && laps > 0 ? (
         <p className="mt-5 text-sm text-muted">
-          This meeting has not been matched to a circuit yet, so only the lap count is known.
+          Track length and turns aren&rsquo;t on record for this circuit yet.
         </p>
       ) : null}
     </Card>
