@@ -12,6 +12,7 @@ import {
   easeLapProgress,
   getDriverPointForLap,
   getReplayEventMarkerColor,
+  isHollowMarker,
   ReplayRaceControl,
   withFocusLast,
 } from "./replay-state";
@@ -681,7 +682,9 @@ export function RaceVisualizationCanvas({
                       stroke={color}
                       strokeWidth="2"
                     />
-                    <circle cx={cx} cy={margin.top - layout.eventRowGap} r="2" fill={color} />
+                    {isHollowMarker(kind) ? null : (
+                      <circle cx={cx} cy={margin.top - layout.eventRowGap} r="2" fill={color} />
+                    )}
                 </g>
               );
             })}
