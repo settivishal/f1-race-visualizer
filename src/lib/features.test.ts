@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FORM_WINDOW, MODEL_COLUMNS, assertQualifyingComplete, buildFeatureRows, lineageOf,
+  FORM_WINDOW, MODEL_COLUMNS, buildFeatureRows, lineageOf, missingFromQualifying,
   normalisedFinish, toCsv, type Entry, type RaceInput,
 } from './features';
 
@@ -126,11 +126,15 @@ describe('model columns', () => {
   });
 });
 
-describe('assertQualifyingComplete', () => {
-  it('refuses no qualifying, and less of it than the last field', () => {
-    expect(() => assertQualifyingComplete('2026-x', 0, 22)).toThrow(/retry later/);
-    expect(() => assertQualifyingComplete('2026-x', 20, 22)).toThrow(/20 qualifying rows/);
-    expect(() => assertQualifyingComplete('2026-x', 22, 22)).not.toThrow();
+describe('missingFromQualifying', () => {
+  it('fails only when there is no qualifying at all', () => {
+    expect(() => missingFromQualifying('2026-x', [], ['VER', 'NOR'])).toThrow(/retry later/);
+  });
+
+  it('names who is missing from a short list instead of failing', () => {
+    // 2026 R1 had 19 of 22: drivers without a time are not listed.
+    expect(missingFromQualifying('2026-x', ['VER', 'NOR'], ['VER', 'NOR', 'STR'])).toEqual(['STR']);
+    expect(missingFromQualifying('2026-x', ['VER', 'NOR'], ['VER', 'NOR'])).toEqual([]);
   });
 });
 

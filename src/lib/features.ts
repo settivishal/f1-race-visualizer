@@ -172,17 +172,21 @@ export function buildFeatureRows(races: RaceInput[]): FeatureRow[] {
 }
 
 /**
- * The Saturday run's guard: no qualifying, or less of it than the last race's
- * field, means Ergast has not caught up yet. Fail and retry later rather than
- * predict from a partial entry list.
+ * The Saturday run's guard. No qualifying at all means Ergast has not caught up:
+ * fail, and the run is retried later. A short list is normal: a driver who sets
+ * no time is not listed, and waiting would never fill the gap. So the race is
+ * predicted for the drivers who are listed, and the rest are returned for the
+ * script to name in a warning.
  */
-export function assertQualifyingComplete(slug: string, qualiRows: number, lastFieldSize: number) {
-  if (qualiRows === 0 || qualiRows < lastFieldSize) {
-    throw new Error(
-      `${slug}: ${qualiRows} qualifying rows against a last field of ${lastFieldSize}. ` +
-        'Ergast has not published it in full yet; retry later.',
-    );
+export function missingFromQualifying(
+  slug: string,
+  qualifiedCodes: string[],
+  lastFieldCodes: string[],
+): string[] {
+  if (qualifiedCodes.length === 0) {
+    throw new Error(`${slug}: no qualifying from Ergast yet; retry later.`);
   }
+  return lastFieldCodes.filter((code) => !qualifiedCodes.includes(code));
 }
 
 /** Empty for null and NaN, so pandas reads both as missing. 1/0 for booleans. */
