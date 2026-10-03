@@ -26,13 +26,17 @@ import { getHeadToHead, getRaceHeader } from '@/lib/queries';
  */
 export async function HeadToHeadSection({
   slug,
-  driverA,
-  driverB,
+  searchParams,
 }: {
   slug: string;
-  driverA: string | null;
-  driverB: string | null;
+  searchParams: Promise<{ a?: string | string[]; b?: string | string[] }>;
 }) {
+  const { a, b } = await searchParams;
+  // A repeated key arrives as an array; nothing the form submits does that, so
+  // it is treated as no choice rather than guessed at.
+  const driverA = typeof a === 'string' ? a : null;
+  const driverB = typeof b === 'string' ? b : null;
+
   // The driver list comes from the header, which the page has already fetched
   // and cached — asking the head-to-head query for it first would mean two
   // round trips to learn who is even in the race.
@@ -69,10 +73,7 @@ export async function HeadToHeadSection({
           having lost sight of the thing they just changed. This navigates on
           the client and `scroll={false}` leaves the page where it was. Still a
           GET to the same URL, so it degrades to the native form without JS. */}
-      <Form action={`/races/${slug}`} scroll={false} className="flex flex-wrap items-end gap-3">
-        {/* The tab lives in the query string too, so choosing a driver must not
-            navigate away from the Analysis view. */}
-        <input type="hidden" name="view" value="analysis" />
+      <Form action={`/races/${slug}/analysis`} scroll={false} className="flex flex-wrap items-end gap-3">
         <Picker label="Driver" name="a" value={codeA} drivers={classified} />
         <Picker label="Against" name="b" value={codeB} drivers={classified} />
         <Button type="submit" variant="secondary">

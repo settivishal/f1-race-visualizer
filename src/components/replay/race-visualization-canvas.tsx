@@ -12,6 +12,7 @@ import {
   easeLapProgress,
   getDriverPointForLap,
   getReplayEventMarkerColor,
+  isHollowMarker,
   ReplayRaceControl,
   withFocusLast,
 } from "./replay-state";
@@ -70,10 +71,10 @@ export function layoutFor({ width, height }: ChartSize): ChartLayout {
           // The driver badges ride the playhead rather than sitting at the
           // right edge, so this only has to clear the last lap label.
           right: 56,
-          // The last row sits exactly on top + innerHeight, so its label needs
-          // room below the plot or it is clipped by the container — P18 was
-          // rendering as a half-height label on an eighteen-car race.
-          bottom: 96,
+          // Room for the lap labels (`lapLabelGap`) and no more. This was 96
+          // to stop P18 clipping, but the clipping came from a frame too short
+          // for its rows, which `minFrameHeight` now prevents.
+          bottom: 48,
           // "P18" is four characters. 176 spent a sixth of the width on it.
           left: 96,
         },
@@ -83,6 +84,22 @@ export function layoutFor({ width, height }: ChartSize): ChartLayout {
     playheadGap: compact ? 14 : 32,
     compact,
   };
+}
+
+/** The least room one position row gets on a desktop before labels collide. */
+const MIN_ROW_HEIGHT = 20;
+
+/**
+ * The shortest desktop frame that still gives every row `MIN_ROW_HEIGHT`.
+ *
+ * Derived from the field rather than a fixed height: the chart is P1 to Pn,
+ * so a 22-car grid needs more height than an 18-car one. Without it the frame
+ * took whatever the card had left after its header, and 22 rows shared about
+ * 220px — badges and P labels overlapped on lap 1.
+ */
+export function minFrameHeight(maxPosition: number): number {
+  const { margin } = layoutFor(FALLBACK_SIZE);
+  return margin.top + margin.bottom + MIN_ROW_HEIGHT * Math.max(1, maxPosition - 1);
 }
 
 /**
@@ -140,7 +157,13 @@ export function lapWindowFor(containerWidth: number, currentLap: number, maxLap:
 
   // One viewBox unit is one pixel now, so the plot's width on screen is the
   // container less its own margins — no scale factor in between.
-  const { margin } = layoutFor({ width: containerWidth, height: FALLBACK_SIZE.height });
+  const { margin, compact } = layoutFor({ width: containerWidth, height: FALLBACK_SIZE.height });
+
+  // A desktop always shows the whole race. Windowing is for a phone, where a
+  // finger needs the spacing; on a desktop chart beside the timing tower the
+  // plot is often under 900px, and a 53-lap race was showing laps 1-35 with
+  // the rest scrolling in as it played.
+  if (!compact) return { from: 1, to: Math.max(2, maxLap) };
   const usable = containerWidth - margin.left - margin.right;
   const fits = Math.max(6, Math.floor(usable / MIN_LAP_SPACING));
 
@@ -183,7 +206,12 @@ function getVisibleLapTicks(laps: number[], maxTicks: number) {
   }
 
   const step = Math.ceil(laps.length / maxTicks);
-  return laps.filter((_, index) => index === 0 || index === laps.length - 1 || index % step === 0);
+  const last = laps.length - 1;
+  // The last lap is always labelled, so a regular tick less than half a step
+  // before it would print on top of it ("Lap 50" under "Lap 53").
+  return laps.filter(
+    (_, index) => index === 0 || index === last || (index % step === 0 && last - index >= step / 2),
+  );
 }
 
 function isRetirementKind(event: ReplayEvent) {
@@ -394,8 +422,7 @@ export function RaceVisualizationCanvas({
           {/* min-w-0 so a long race name wraps instead of pushing the controls
               off; the chips used to live in here and inherited the squeeze. */}
           <div className="min-w-0 max-w-xl flex-1">
-            <p className="text-eyebrow font-bold uppercase text-on-track-accent">Visualization Engine</p>
-            <h3 className="font-heading mt-2 break-words text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
+            <h3 className="font-heading break-words text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
               {race.season} R{race.round} • {race.name}
             </h3>
           </div>
@@ -476,7 +503,11 @@ export function RaceVisualizationCanvas({
           chart's shape: 390x520 puts 22 rows 21.9px apart, which is the same row
           density a 1100x640 desktop chart has. The phone shows fewer laps, not
           thinner lines — the trade already made for the lap window in #81. */}
-      <div ref={frame} className="mt-4 min-h-[32rem] flex-1 sm:min-h-0">
+      <div
+        ref={frame}
+        className="mt-4 min-h-[32rem] flex-1 sm:min-h-[var(--frame-min)]"
+        style={{ "--frame-min": `${minFrameHeight(summary.maxPosition)}px` } as React.CSSProperties}
+      >
         <div className="h-full">
           <svg
             viewBox={`0 0 ${layout.width} ${layout.height}`}
@@ -651,7 +682,9 @@ export function RaceVisualizationCanvas({
                       stroke={color}
                       strokeWidth="2"
                     />
-                    <circle cx={cx} cy={margin.top - layout.eventRowGap} r="2" fill={color} />
+                    {isHollowMarker(kind) ? null : (
+                      <circle cx={cx} cy={margin.top - layout.eventRowGap} r="2" fill={color} />
+                    )}
                 </g>
               );
             })}
@@ -690,14 +723,7 @@ export function RaceVisualizationCanvas({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 border-t border-white/10 px-4 pt-5 text-eyebrow font-bold uppercase text-white/45 lg:grid-cols-[1fr_auto] lg:items-center">
-        {/* Decorative, and uppercase with wide tracking, so on a phone it wraps
-            to four lines and takes more height than the axis it sits under. The
-            lap counter beside it is not decorative and stays at every width. */}
-        <p className="hidden sm:block">
-          The replay controller drives car positions, lap progress, and event markers from the same
-          synchronized race state.
-        </p>
+      <div className="mt-5 flex justify-end border-t border-white/10 px-4 pt-5 text-eyebrow font-bold uppercase">
         {/* The race-control label lives in the story strip directly below;
             printing it here as well said the same thing twice on one screen. */}
         {/* on-track-accent, not accent: this panel is a fixed dark surface in

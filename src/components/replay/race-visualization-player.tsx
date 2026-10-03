@@ -252,8 +252,10 @@ export function RaceVisualizationPlayer({
             <div className="flex min-w-0 flex-col">
               <RaceVisualizationCanvas
                 // Shorter on a phone: at 600px the chart is the whole viewport
-                // and you pan a window you cannot see around.
-                className="sm:min-h-[600px] sm:max-h-[800px] flex-1"
+                // and you pan a window you cannot see around. No max height on
+                // a desktop: the frame inside sets its own minimum from the
+                // number of cars, and a cap would crop it.
+                className="sm:min-h-[600px] flex-1"
                 visualization={visualization}
                 currentLap={currentLap}
                 nextLap={nextLap}

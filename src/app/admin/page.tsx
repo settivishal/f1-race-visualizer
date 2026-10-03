@@ -11,7 +11,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { executeAsAdmin } from '@/graphql/execute';
 import type { AdminRacesQuery } from '@/graphql/generated/graphql';
 import { ActionForm } from '@/components/admin/action-form';
-import { setFeaturedAction, triggerIngestAction } from './actions';
+import { getDb } from '@/db';
+import { readHealth } from '@/lib/health';
+import { catchUpAction, setFeaturedAction, triggerIngestAction } from './actions';
 
 export const metadata = {
   title: 'Races — Admin',
@@ -37,10 +39,52 @@ export default function AdminRacesPage({ searchParams }: { searchParams: SearchP
         title="Races"
         description="Re-run an import, choose the featured race, or correct an imported name."
       />
+      <Suspense fallback={<Skeleton className="mt-8 h-24 w-full" />}>
+        <IngestStatus />
+      </Suspense>
       <Suspense fallback={<ListSkeleton />}>
         <RaceList searchParams={searchParams} />
       </Suspense>
     </PageContainer>
+  );
+}
+
+/**
+ * Whether the import is keeping up — the same report `/api/health` serves, so
+ * the admin sees what the daily health email would say without waiting for it.
+ * The button is the manual catch-up for when it is not.
+ */
+async function IngestStatus() {
+  const report = await readHealth(getDb());
+  const lastRun = report.lastRun
+    ? `Last import ${new Date(report.lastRun.startedAt).toUTCString()} (${report.lastRun.status.toLowerCase()}).`
+    : 'No import has run yet.';
+
+  return (
+    <Card className="mt-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="type-card-title">Import status</h2>
+            {report.ok ? <Badge>Up to date</Badge> : <Badge tone="accent">Behind</Badge>}
+          </div>
+          <p className="mt-1 text-sm text-muted">{lastRun}</p>
+          {report.overdue.length > 0 ? (
+            <p className="mt-1 text-sm text-muted">Overdue: {report.overdue.join(', ')}</p>
+          ) : null}
+          {report.problems
+            .filter((problem) => !problem.includes('still not imported'))
+            .map((problem) => (
+              <p key={problem} className="mt-1 text-sm text-muted">{problem}</p>
+            ))}
+        </div>
+        <ActionForm action={catchUpAction}>
+          <Button type="submit" variant={report.ok ? 'secondary' : 'primary'}>
+            Import overdue races
+          </Button>
+        </ActionForm>
+      </div>
+    </Card>
   );
 }
 

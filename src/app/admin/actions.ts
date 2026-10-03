@@ -6,6 +6,7 @@ import { auth } from '@/auth';
 import { getDb } from '@/db';
 import { appConfig } from '@/db/schema';
 import { executeAsAdmin } from '@/graphql/execute';
+import { drainPending } from '@/lib/ingest/pending';
 import type {
   SetRaceFeaturedMutation,
   TriggerIngestMutation,
@@ -167,6 +168,39 @@ export async function triggerIngestAction(
   const { slug, rowsWritten, warnings } = result.triggerIngest;
   const warningNote = warnings.length > 0 ? ` ${warnings.length} warning(s) — see runs.` : '';
   return { ok: true, message: `Imported ${slug}: ${rowsWritten} rows.${warningNote}` };
+}
+
+/**
+ * "Import overdue races": the cron's own catch-up, on demand.
+ *
+ * The same `drainPending` the 06:00 run uses, so it imports exactly what the
+ * cron would have — no session key to look up, and nothing it skips (cancelled
+ * rounds, races with no laps a week on) that the cron would not also skip.
+ * Bounded by the same time budget; a backlog bigger than one press clears on
+ * the next press.
+ */
+export async function catchUpAction(): Promise<ActionResult> {
+  await requireAdmin();
+
+  const db = getDb();
+  const [config] = await db.select().from(appConfig).where(eq(appConfig.id, 1)).limit(1);
+  if (!config) return { ok: false, message: 'No active season is set — see Settings.' };
+
+  const { imported, failed, abandoned, remaining } = await drainPending(db, config);
+
+  if (imported.length > 0) invalidateRaces();
+
+  const parts = [
+    imported.length > 0
+      ? `Imported ${imported.map((race) => race.slug).join(', ')}.`
+      : 'Nothing to import.',
+    failed.length > 0 ? `${failed.length} failed — see runs.` : '',
+    remaining > 0 ? `${remaining} still to go: press again.` : '',
+    abandoned.length > 0
+      ? `${abandoned.length} session(s) still have no laps a week on; mark them cancelled if they were.`
+      : '',
+  ];
+  return { ok: failed.length === 0, message: parts.filter(Boolean).join(' ') };
 }
 
 /**

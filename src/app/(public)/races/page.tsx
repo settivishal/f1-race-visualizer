@@ -1,7 +1,7 @@
 import { Suspense, ViewTransition } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { RaceStartTime } from '@/components/schedule/upcoming-race';
+import { RaceStartTime, UpcomingBadge } from '@/components/schedule/upcoming-race';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -79,6 +79,11 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
     after,
     before,
   );
+
+  // Grands prix only: a sprint is part of its weekend's card, not a card.
+  const scheduled = races.edges
+    .filter(({ node }) => node.status === 'SCHEDULED')
+    .map(({ node }) => ({ slug: node.slug, date: node.date }));
 
   // Carried on every link so a filter survives paging and vice versa.
   const context = {
@@ -199,7 +204,13 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                       {/* Only the next one. Every scheduled race carrying this
                           badge made it mean "not yet run", which the date below
                           already says. */}
-                      {node.slug === nextRace?.slug ? <Badge tone="accent">Upcoming</Badge> : null}
+                      {node.status === 'SCHEDULED' ? (
+                        <UpcomingBadge
+                          slug={node.slug}
+                          serverNext={nextRace?.slug ?? null}
+                          scheduled={scheduled}
+                        />
+                      ) : null}
                       {node.status === 'CANCELLED' ? <Badge>Cancelled</Badge> : null}
                     </div>
                     {/* The same name on the race page's <h1>, so the title is

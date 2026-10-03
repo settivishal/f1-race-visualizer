@@ -98,8 +98,10 @@ export function RaceStoryPanel({
 
 
         {/* Scrolls rather than wraps: five filters wrapping to three rows on a
-            phone took more height than the thing they filter. */}
-        <div className="-mx-4 flex w-[calc(100%+2rem)] gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0">
+            phone took more height than the thing they filter. The right edge
+            fades so the cut-off pill reads as "more this way"; the end padding
+            matches the fade, so the last pill comes clear of it when reached. */}
+        <div className="-mx-4 flex w-[calc(100%+2rem)] gap-1.5 overflow-x-auto pb-1 pl-4 pr-10 mask-r-from-[calc(100%-2.5rem)] sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0 sm:mask-none">
           {FILTERS.map((option) => (
             <button
               key={option.id}
