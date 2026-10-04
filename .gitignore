@@ -47,3 +47,7 @@ next-env.d.ts
 !.env.example
 playwright-report/
 test-results/
+
+# win prediction: features and model output are generated, never committed
+ml/data/
+ml/out/
