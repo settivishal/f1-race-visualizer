@@ -337,3 +337,28 @@ describe('race status', () => {
     expect(await status()).toBe('CANCELLED');
   });
 });
+
+describe('one team, many names', () => {
+  const withTeam = (race: TransformedRace, teamName: string, ergastConstructorId: string) => ({
+    ...race,
+    lineup: [{ ...race.lineup[0], teamName, ergastConstructorId }],
+  });
+
+  it('keeps a rebrand on the team it already is', async () => {
+    await writeRace(withTeam(fromOpenF1, 'RB', 'rb'), db);
+    await writeRace(withTeam(fromOpenF1, 'Racing Bulls', 'rb'), db);
+
+    const rows = await db.select().from(dbSchema.teams);
+    expect(rows.map((team) => team.name)).toEqual(['RB']);
+  });
+
+  it('meets the archive\'s name for a team on the same row', async () => {
+    await writeRace(withTeam(fromOpenF1, 'Red Bull Racing', 'red_bull'), db);
+    // Before the id lookup this was a second "Red Bull" row, rejected by the
+    // unique constraint on ergast_constructor_id, which failed the import.
+    await writeRace(withTeam(fromErgast, 'Red Bull', 'red_bull'), db);
+
+    const rows = await db.select().from(dbSchema.teams);
+    expect(rows.map((team) => team.name)).toEqual(['Red Bull Racing']);
+  });
+});

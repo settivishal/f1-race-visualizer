@@ -1,4 +1,4 @@
-import { eq, sql, type AnyColumn } from 'drizzle-orm';
+import { eq, inArray, sql, type AnyColumn } from 'drizzle-orm';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import { getDb, schema } from '@/db';
 import {
@@ -305,6 +305,19 @@ export async function writeRace(
     // it, and it is why the transform could stay pure.
     const assignmentByNumber = new Map<number, string>();
 
+    // A team is found by its Ergast id first and by name only without one. The
+    // two upstreams name teams differently ("Red Bull Racing", "Red Bull"), and
+    // a rebrand changes the name but not the id, so a name match alone would
+    // create a second team, or break the id's unique constraint.
+    const ids = race.lineup.flatMap((entry) => entry.ergastConstructorId ?? []);
+    const storedNameById = new Map(
+      ids.length === 0 ? [] : (await tx
+        .select({ id: teams.ergastConstructorId, name: teams.name })
+        .from(teams)
+        .where(inArray(teams.ergastConstructorId, ids)))
+        .map((row) => [row.id, row.name]),
+    );
+
     for (const entry of race.lineup) {
       /**
        * Colours and identity keys are coalesced rather than assigned.
@@ -317,7 +330,7 @@ export async function writeRace(
        */
       const [teamRow] = await tx.insert(teams)
         .values({
-          name: entry.teamName,
+          name: storedNameById.get(entry.ergastConstructorId ?? null) ?? entry.teamName,
           color: entry.teamColor,
           ergastConstructorId: entry.ergastConstructorId ?? null,
         })
