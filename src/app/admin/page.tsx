@@ -13,7 +13,7 @@ import type { AdminRacesQuery } from '@/graphql/generated/graphql';
 import { ActionForm } from '@/components/admin/action-form';
 import { getDb } from '@/db';
 import { readHealth } from '@/lib/health';
-import { catchUpAction, setFeaturedAction, triggerIngestAction } from './actions';
+import { catchUpAction, refreshRacesAction, setFeaturedAction, triggerIngestAction } from './actions';
 
 export const metadata = {
   title: 'Races — Admin',
@@ -78,11 +78,16 @@ async function IngestStatus() {
               <p key={problem} className="mt-1 text-sm text-muted">{problem}</p>
             ))}
         </div>
-        <ActionForm action={catchUpAction}>
-          <Button type="submit" variant={report.ok ? 'secondary' : 'primary'}>
-            Import overdue races
-          </Button>
-        </ActionForm>
+        <div className="flex flex-wrap gap-2">
+          <ActionForm action={refreshRacesAction}>
+            <Button type="submit" variant="secondary">Refresh race pages</Button>
+          </ActionForm>
+          <ActionForm action={catchUpAction}>
+            <Button type="submit" variant={report.ok ? 'secondary' : 'primary'}>
+              Import overdue races
+            </Button>
+          </ActionForm>
+        </div>
       </div>
     </Card>
   );

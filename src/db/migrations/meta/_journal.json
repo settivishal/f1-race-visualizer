@@ -50,6 +50,13 @@
       "when": 1788884412894,
       "tag": "0006_normalise_driver_names",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791127980610,
+      "tag": "0007_race_predictions",
+      "breakpoints": true
     }
   ]
 }

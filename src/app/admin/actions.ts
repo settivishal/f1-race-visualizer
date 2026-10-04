@@ -171,6 +171,18 @@ export async function triggerIngestAction(
 }
 
 /**
+ * "Refresh race pages": drops the cached race and standings pages, for a write
+ * the admin did not make here. Chiefly scripts/import-predictions.ts, whose
+ * own call to /api/revalidate serves the old page once more; this makes the
+ * next visitor wait for the new one instead.
+ */
+export async function refreshRacesAction(): Promise<ActionResult> {
+  await requireAdmin();
+  invalidateRaces();
+  return { ok: true, message: 'Race and standings pages rebuild on their next visit.' };
+}
+
+/**
  * "Import overdue races": the cron's own catch-up, on demand.
  *
  * The same `drainPending` the 06:00 run uses, so it imports exactly what the

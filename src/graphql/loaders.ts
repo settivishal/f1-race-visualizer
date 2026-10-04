@@ -4,6 +4,7 @@ import {
   driverTeamAssignments,
   drivers,
   meetings,
+  racePredictions,
   raceResults,
   races,
   teamSeasons,
@@ -16,6 +17,7 @@ type AssignmentRow = typeof driverTeamAssignments.$inferSelect;
 type TeamSeasonRow = typeof teamSeasons.$inferSelect;
 type MeetingRow = typeof meetings.$inferSelect;
 type RaceRow = typeof races.$inferSelect;
+export type PredictionRow = typeof racePredictions.$inferSelect;
 
 /**
  * Written by hand rather than through @pothos/plugin-dataloader, deliberately.
@@ -110,6 +112,15 @@ export function createLoaders(db: Db) {
       db.select().from(meetings).where(inArray(meetings.id, ids)),
     ),
     podiumByRaceId: podiumLoader(db),
+    // Every model version's rows, so the resolver can pick one without a
+    // second query. A race has ~22 rows per version; there are few versions.
+    predictionsByRaceId: new DataLoader<string, PredictionRow[]>(async (raceIds) => {
+      const rows = await db
+        .select()
+        .from(racePredictions)
+        .where(inArray(racePredictions.raceId, [...raceIds]));
+      return raceIds.map((id) => rows.filter((row) => row.raceId === id));
+    }),
     /**
      * The sprint of a weekend, if it had one. Keyed by meeting rather than by
      * race, because that is the question the library asks: this grand prix's
