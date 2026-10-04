@@ -1,4 +1,5 @@
 import { Suspense, type ReactNode } from 'react';
+import { PredictionPanel } from '@/components/schedule/prediction-panel';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
@@ -168,6 +169,16 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
               cancelled={race.status === 'CANCELLED'}
             />
           </div>
+
+          {/* Its own boundary: the countdown and circuit must not wait on it,
+              and on most races it renders nothing at all. */}
+          {race.status === 'SCHEDULED' && race.type === 'GRAND_PRIX' ? (
+            <Suspense fallback={null}>
+              <div className="mt-8 empty:hidden">
+                <PredictionPanel slug={race.slug} />
+              </div>
+            </Suspense>
+          ) : null}
 
           <div className="mt-10">
             <CircuitInfoPanel

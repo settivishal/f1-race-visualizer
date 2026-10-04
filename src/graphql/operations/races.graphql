@@ -130,3 +130,25 @@ query RaceSlugs {
     date
   }
 }
+
+# The win prediction panel, read only for a race that has not run yet.
+query RacePredictions($slug: String!) {
+  race(slug: $slug) {
+    predictions {
+      winProbability
+      modelVersion
+      generatedAt
+      driver {
+        code
+        name
+      }
+      team {
+        color
+      }
+    }
+  }
+  predictionDisplay {
+    shown
+    expanded
+  }
+}

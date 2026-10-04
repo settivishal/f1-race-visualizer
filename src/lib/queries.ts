@@ -13,6 +13,7 @@ import type {
   HomeLineupQuery,
   RaceReplayQuery,
   RaceHeaderQuery,
+  RacePredictionsQuery,
   RaceLibraryQuery,
   RaceSlugsQuery,
   ActiveSeasonQuery,
@@ -114,6 +115,32 @@ const RACE_HEADER = /* GraphQL */ `
     }
   }
 `;
+
+const RACE_PREDICTIONS = /* GraphQL */ `
+  query RacePredictions($slug: String!) {
+    race(slug: $slug) {
+      predictions {
+        winProbability modelVersion generatedAt
+        driver { code name }
+        team { color }
+      }
+    }
+    predictionDisplay { shown expanded }
+  }
+`;
+
+/**
+ * The win prediction panel's data, asked for only by a race that has not run.
+ * Tagged `race` so an import's /api/revalidate refreshes it, and `settings` so
+ * the admin's panel sizes do.
+ */
+export async function getRacePredictions(slug: string) {
+  'use cache';
+  cacheTag('race', 'settings');
+  cacheLife('days');
+
+  return executeQuery<RacePredictionsQuery, { slug: string }>(RACE_PREDICTIONS, { slug });
+}
 
 /**
  * The race the landing page leads with.

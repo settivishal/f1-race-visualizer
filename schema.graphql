@@ -164,6 +164,11 @@ type PodiumSlot {
   teamColor: String
 }
 
+type PredictionDisplay {
+  expanded: Int!
+  shown: Int!
+}
+
 type PulseRound {
   name: String!
   round: Int!
@@ -192,6 +197,7 @@ type Query {
   ingestRuns(first: Int = 50): [IngestRun!]!
   latestRace: Race
   nextRace: Race
+  predictionDisplay: PredictionDisplay!
   race(slug: String!): Race
   raceSlugs: [RaceSlug!]!
   races(after: String, before: String, first: Int, search: String, season: Int, type: RaceType): RaceConnection!
@@ -262,6 +268,7 @@ type RacePrediction {
   driver: Driver
   generatedAt: DateTime!
   modelVersion: String!
+  team: Team
   winProbability: Float!
 }
 
