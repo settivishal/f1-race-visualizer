@@ -305,6 +305,15 @@ export async function updateConfigAction(
     return { ok: false, message: 'Hours after race must be between 0 and 336.' };
   }
 
+  const predictionsShown = Number(String(formData.get('predictionsShown') ?? '').trim());
+  const predictionsExpanded = Number(String(formData.get('predictionsExpanded') ?? '').trim());
+  if (
+    !Number.isInteger(predictionsShown) || !Number.isInteger(predictionsExpanded)
+    || predictionsShown < 1 || predictionsExpanded < predictionsShown || predictionsExpanded > 30
+  ) {
+    return { ok: false, message: 'Predictions shown must be at least 1, and expanded between that and 30.' };
+  }
+
   const runDays = WEEKDAYS.filter((day) => formData.get(`day-${day}`) === 'on');
   if (runDays.length === 0) {
     // Rejected rather than accepted silently: an empty list means the cron
@@ -319,10 +328,16 @@ export async function updateConfigAction(
   // table that can only ever hold one row.
   await db
     .insert(appConfig)
-    .values({ id: 1, ingestEnabled, runDays: [...runDays], activeSeason, hoursAfterRace })
+    .values({
+      id: 1, ingestEnabled, runDays: [...runDays], activeSeason, hoursAfterRace,
+      predictionsShown, predictionsExpanded,
+    })
     .onConflictDoUpdate({
       target: appConfig.id,
-      set: { ingestEnabled, runDays: [...runDays], activeSeason, hoursAfterRace },
+      set: {
+        ingestEnabled, runDays: [...runDays], activeSeason, hoursAfterRace,
+        predictionsShown, predictionsExpanded,
+      },
     });
 
   // The active season is now read by the home page and the standings default

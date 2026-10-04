@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { and, asc, eq, inArray, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte } from 'drizzle-orm';
 import {
   driverTeamAssignments,
   drivers,
@@ -120,6 +120,29 @@ export function createLoaders(db: Db) {
         .from(racePredictions)
         .where(inArray(racePredictions.raceId, [...raceIds]));
       return raceIds.map((id) => rows.filter((row) => row.raceId === id));
+    }),
+    /**
+     * The team a driver most recently raced for, in that season's colour. A
+     * prediction is keyed by driver alone, because the race it is for has no
+     * lineup yet, so this is the closest fact to "the car they will drive".
+     */
+    // ponytail: latest team overall, which is right for an upcoming race only; key by race date if past races ever show predictions.
+    latestTeamByDriverId: new DataLoader<string, TeamRow | null>(async (driverIds) => {
+      const rows = await db
+        .selectDistinctOn([driverTeamAssignments.driverId], {
+          driverId: driverTeamAssignments.driverId,
+          ...teamColumns,
+          color: seasonColorSql,
+        })
+        .from(raceResults)
+        .innerJoin(races, eq(races.id, raceResults.raceId))
+        .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))
+        .innerJoin(teamSeasons, eq(teamSeasons.id, driverTeamAssignments.teamSeasonId))
+        .innerJoin(teams, eq(teams.id, teamSeasons.teamId))
+        .where(inArray(driverTeamAssignments.driverId, [...driverIds]))
+        .orderBy(driverTeamAssignments.driverId, desc(races.date));
+      const byDriver = new Map(rows.map(({ driverId, ...team }) => [driverId, team]));
+      return driverIds.map((id) => byDriver.get(id) ?? null);
     }),
     /**
      * The sprint of a weekend, if it had one. Keyed by meeting rather than by

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gt, ilike, or, sql } from 'drizzle-orm';
-import { meetings, raceEvents, racePositions, raceResults, races } from '@/db/schema';
+import { appConfig, meetings, raceEvents, racePositions, raceResults, races } from '@/db/schema';
 import { builder } from '../builder';
 import type { Db } from '../context';
 import type { PodiumSlot, PredictionRow } from '../loaders';
@@ -67,8 +67,36 @@ export const RacePrediction = builder.objectRef<PredictionRow>('RacePrediction')
       nullable: true,
       resolve: (row, _args, ctx) => ctx.loaders.driverById.load(row.driverId),
     }),
+    team: t.field({
+      type: Team,
+      nullable: true,
+      resolve: (row, _args, ctx) => ctx.loaders.latestTeamByDriverId.load(row.driverId),
+    }),
   }),
 });
+
+/** How many drivers the race page's prediction panel lists, from app_config. */
+const PredictionDisplay = builder.objectRef<{ shown: number; expanded: number }>('PredictionDisplay').implement({
+  fields: (t) => ({
+    shown: t.exposeInt('shown'),
+    expanded: t.exposeInt('expanded'),
+  }),
+});
+
+builder.queryField('predictionDisplay', (t) =>
+  t.field({
+    type: PredictionDisplay,
+    resolve: async (_root, _args, ctx) => {
+      const [config] = await ctx.db
+        .select({ shown: appConfig.predictionsShown, expanded: appConfig.predictionsExpanded })
+        .from(appConfig)
+        .where(eq(appConfig.id, 1))
+        .limit(1);
+      // The column defaults, for a database with no settings row yet.
+      return config ?? { shown: 5, expanded: 10 };
+    },
+  }),
+);
 
 export const RaceResult = builder.objectRef<ResultRow>('RaceResult').implement({
   fields: (t) => ({

@@ -57,6 +57,13 @@
       "when": 1791127980610,
       "tag": "0007_race_predictions",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791129969320,
+      "tag": "0008_prediction_display",
+      "breakpoints": true
     }
   ]
 }

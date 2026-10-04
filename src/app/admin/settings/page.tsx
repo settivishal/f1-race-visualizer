@@ -109,6 +109,24 @@ async function SettingsForm() {
             hint="How long to wait after a session ends. OpenF1 publishes progressively, and importing too early produces a partial replay that still reports success."
           />
 
+          <fieldset className="grid gap-4 sm:grid-cols-2">
+            <legend className="text-eyebrow font-semibold uppercase text-muted">Win prediction panel</legend>
+            <Input
+              label="Drivers shown"
+              name="predictionsShown"
+              inputMode="numeric"
+              defaultValue={String(config?.predictionsShown ?? 5)}
+              hint="Listed on the race page before 'Show more'."
+            />
+            <Input
+              label="Drivers when expanded"
+              name="predictionsExpanded"
+              inputMode="numeric"
+              defaultValue={String(config?.predictionsExpanded ?? 10)}
+              hint="'Show more' opens the list to this many. Equal to the above hides the button."
+            />
+          </fieldset>
+
           <div className="pt-1">
             <Button type="submit">Save settings</Button>
           </div>

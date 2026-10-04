@@ -278,6 +278,10 @@ export const appConfig = pgTable('app_config', {
   runDays: text('run_days').array().notNull().default(['mon']),
   activeSeason: integer('active_season').notNull(),
   hoursAfterRace: integer('hours_after_race').notNull().default(12),
+  // The race page's win prediction panel: how many drivers it lists, and how
+  // many "Show more" opens it to. Drivers past the second number are not shown.
+  predictionsShown: integer('predictions_shown').notNull().default(5),
+  predictionsExpanded: integer('predictions_expanded').notNull().default(10),
 }, (t) => [check('app_config_single_row', sql`${t.id} = 1`)]);  // one row, enforced in SQL
 
 /**
