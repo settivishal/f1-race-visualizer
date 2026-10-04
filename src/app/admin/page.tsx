@@ -79,10 +79,10 @@ async function IngestStatus() {
             ))}
         </div>
         <div className="flex flex-wrap gap-2">
-          <ActionForm action={refreshRacesAction}>
+          <ActionForm action={refreshRacesAction} className="max-w-60">
             <Button type="submit" variant="secondary">Refresh race pages</Button>
           </ActionForm>
-          <ActionForm action={catchUpAction}>
+          <ActionForm action={catchUpAction} className="max-w-60">
             <Button type="submit" variant={report.ok ? 'secondary' : 'primary'}>
               Import overdue races
             </Button>
