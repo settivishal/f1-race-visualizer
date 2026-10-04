@@ -268,6 +268,33 @@ const toRow = (driverNumber: number, lap: Lap, position: number): PositionRow =>
 // ── Lineup ────────────────────────────────────────────────────────────
 
 /**
+ * OpenF1's team names, 2023 onward, mapped to Ergast's constructor id.
+ *
+ * OpenF1 has no team id of its own, and its names are not Ergast's: "Red Bull
+ * Racing" is "Red Bull", "Kick Sauber" is "Sauber". Without the id, the two
+ * imports cannot tell they are writing the same team, and a rebrand (RB to
+ * Racing Bulls) becomes a second team. A name missing from here gets no id, and
+ * the feature builder refuses the team, so a new entrant is added by hand.
+ */
+export const OPENF1_TEAM_IDS: Record<string, string> = {
+  'Alfa Romeo': 'alfa',
+  AlphaTauri: 'alphatauri',
+  Alpine: 'alpine',
+  'Aston Martin': 'aston_martin',
+  Audi: 'audi',
+  Cadillac: 'cadillac',
+  Ferrari: 'ferrari',
+  'Haas F1 Team': 'haas',
+  'Kick Sauber': 'sauber',
+  McLaren: 'mclaren',
+  Mercedes: 'mercedes',
+  RB: 'rb',
+  'Racing Bulls': 'rb',
+  'Red Bull Racing': 'red_bull',
+  Williams: 'williams',
+};
+
+/**
  * Per-session lineups are the point of driver_team_assignments. A driver who
  * changes teams mid-season, or a seat that changes driver, is two different
  * assignments — which is why this is read from each session's own /drivers
@@ -289,6 +316,7 @@ export function buildLineup(bundle: RaceBundle): LineupRow[] {
       headshotUrl: d.headshot_url,
       teamName: d.team_name as string,
       teamColor: d.team_colour ? `#${d.team_colour}` : null,
+      ergastConstructorId: OPENF1_TEAM_IDS[d.team_name as string] ?? null,
     }));
 }
 
