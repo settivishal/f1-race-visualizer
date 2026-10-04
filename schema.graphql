@@ -214,6 +214,7 @@ type Race {
   meeting: Meeting
   openf1SessionKey: Int
   podium: [PodiumSlot!]!
+  predictions(modelVersion: String): [RacePrediction!]!
   replay: RaceReplay!
   results: [RaceResult!]!
   slug: String!
@@ -255,6 +256,13 @@ type RacePosition {
   sector2: Float
   sector3: Float
   team: Team
+}
+
+type RacePrediction {
+  driver: Driver
+  generatedAt: DateTime!
+  modelVersion: String!
+  winProbability: Float!
 }
 
 type RaceReplay {

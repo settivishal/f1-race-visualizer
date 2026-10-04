@@ -243,6 +243,22 @@ export const raceResults = pgTable('race_results', {
   fastestLap: boolean('fastest_lap').notNull().default(false),
 }, (t) => [primaryKey({ columns: [t.raceId, t.assignmentId] })]);
 
+/**
+ * Pre-race win probabilities, from the model in ml/ via
+ * scripts/import-predictions.ts. Python never writes here.
+ *
+ * Keyed by driver, not assignment: a prediction is published on Saturday night,
+ * and a race's lineup is only written once it has run. `model_version` is in
+ * the key so two models can be compared on the same race.
+ */
+export const racePredictions = pgTable('race_predictions', {
+  raceId: uuid('race_id').notNull().references(() => races.id, { onDelete: 'cascade' }),
+  driverId: uuid('driver_id').notNull().references(() => drivers.id),
+  winProbability: real('win_probability').notNull(),
+  modelVersion: text('model_version').notNull(),
+  generatedAt: timestamp('generated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.raceId, t.driverId, t.modelVersion] })]);
+
 // ── Operations ────────────────────────────────────────────────────
 
 export const ingestRuns = pgTable('ingest_runs', {

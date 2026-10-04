@@ -2,7 +2,7 @@ import { and, asc, desc, eq, gt, ilike, or, sql } from 'drizzle-orm';
 import { meetings, raceEvents, racePositions, raceResults, races } from '@/db/schema';
 import { builder } from '../builder';
 import type { Db } from '../context';
-import type { PodiumSlot } from '../loaders';
+import type { PodiumSlot, PredictionRow } from '../loaders';
 import { RaceAnalysis, loadAnalysis, positionColumns, type PositionRow } from './analysis';
 import { driverOfAssignment, teamOfAssignment } from './assignment';
 import { Driver, Team } from './entity';
@@ -52,6 +52,20 @@ export const RaceEvent = builder.objectRef<EventRow>('RaceEvent').implement({
       nullable: true,
       resolve: (row, _args, ctx) =>
         row.assignmentId === null ? null : driverOfAssignment(ctx, row.assignmentId),
+    }),
+  }),
+});
+
+/** One driver's pre-race win probability from the model in ml/. */
+export const RacePrediction = builder.objectRef<PredictionRow>('RacePrediction').implement({
+  fields: (t) => ({
+    winProbability: t.exposeFloat('winProbability'),
+    modelVersion: t.exposeString('modelVersion'),
+    generatedAt: t.field({ type: 'DateTime', resolve: (row) => row.generatedAt }),
+    driver: t.field({
+      type: Driver,
+      nullable: true,
+      resolve: (row, _args, ctx) => ctx.loaders.driverById.load(row.driverId),
     }),
   }),
 });
@@ -255,6 +269,25 @@ Race.implement({
     analysis: t.field({
       type: RaceAnalysis,
       resolve: (race, _args, ctx) => loadAnalysis(ctx, race.id),
+    }),
+
+    /**
+     * Win probabilities, most likely first. Without a version, the newest one
+     * imported for this race; empty when the race has none.
+     */
+    predictions: t.field({
+      type: [RacePrediction],
+      args: { modelVersion: t.arg.string() },
+      resolve: async (race, args, ctx) => {
+        const rows = await ctx.loaders.predictionsByRaceId.load(race.id);
+        const version = args.modelVersion ?? rows.reduce<PredictionRow | undefined>(
+          (newest, row) => (!newest || row.generatedAt > newest.generatedAt ? row : newest),
+          undefined,
+        )?.modelVersion;
+        return rows
+          .filter((row) => row.modelVersion === version)
+          .sort((a, b) => b.winProbability - a.winProbability);
+      },
     }),
 
     events: t.field({
