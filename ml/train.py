@@ -71,3 +71,11 @@ cmp[cmp.driver_code_pick != cmp.driver_code_pole]
 # Re-check after the 2018–2022 backfill: 365 won on 2023–2026 data.
 for hl in [None, 730, 365, 180, 90]:
     print(f"half-life {hl}:", score(walk_forward(half_life=hl)))
+
+# %%
+for feats in [["quali_position"],
+              ["quali_position", "constructor_form"],
+              ["quali_position", "driver_form"],
+              ["quali_position", "constructor_form", "driver_form"],
+              FEATURES]:
+    print(f"{str(feats):60}", score(walk_forward(features=feats)))
