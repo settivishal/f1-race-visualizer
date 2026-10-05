@@ -12,6 +12,7 @@ import {
   easeLapProgress,
   getDriverPointForLap,
   getReplayEventMarkerColor,
+  inferredRetirementLaps,
   isHollowMarker,
   ReplayRaceControl,
   withFocusLast,
@@ -219,7 +220,7 @@ function isRetirementKind(event: ReplayEvent) {
   return kind === "dnf" || kind === "dns" || kind === "dnq" || kind === "dsq";
 }
 
-function getRetirementLapByDriver(events: ReplayEvent[]) {
+function getRetirementLapByDriver(events: ReplayEvent[], drivers: ReplayEntry[]) {
   const result = new Map<string, ReplayEvent>();
 
   for (const event of events) {
@@ -231,6 +232,16 @@ function getRetirementLapByDriver(events: ReplayEvent[]) {
     if (!existing || event.lap < existing.lap) {
       result.set(event.driver.id, event);
     }
+  }
+
+  // A car that stopped without a retirement event (see inferredRetirementLaps)
+  // is drawn the same way, so its badge leaves instead of sitting on the car
+  // that took its place. Local to the chart: the story panel lists what the
+  // upstreams reported, and this is an inference.
+  for (const [driverId, lap] of inferredRetirementLaps(drivers)) {
+    const entry = drivers.find((candidate) => candidate.driver.id === driverId);
+    if (!entry || result.has(driverId)) continue;
+    result.set(driverId, { lap, type: "RETIREMENT", details: "Stopped", driver: entry.driver });
   }
 
   return result;
@@ -350,8 +361,8 @@ export function RaceVisualizationCanvas({
   // last.
   const plotClipId = `${useId()}-plot`;
   const retirementEventByDriver = useMemo(
-    () => getRetirementLapByDriver(visualization.events),
-    [visualization.events],
+    () => getRetirementLapByDriver(visualization.events, drivers),
+    [visualization.events, drivers],
   );
 
   const chartEvents = useMemo(

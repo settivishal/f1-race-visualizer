@@ -6,6 +6,7 @@ import {
   buildRaceControlByLap,
   classifyReplayEvent,
   easeLapProgress,
+  inferredRetirementLaps,
   getReplayEventMarkerColor,
   getReplayEventTone,
   isHollowMarker,
@@ -207,5 +208,23 @@ describe('easeLapProgress', () => {
   it('clamps, so a progress value past the ends cannot overshoot the lap', () => {
     expect(easeLapProgress(-0.5)).toBe(0);
     expect(easeLapProgress(1.5)).toBe(1);
+  });
+});
+
+describe('inferredRetirementLaps', () => {
+  const run = (...laps: [number, number][]): ReplayPosition[] =>
+    laps.map(([lap, position]) => ({ lap, position, lapTime: null, sector1: null, sector2: null, sector3: null }));
+
+  it('stops a car on its last lap once another car takes its place', () => {
+    // Abu Dhabi 2022: Hamilton classified, but his rows end on lap 55.
+    const stopped = entry('ham', run([54, 8], [55, 8]));
+    const behind = entry('nor', run([54, 9], [55, 9], [56, 8], [57, 8]));
+    expect(inferredRetirementLaps([stopped, behind])).toEqual(new Map([['ham', 55]]));
+  });
+
+  it('leaves a lapped finisher alone: nobody behind it has later rows', () => {
+    const leader = entry('ver', run([57, 1], [58, 1]));
+    const lapped = entry('sar', run([56, 15], [57, 15]));
+    expect(inferredRetirementLaps([leader, lapped])).toEqual(new Map());
   });
 });

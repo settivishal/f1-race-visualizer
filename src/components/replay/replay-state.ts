@@ -330,3 +330,39 @@ export function withFocusLast<T extends { entry: { driver: { id: string } } }>(
 
   return [...frames.filter((frame) => frame.entry.driver.id !== focusedDriverId), ...focused];
 }
+
+/**
+ * The lap each car stopped on, for cars the events never retire.
+ *
+ * A retirement that was still classified — Hamilton three laps from the end of
+ * Abu Dhabi 2022, Norris after the Spielberg 2024 collision — is a finisher in
+ * the results, so neither upstream gives it a retirement event. Its rows just
+ * end, and the chart held its badge on the last position it had while the field
+ * moved through it: two badges on one row for the rest of the race.
+ *
+ * A car is taken as stopped on its last lap once another car holds that
+ * position on a later lap. A lapped finisher whose rows end a lap or two early
+ * is not: only the cars ahead of it have later rows, and none of them is in its
+ * place.
+ */
+export function inferredRetirementLaps(drivers: { driver: { id: string }; positions: ReplayPosition[] }[]) {
+  const held = new Map<number, Set<number>>();
+  for (const { positions } of drivers) {
+    for (const { lap, position } of positions) {
+      held.set(lap, (held.get(lap) ?? new Set()).add(position));
+    }
+  }
+
+  const result = new Map<string, number>();
+  for (const { driver, positions } of drivers) {
+    const last = positions[positions.length - 1];
+    if (!last) continue;
+    for (const [lap, taken] of held) {
+      if (lap > last.lap && taken.has(last.position)) {
+        result.set(driver.id, last.lap);
+        break;
+      }
+    }
+  }
+  return result;
+}
