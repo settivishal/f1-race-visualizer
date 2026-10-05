@@ -5,7 +5,7 @@ import {
   circuits, driverTeamAssignments, drivers, ingestRuns, meetings, pitStops,
   racePositions, raceEvents, raceResults, races, seasons, stints, teamSeasons, teams,
 } from '@/db/schema';
-import { fetchRaceLaps, fetchRacePitStops, fetchSeasonResults } from './ergast';
+import { ergastRaceOn, fetchRaceLaps, fetchRacePitStops, fetchSeasonResults } from './ergast';
 import { transformArchiveRace } from './ergast-transform';
 import {
   fetchDrivers, fetchLaps, fetchMeetings, fetchPits, fetchPositions,
@@ -25,7 +25,7 @@ import type { RaceBundle, TransformedRace } from './types';
  * getDb>` so the write path can be exercised against a real database in CI
  * without a network.
  */
-type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
+export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 export type IngestResult = {
   slug: string;
@@ -92,7 +92,8 @@ async function repairZeroPoints(race: TransformedRace): Promise<void> {
   // not, so every round after it is off by one — which quietly wrote Mexico
   // City's points onto Austin the first time this ran.
   const day = race.race.date.toISOString().slice(0, 10);
-  const archive = (await fetchSeasonResults(race.meeting.seasonYear)).find((r) => r.date === day);
+  const season = await fetchSeasonResults(race.meeting.seasonYear);
+  const archive = ergastRaceOn(race.race.date, new Map(season.map((r) => [r.date, r])));
   // Ergast's per-result `number` is the car number, which is what OpenF1 keys
   // a driver by too.
   const points = new Map(

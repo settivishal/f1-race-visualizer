@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
 import { appConfig } from '@/db/schema';
 import { isAuthorized } from '@/lib/cron-auth';
+import { fillGrids } from '@/lib/ingest/grid';
 import { drainPending } from '@/lib/ingest/pending';
 
 /**
@@ -64,11 +65,26 @@ async function handle(request: Request) {
     return skip(`not a run day (${weekdayUtc()}; runs on ${config.runDays.join(', ')})`);
   }
 
+  const started = Date.now();
   const result = await drainPending(db, config);
   for (const sessionKey of result.abandoned) {
     console.log(`[cron/ingest] gave up on session ${sessionKey}: still no laps a week after it ended`);
   }
-  if (result.imported.length === 0 && result.failed.length === 0) {
+
+  // Grids for the last fortnight's races, on every run rather than only after
+  // an import: Ergast can lag the import, and it is the next day's run, which
+  // imports nothing, that finds the grid. Best-effort and only with time left
+  // under maxDuration — a missing grid is a blank cell, never a failed cron.
+  const grid = Date.now() - started < 40_000
+    ? await fillGrids(db, config.activeSeason, { since: new Date(Date.now() - GRID_WINDOW_MS) })
+      .catch((error) => {
+        console.log(`[cron/ingest] grid fill failed: ${error}`);
+        return null;
+      })
+    : null;
+  for (const warning of grid?.warnings ?? []) console.log(`[cron/ingest] grid: ${warning}`);
+
+  if (result.imported.length === 0 && result.failed.length === 0 && !grid?.filled) {
     return skip('up to date');
   }
 
@@ -81,15 +97,18 @@ async function handle(request: Request) {
   // semantics are wrong here anyway: it expires the entry so the next request
   // blocks, and nobody is waiting on a 6am cron. 'max' serves the last good
   // page while the new one builds in the background.
-  if (result.imported.length > 0) {
+  if (result.imported.length > 0 || grid?.filled) {
     revalidateTag('race', 'max');
     revalidateTag('standings', 'max');
   }
 
   // A failure is still a failed cron, so Vercel reports it — but only after
   // the races that did import are live. Each failure is in ingest_runs.
-  return Response.json(result, { status: result.failed.length > 0 ? 500 : 200 });
+  return Response.json({ ...result, gridsFilled: grid?.filled ?? 0 }, { status: result.failed.length > 0 ? 500 : 200 });
 }
+
+/** How far back the cron looks for a race Ergast had not caught up on. */
+const GRID_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
 
 function skip(reason: string) {
   console.log(`[cron/ingest] skipped: ${reason}`);

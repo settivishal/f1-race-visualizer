@@ -32,7 +32,7 @@ Add a `docs/decisions.md` entry, dated 2026-09-24. It covers: prediction feature
 
 ### 1. Data (Claude)
 - **2018–2022 backfill.** Run the existing `backfill-archive.yml` once per season: dev first, then prod, about 35 min each. Check each season's derived standings against the published championship (existing practice).
-- **Grid fill for OpenF1 races.** Generalise `repairZeroPoints` in `src/lib/ingest/run.ts` into one Ergast read per GP. It fills `gridPosition` for every row and repairs zero points as it does now. Match on **date** and key by car number, the same pattern the points repair already uses. If Ergast doesn't have the race yet, warn and leave the row null. `sqlCoalesce('grid_position')` (`run.ts:473`) already stops a later OpenF1 re-import from nulling it. Then re-import 2023–2026 through `scripts/backfill.ts`.
+- **Grid fill for OpenF1 races.** *(Amended 2026-10-05.)* Not on the import path: `fillGrids` in `src/lib/ingest/grid.ts` updates `grid_position` and nothing else. It matches races by **date** (±1 day, `ergastRaceOn`) and drivers by code, and writes only blank cells. The cron runs it after every drain for the last 14 days, because Ergast can lag the 12-hour import and a completed race is never imported again. `scripts/fill-grid.ts <season>` fills the seasons imported before it, one Ergast season per year instead of re-importing every lap. The points repair keeps its own read, now with the same ±1 day match.
 - **Qualifying.** Add `fetchSeasonQualifying(year)` to `ergast.ts` (`/{year}/qualifying`, paged like `fetchSeasonResults`, with a zod schema and a fixture test). It is **not stored**. Only the feature builder reads it (YAGNI: nothing on the site shows qualifying).
 
 ### 2. Feature export (Claude)
