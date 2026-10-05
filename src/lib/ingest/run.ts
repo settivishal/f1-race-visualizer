@@ -145,7 +145,7 @@ export async function ingestArchiveRace(
       fetchRacePitStops(season, round),
     ]);
 
-    const transformed = transformArchiveRace(race, laps, stops);
+    const transformed = transformArchiveRace(race, laps, stops, races);
     const rowsWritten = await writeRace(transformed);
 
     await db.update(ingestRuns)

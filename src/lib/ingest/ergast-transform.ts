@@ -63,8 +63,14 @@ const slugify = (value: string) =>
  * name: "Albert Park Grand Prix Circuit" would give `2018-albert-park-grand-
  * prix-circuit` where 2025 has `2025-melbourne`.
  */
-export function archiveRaceSlug(race: ErgastRace): string {
-  const place = race.Circuit.Location.locality ?? race.Circuit.circuitId;
+export function archiveRaceSlug(race: ErgastRace, season: ErgastRace[] = [race]): string {
+  const placeOf = (r: ErgastRace) => r.Circuit.Location.locality ?? r.Circuit.circuitId;
+  // 2020 and 2021 ran two races at one place — Spielberg, Silverstone, Sakhir —
+  // and the locality alone made them one slug: the second import overwrote the
+  // first. Those races go by their own name instead ("2021-styrian",
+  // "2020-70th-anniversary"); every other race keeps the slug OpenF1 would give.
+  const shared = season.filter((r) => placeOf(r) === placeOf(race)).length > 1;
+  const place = shared ? race.raceName.replace(/ Grand Prix$/, '') : placeOf(race);
   return `${race.season}-${slugify(place)}`;
 }
 
@@ -298,6 +304,8 @@ export function transformArchiveRace(
   race: ErgastRace,
   laps: ErgastLap[],
   stops: ErgastPitStop[],
+  /** The rest of the season, which decides whether the race's place is shared. */
+  season: ErgastRace[] = [race],
 ): TransformedRace {
   const warnings: string[] = [];
   const results = race.Results ?? [];
@@ -339,7 +347,7 @@ export function transformArchiveRace(
       // separate endpoint and a separate import; until then the archive is
       // grands prix, which is what the standings countback counts anyway.
       type: 'GRAND_PRIX',
-      slug: archiveRaceSlug(race),
+      slug: archiveRaceSlug(race, season),
       date: new Date(`${race.date}T${race.time ?? '00:00:00Z'}`),
       laps: lapCount || Math.max(0, ...results.map((r) => r.laps)),
       openf1SessionKey: null,

@@ -70,6 +70,21 @@ describe('the archive race', () => {
     expect(archiveRaceSlug(archiveRace)).toBe('2018-melbourne');
   });
 
+  it('names two races at one place after the races, so neither overwrites the other', () => {
+    const at = (raceName: string, locality: string) => ({
+      ...archiveRace, season: 2020, raceName,
+      Circuit: { ...archiveRace.Circuit, Location: { ...archiveRace.Circuit.Location, locality } },
+    });
+    const season = [
+      at('Bahrain Grand Prix', 'Sakhir'), at('Sakhir Grand Prix', 'Sakhir'),
+      at('British Grand Prix', 'Silverstone'), at('70th Anniversary Grand Prix', 'Silverstone'),
+      at('Italian Grand Prix', 'Monza'),
+    ];
+    expect(season.map((race) => archiveRaceSlug(race, season))).toEqual([
+      '2020-bahrain', '2020-sakhir', '2020-british', '2020-70th-anniversary', '2020-monza',
+    ]);
+  });
+
   it('is marked as the LAPS tier, because that is what this era published', () => {
     expect(transformed.race.dataTier).toBe('LAPS');
     expect(transformed.race.openf1SessionKey).toBeNull();
