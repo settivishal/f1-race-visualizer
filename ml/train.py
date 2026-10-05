@@ -2,10 +2,11 @@
 from lightgbm import LGBMClassifier
 import pandas as pd
 from sklearn.metrics import brier_score_loss
+import matplotlib.pyplot as plt
+from sklearn.calibration import calibration_curve
 
 # %%
-FEATURES = ["quali_position", "field_size", "driver_form",
-            "constructor_form", "sprint_finish_position"]
+FEATURES = ["quali_position"]
 
 # -1: a higher value can only lower the win chance. 0: no constraint.
 MONO = {"quali_position": -1, "field_size": 0, "driver_form": -1,
@@ -16,6 +17,8 @@ HALF_LIFE = 365
 
 df = pd.read_csv("data/features.csv")
 df["date"] = pd.to_datetime(df.date)
+# No quali time means starting from the back, not "unknown". NaN let LightGBM put him on pole.
+df["quali_position"] = df.quali_position.fillna(df.field_size)
 
 upcoming = df[df.finished_p1.isna()]
 df = df[df.finished_p1.notna()]
@@ -56,6 +59,17 @@ def score(preds, name="p"):
 preds = walk_forward()
 for name in ["p", "p_quali", "p_pole"]:
     print(f"{name:8}", score(preds, name))
+# %%
+frac_won, mean_p = calibration_curve(preds.finished_p1, preds.p, n_bins=5, strategy="uniform")
+
+
+plt.plot([0, 1], [0, 1], "--", color="grey", label="perfect")
+plt.plot(mean_p, frac_won, "o-", label="lgbm-v1")
+plt.xlabel("predicted win probability")
+plt.ylabel("actual win rate")
+plt.legend()
+plt.savefig("out/calibration.png", dpi=120)
+plt.show()
 
 # %%
 # Races where the model's favourite is not the pole-sitter.
@@ -77,5 +91,7 @@ for feats in [["quali_position"],
               ["quali_position", "constructor_form"],
               ["quali_position", "driver_form"],
               ["quali_position", "constructor_form", "driver_form"],
-              FEATURES]:
+              ["quali_position", "field_size", "driver_form", "constructor_form", "sprint_finish_position"]]:
     print(f"{str(feats):60}", score(walk_forward(features=feats)))
+# %%
+preds.groupby(pd.cut(preds.p, [0, .2, .4, .6, .8, 1])).finished_p1.agg(["count", "sum", "mean"])
