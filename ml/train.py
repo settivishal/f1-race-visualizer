@@ -4,6 +4,7 @@ import pandas as pd
 from sklearn.metrics import brier_score_loss
 import matplotlib.pyplot as plt
 from sklearn.calibration import calibration_curve
+import os
 
 # %%
 FEATURES = ["quali_position"]
@@ -16,6 +17,7 @@ MONO = {"quali_position": -1, "field_size": 0, "driver_form": -1,
 HALF_LIFE = 365
 
 df = pd.read_csv("data/features.csv")
+os.makedirs("out", exist_ok=True)
 df["date"] = pd.to_datetime(df.date)
 # No quali time means starting from the back, not "unknown". NaN let LightGBM put him on pole.
 df["quali_position"] = df.quali_position.fillna(df.field_size)
@@ -69,7 +71,7 @@ plt.xlabel("predicted win probability")
 plt.ylabel("actual win rate")
 plt.legend()
 plt.savefig("out/calibration.png", dpi=120)
-plt.show()
+# plt.show()
 
 # %%
 # Races where the model's favourite is not the pole-sitter.
@@ -82,7 +84,7 @@ cmp = (top.merge(pole, on="race_slug", suffixes=("_pick", "_pole"))
 cmp[cmp.driver_code_pick != cmp.driver_code_pole]
 
 # %%
-# Re-check after the 2018–2022 backfill: 365 won on 2023–2026 data.
+# Re-check after the 2018–2022 backfill: on 2023–2026 data no weighting edged out 365 (0.0251 vs 0.0254).
 for hl in [None, 730, 365, 180, 90]:
     print(f"half-life {hl}:", score(walk_forward(half_life=hl)))
 
