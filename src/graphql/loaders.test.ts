@@ -119,3 +119,26 @@ describe('query count', () => {
     expect(count).toBe(6);
   });
 });
+
+describe('officialRoundByMeetingId', () => {
+  it('numbers the grands prix that ran or will, skipping a cancelled round as F1 does', async () => {
+    await db.insert(dbSchema.seasons).values({ year: 2026 });
+    // OpenF1's calendar keeps the cancelled round, so its numbering runs ahead.
+    const meetingRows = await db.insert(dbSchema.meetings).values([1, 2, 3].map((round) => ({
+      seasonYear: 2026, round, name: `GP ${round}`, country: 'Testland',
+      startDate: new Date(`2026-0${round}-01T00:00:00Z`), openf1MeetingKey: 100 + round,
+    }))).returning();
+    const [first, cancelled, third] = meetingRows;
+    await db.insert(dbSchema.races).values([
+      { meetingId: first.id, type: 'GRAND_PRIX', slug: '2026-a', date: new Date('2026-01-03T14:00:00Z'), laps: 50, status: 'COMPLETED' },
+      { meetingId: cancelled.id, type: 'GRAND_PRIX', slug: '2026-b', date: new Date('2026-02-03T14:00:00Z'), laps: 50, status: 'CANCELLED' },
+      // A sprint is a session inside the round, not a round.
+      { meetingId: third.id, type: 'SPRINT', slug: '2026-c-sprint', date: new Date('2026-03-02T14:00:00Z'), laps: 20 },
+      { meetingId: third.id, type: 'GRAND_PRIX', slug: '2026-c', date: new Date('2026-03-03T14:00:00Z'), laps: 50 },
+    ]);
+
+    const loaders = createLoaders(db);
+    const rounds = await Promise.all(meetingRows.map((m) => loaders.officialRoundByMeetingId.load(m.id)));
+    expect(rounds).toEqual([1, null, 2]);
+  });
+});

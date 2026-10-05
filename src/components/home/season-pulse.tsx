@@ -14,7 +14,8 @@ import { inkOn, teamMonogram } from '@/lib/team-monogram';
  */
 
 export type PulseRound = {
-  round: number;
+  // Official, so null for a cancelled round.
+  round: number | null;
   name: string;
   slug: string | null;
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
@@ -37,7 +38,7 @@ export function SeasonPulse({ season, rounds }: { season: number; rounds: PulseR
         {rounds.map((round, index) => {
           const label =
             round.status === 'CANCELLED'
-              ? `Round ${round.round}, ${round.name}: cancelled`
+              ? `${round.name}: cancelled`
               : round.winnerCode
                 ? `Round ${round.round}, ${round.name}: won by ${round.winnerCode}`
                 : `Round ${round.round}, ${round.name}: not yet run`;
@@ -84,7 +85,7 @@ export function SeasonPulse({ season, rounds }: { season: number; rounds: PulseR
             // every other entrance here, so it happens when the strip is
             // looked at rather than while it is off screen.
             <li
-              key={round.round}
+              key={index}
               className="pulse-pill"
               style={{ '--i': index } as React.CSSProperties}
             >

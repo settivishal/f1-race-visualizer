@@ -13,6 +13,7 @@ import {
   getActiveSeason, getDriverStandings, getFeaturedRace, getLatestResult,
   getSeasonPulse, getSeasonSchedule,
 } from '@/lib/queries';
+import { seasonRoundLabel } from '@/lib/schedule';
 
 // Reads through the schema, not around it. A server component could query
 // Drizzle directly and be quicker to write, but then GraphQL would be a facade
@@ -164,7 +165,7 @@ async function LatestRace() {
       title={race.meeting?.name ?? race.slug}
       subtitle={
         race.meeting
-          ? `${race.meeting.season} · Round ${race.meeting.round}${where ? ` · ${where}` : ''}`
+          ? `${seasonRoundLabel(race.meeting.season, race.meeting.round)}${where ? ` · ${where}` : ''}`
           : (where ?? '')
       }
       isSprint={race.type === 'SPRINT'}

@@ -122,6 +122,7 @@ type Meeting {
   country: String!
   id: ID!
   name: String!
+  officialRound: Int
   races: [Race!]!
   round: Int!
   season: Int!
@@ -171,7 +172,7 @@ type PredictionDisplay {
 
 type PulseRound {
   name: String!
-  round: Int!
+  round: Int
   slug: String
   status: PulseRoundStatus!
   teamColor: String

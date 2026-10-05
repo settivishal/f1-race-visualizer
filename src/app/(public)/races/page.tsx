@@ -9,6 +9,7 @@ import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getActiveSeason, getRaceLibrary } from '@/lib/queries';
+import { seasonRoundLabel } from '@/lib/schedule';
 
 export const metadata = {
   title: 'Races',
@@ -198,7 +199,7 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                     <div className="flex items-center gap-2">
                       <span className="text-eyebrow font-semibold uppercase text-muted">
                         {node.meeting
-                          ? `${node.meeting.season} · Round ${node.meeting.round}`
+                          ? seasonRoundLabel(node.meeting.season, node.meeting.round)
                           : 'Season unknown'}
                       </span>
                       {/* Only the next one. Every scheduled race carrying this

@@ -34,6 +34,11 @@ Meeting.implement({
   fields: (t) => ({
     id: t.exposeID('id'),
     round: t.exposeInt('round'),
+    // The number to show; `round` is the import's key. See the loader.
+    officialRound: t.int({
+      nullable: true,
+      resolve: (meeting, _args, ctx) => ctx.loaders.officialRoundByMeetingId.load(meeting.id),
+    }),
     name: t.exposeString('name'),
     country: t.exposeString('country'),
     circuitName: t.exposeString('circuitName', { nullable: true }),

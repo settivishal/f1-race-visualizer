@@ -10,7 +10,7 @@ import { sessionTitle } from '@/lib/session-title';
 import { Tabs } from '@/components/ui/tabs';
 import { UpcomingRace } from '@/components/schedule/upcoming-race';
 import { CircuitInfoPanel } from '@/components/replay/circuit-info-panel';
-import { raceHeaderFact } from '@/lib/schedule';
+import { raceHeaderFact, seasonRoundLabel } from '@/lib/schedule';
 import { ReplayAtLap } from '@/components/replay/replay-at-lap';
 import { toReplayView } from '@/components/replay/types';
 import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
@@ -125,7 +125,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
     <>
       <div className="mt-5">
         <SectionHeader
-          eyebrow={meeting ? `${meeting.season} · Round ${meeting.round}` : 'Season unknown'}
+          eyebrow={meeting ? seasonRoundLabel(meeting.season, meeting.round) : 'Season unknown'}
           // "British Sprint", not "British Grand Prix" with a pill beside it
           // saying otherwise.
           title={meeting ? sessionTitle(meeting.name, race.type) : race.slug}

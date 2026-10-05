@@ -43,6 +43,13 @@ const plural = (n: number, unit: string) => (n === 1 ? unit : `${unit}s`);
  * UTC, because this renders on the server into a cached page: a local
  * timezone would be the build machine's, not the reader's.
  */
+/**
+ * "2026 · Round 17", or the season alone for a cancelled round, which F1
+ * leaves unnumbered. The round is the official one (`officialRound`).
+ */
+export const seasonRoundLabel = (season: number, round: number | null) =>
+  round === null ? `${season}` : `${season} · Round ${round}`;
+
 export function raceHeaderFact(race: {
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
   date: string;

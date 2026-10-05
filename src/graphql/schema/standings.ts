@@ -191,7 +191,7 @@ builder.queryField('constructorStandings', (t) =>
  * A round with no winner yet is a round not yet run, which the UI draws hollow.
  */
 type PulseRoundShape = {
-  round: number;
+  round: number | null;
   name: string;
   slug: string | null;
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
@@ -206,7 +206,8 @@ const PulseStatus = builder.enumType('PulseRoundStatus', {
 
 const PulseRound = builder.objectRef<PulseRoundShape>('PulseRound').implement({
   fields: (t) => ({
-    round: t.exposeInt('round'),
+    // The official number, null for a cancelled round. See officialRoundByMeetingId.
+    round: t.exposeInt('round', { nullable: true }),
     name: t.exposeString('name'),
     // Null where the round has not been run: there is no replay to link to.
     slug: t.exposeString('slug', { nullable: true }),
@@ -250,11 +251,12 @@ builder.queryField('seasonPulse', (t) =>
         .where(eq(meetings.seasonYear, args.season))
         .orderBy(asc(meetings.round));
 
+      let official = 0;
       return rows.map((row) => {
         const status = row.status ?? 'SCHEDULED';
         const run = status === 'COMPLETED';
         return {
-          round: row.round,
+          round: status === 'CANCELLED' ? null : ++official,
           name: row.name,
           // A round that has not been run still has a page worth linking to:
           // it says when it is, or that it was cancelled.

@@ -75,7 +75,7 @@ const RACE_LIBRARY = /* GraphQL */ `
         cursor
         node {
           id slug date laps status type isFeatured
-          meeting { name country circuitName round season }
+          meeting { name country circuitName round: officialRound season }
           podium { position code teamColor }
           weekendSprint {
             slug
@@ -100,7 +100,7 @@ const RACE_HEADER = /* GraphQL */ `
     race(slug: $slug) {
       id slug date laps status type
       meeting {
-        name country circuitName round season
+        name country circuitName round: officialRound season
         circuit { ergastId name locality country lengthKm turns firstGrandPrix }
         # The weekend's other sessions, so a race page can point at its sibling
         # — the library shows one card per weekend, and without this the sprint
@@ -159,7 +159,7 @@ const HERO_REPLAY = /* GraphQL */ `
     featuredRace {
       slug
       laps
-      meeting { name round season circuitName }
+      meeting { name round: officialRound season circuitName }
       replay {
         summary { maxLap maxPosition }
         drivers {
@@ -178,7 +178,7 @@ const LATEST_RESULT = /* GraphQL */ `
       slug
       date
       type
-      meeting { name round season circuitName country }
+      meeting { name round: officialRound season circuitName country }
       results {
         finalPosition fastestLap points status
         driver { code name }
@@ -277,7 +277,7 @@ const RACE_REPLAY = /* GraphQL */ `
   query RaceReplay($slug: String!) {
     race(slug: $slug) {
       id slug laps date type dataTier
-      meeting { name country circuitName round season }
+      meeting { name country circuitName round: officialRound season }
       replay {
         laps
         summary { lapCount maxLap maxPosition driverCount }
@@ -432,7 +432,7 @@ const SEASON_SCHEDULE = /* GraphQL */ `
           date
           type
           status
-          meeting { name round }
+          meeting { name round: officialRound }
         }
       }
     }
