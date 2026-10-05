@@ -166,7 +166,7 @@ export type SeasonPulseQueryVariables = Exact<{
 }>;
 
 
-export type SeasonPulseQuery = { seasonPulse: Array<{ round: number, name: string, slug: string | null, status: PulseRoundStatus, winnerCode: string | null, teamName: string | null, teamColor: string | null }> };
+export type SeasonPulseQuery = { seasonPulse: Array<{ round: number | null, name: string, slug: string | null, status: PulseRoundStatus, winnerCode: string | null, teamName: string | null, teamColor: string | null }> };
 
 export type RaceLibraryQueryVariables = Exact<{
   season?: number | null | undefined;

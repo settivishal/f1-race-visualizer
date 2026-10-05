@@ -1,5 +1,5 @@
 import DataLoader from 'dataloader';
-import { and, asc, desc, eq, inArray, lte } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, ne, sql } from 'drizzle-orm';
 import {
   driverTeamAssignments,
   drivers,
@@ -143,6 +143,33 @@ export function createLoaders(db: Db) {
         .orderBy(driverTeamAssignments.driverId, desc(races.date));
       const byDriver = new Map(rows.map(({ driverId, ...team }) => [driverId, team]));
       return driverIds.map((id) => byDriver.get(id) ?? null);
+    }),
+    /**
+     * The round number F1 publishes: the meeting's place among its season's
+     * grands prix that were not cancelled, by date. `meetings.round` is a
+     * position in OpenF1's calendar, which keeps the rounds F1 cancelled and
+     * renumbered around (2023's Imola, 2026's Bahrain and Jeddah), so it runs
+     * ahead of the official number. Computed rather than stored, because a race
+     * is cancelled by hand in the admin and the numbers after it move then.
+     * Null for a cancelled round, which has no number.
+     */
+    officialRoundByMeetingId: new DataLoader<string, number | null>(async (meetingIds) => {
+      const seasons = db.select({ year: meetings.seasonYear }).from(meetings)
+        .where(inArray(meetings.id, [...meetingIds]));
+      const rows = await db
+        .select({
+          meetingId: races.meetingId,
+          round: sql<number>`(row_number() over (partition by ${meetings.seasonYear} order by ${races.date}))::int`,
+        })
+        .from(races)
+        .innerJoin(meetings, eq(meetings.id, races.meetingId))
+        .where(and(
+          eq(races.type, 'GRAND_PRIX'),
+          ne(races.status, 'CANCELLED'),
+          inArray(meetings.seasonYear, seasons),
+        ));
+      const byMeeting = new Map(rows.map((row) => [row.meetingId, row.round]));
+      return meetingIds.map((id) => byMeeting.get(id) ?? null);
     }),
     /**
      * The sprint of a weekend, if it had one. Keyed by meeting rather than by

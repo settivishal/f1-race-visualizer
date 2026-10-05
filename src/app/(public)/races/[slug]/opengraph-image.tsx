@@ -31,7 +31,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   // child, and adjacent expressions count as several. Building each line as one
   // string keeps every node single-child and the styles honest.
   const eyebrow = meeting
-    ? [`${meeting.season}`, `ROUND ${meeting.round}`, race?.type === 'SPRINT' ? 'SPRINT' : '']
+    ? [`${meeting.season}`, meeting.round === null ? '' : `ROUND ${meeting.round}`, race?.type === 'SPRINT' ? 'SPRINT' : '']
         .filter(Boolean)
         .join(' · ')
     : '';
