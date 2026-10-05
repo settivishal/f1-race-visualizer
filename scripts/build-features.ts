@@ -6,7 +6,7 @@ import {
   buildFeatureRows, lineageOf, missingFromQualifying, toCsv,
   type Entry, type RaceInput,
 } from '@/lib/features';
-import { fetchSeasonQualifying, type ErgastQualifyingRace } from '@/lib/ingest/ergast';
+import { ergastRaceOn, fetchSeasonQualifying, type ErgastQualifyingRace } from '@/lib/ingest/ergast';
 
 const { drivers, driverTeamAssignments, meetings, raceResults, races, teamSeasons, teams } = schema;
 
@@ -135,17 +135,6 @@ async function main() {
 }
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
-
-/**
- * The Ergast race on the same UTC day, or a day either side. Ergast usually
- * dates a race in UTC, but not always: it files the 2024 Las Vegas race, which
- * started at 06:00 UTC on Sunday, under Saturday. Races are at least a week
- * apart, so a day of slack cannot match the wrong one.
- */
-function ergastRaceOn(date: Date, byDate: Map<string, ErgastQualifyingRace>) {
-  const DAY = 86_400_000;
-  return [0, -DAY, DAY].map((offset) => byDate.get(day(new Date(date.getTime() + offset)))).find(Boolean);
-}
 
 async function findUpcoming(slug: string) {
   const [race] = await getDb()

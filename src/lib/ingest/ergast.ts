@@ -299,6 +299,21 @@ async function fetchSeasonRaces<R extends { round: number }>(
   return [...byRound.values()].sort((a, b) => a.round - b.round);
 }
 
+/**
+ * The Ergast race on the same UTC day, or a day either side, from races keyed
+ * by their `date`. Never by round: the two upstreams number rounds differently
+ * (2023's cancelled Imola, 2026's Sepang). Ergast usually dates a race in UTC,
+ * but not always: it files the 2024 Las Vegas race, which started at 06:00 UTC
+ * on Sunday, under Saturday. Races are at least a week apart, so a day of
+ * slack cannot match the wrong one.
+ */
+export function ergastRaceOn<R>(date: Date, byDate: Map<string, R>): R | undefined {
+  const DAY = 86_400_000;
+  return [0, -DAY, DAY]
+    .map((offset) => byDate.get(new Date(date.getTime() + offset).toISOString().slice(0, 10)))
+    .find(Boolean);
+}
+
 /** Every race of a season, with results, drivers, constructors and the circuit. */
 export const fetchSeasonResults = (year: number): Promise<ErgastRace[]> =>
   fetchSeasonRaces(year, `/${year}/results.json`, ErgastRaceSchema, (into, from) => {

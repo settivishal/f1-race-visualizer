@@ -1581,6 +1581,12 @@ never round. A miss is a warning and a null grid, never a failed import. `sqlCoa
 keeps a grid that an earlier import found. The model never reads the grid, so a null costs
 an analysis column, not a prediction.
 
+*Amended 2026-10-05:* the grid is filled by its own pass (`fillGrids`), not by the import.
+Ergast is still read on the cron path, after the drain and best-effort as above, but a read at
+import time would miss whenever Ergast lags the 12-hour import, and nothing re-imports a
+completed race to try again. A separate pass retries daily for 14 days, and fills the old
+seasons without rewriting their laps.
+
 **Considered:** a `driver_race_features` Drizzle table (the first draft of the plan), and
 Python writing predictions straight to Neon. Both put ML output into the schema before
 anything needed it.
