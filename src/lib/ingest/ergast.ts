@@ -135,11 +135,18 @@ export const ErgastLapSchema = z.object({
   Timings: z.array(
     z.object({
       driverId: z.string(),
-      position: numeric,
+      position: numeric.optional(),
       /** `1:29.345`, or absent for a lap upstream never timed. */
       time: z.string().optional(),
     }),
-  ),
+  )
+    // Dropped: a timing with no position, which upstream files for cars that
+    // had already retired (2018 Monza: Hartley on lap 6 after 0 laps run).
+    // It says nothing about the running order, and the retirement itself
+    // comes from the results.
+    .transform((timings) => timings.filter(
+      (t): t is typeof t & { position: number } => t.position !== undefined,
+    )),
 });
 
 export const ErgastPitStopSchema = z.object({
