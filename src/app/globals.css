@@ -664,3 +664,22 @@ html:has(:root.light) {
       0 0 22px -6px color-mix(in srgb, var(--accent) 70%, transparent);
   }
 }
+
+/* The dropdown list (components/ui/select.tsx) opening from its box. Radix
+ * sets the side it opened on, so the list grows away from the trigger. */
+.select-content {
+  animation: select-in 120ms ease-out;
+}
+.select-content[data-side='bottom'] {
+  transform-origin: top;
+}
+.select-content[data-side='top'] {
+  transform-origin: bottom;
+}
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
