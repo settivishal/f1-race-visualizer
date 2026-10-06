@@ -1,4 +1,4 @@
-import type { ReplayEvent, ReplayPosition } from "./types";
+import type { ReplayEntry, ReplayEvent, ReplayPosition } from "./types";
 
 export type ReplayEventKind =
   | "pit"
@@ -365,4 +365,58 @@ export function inferredRetirementLaps(drivers: { driver: { id: string }; positi
     }
   }
   return result;
+}
+
+function isRetirementKind(event: ReplayEvent) {
+  const kind = classifyReplayEvent(event);
+  return kind === "dnf" || kind === "dns" || kind === "dnq" || kind === "dsq";
+}
+
+/**
+ * Each retired car's retirement: the earliest retirement event, else the lap
+ * it stopped on. The chart and the timing tower both read this, so a car leaves
+ * the running order in both at the same lap.
+ */
+export function getRetirementLapByDriver(events: ReplayEvent[], drivers: ReplayEntry[]) {
+  const result = new Map<string, ReplayEvent>();
+
+  for (const event of events) {
+    if (!event.driver || !isRetirementKind(event)) {
+      continue;
+    }
+
+    const existing = result.get(event.driver.id);
+    if (!existing || event.lap < existing.lap) {
+      result.set(event.driver.id, event);
+    }
+  }
+
+  // A car that stopped without a retirement event (see inferredRetirementLaps)
+  // is drawn the same way, so its badge leaves instead of sitting on the car
+  // that took its place. Not for the story panel: it lists what the upstreams
+  // reported, and this is an inference.
+  for (const [driverId, lap] of inferredRetirementLaps(drivers)) {
+    const entry = drivers.find((candidate) => candidate.driver.id === driverId);
+    if (!entry || result.has(driverId)) continue;
+    result.set(driverId, { lap, type: "RETIREMENT", details: "Stopped", driver: entry.driver });
+  }
+
+  return result;
+}
+
+/**
+ * The tower's order: running cars by position, then retired cars, the latest
+ * retirement first, as a classification lists them. A retired car keeps the
+ * last position it held, which the car behind has since taken, so sorting on
+ * position alone printed two cars in one place for the rest of the race.
+ */
+export function compareTowerRows(
+  a: { position: number; retiredLap: number | null },
+  b: { position: number; retiredLap: number | null },
+) {
+  if (a.retiredLap === null || b.retiredLap === null) {
+    if (a.retiredLap !== b.retiredLap) return a.retiredLap === null ? -1 : 1;
+    return a.position - b.position;
+  }
+  return b.retiredLap - a.retiredLap || a.position - b.position;
 }

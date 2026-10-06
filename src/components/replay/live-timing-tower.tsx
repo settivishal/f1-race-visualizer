@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence, MotionValue, useMotionValueEvent } from "framer-motion";
 import { cn } from "@/lib/cn";
 import { formatLapTime } from "@/lib/scale";
+import { compareTowerRows, getRetirementLapByDriver } from "./replay-state";
 import type { ReplayView } from "./types";
 
 interface TimingTowerProps {
@@ -89,6 +90,11 @@ export function LiveTimingTower({
   });
   const standingsLap = leadsNextLap ? nextLap : currentLap;
 
+  const retirementByDriver = useMemo(
+    () => getRetirementLapByDriver(visualization.events, visualization.drivers),
+    [visualization.events, visualization.drivers],
+  );
+
   const standings = useMemo(() => {
     const currentStandings = [];
 
@@ -123,22 +129,28 @@ export function LiveTimingTower({
       }
 
       if (currentPos && currentPos.lap <= standingsLap) {
+        // From the lap the chart marks the car out, the same test as there.
+        // Its timing is blanked too: the last lap it set is not this lap's.
+        const retirementLap = retirementByDriver.get(entry.driver.id)?.lap ?? null;
+        const retiredLap = retirementLap !== null && standingsLap >= retirementLap ? retirementLap : null;
+        const timing = retiredLap === null ? currentPos : { sector1: null, sector2: null, sector3: null, lapTime: null };
         currentStandings.push({
           entry,
           position: currentPos.position,
-          sector1: currentPos.sector1,
-          sector2: currentPos.sector2,
-          sector3: currentPos.sector3,
-          lapTime: currentPos.lapTime,
-          s1Color: getSectorColor(currentPos.sector1, personalBestS1, overallBestS1),
-          s2Color: getSectorColor(currentPos.sector2, personalBestS2, overallBestS2),
-          s3Color: getSectorColor(currentPos.sector3, personalBestS3, overallBestS3),
+          retiredLap,
+          sector1: timing.sector1,
+          sector2: timing.sector2,
+          sector3: timing.sector3,
+          lapTime: timing.lapTime,
+          s1Color: getSectorColor(timing.sector1, personalBestS1, overallBestS1),
+          s2Color: getSectorColor(timing.sector2, personalBestS2, overallBestS2),
+          s3Color: getSectorColor(timing.sector3, personalBestS3, overallBestS3),
         });
       }
     }
 
-    return currentStandings.sort((a, b) => a.position - b.position);
-  }, [visualization.drivers, standingsLap]);
+    return currentStandings.sort(compareTowerRows);
+  }, [visualization.drivers, retirementByDriver, standingsLap]);
 
   return (
     <div
@@ -198,13 +210,13 @@ export function LiveTimingTower({
                   "group flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-xs transition-[background-color,opacity] duration-200 hover:bg-panel-strong",
                   highlightedDriverId === standing.entry.driver.id
                     ? "bg-panel-strong ring-1 ring-line-strong"
-                    : highlightedDriverId
+                    : highlightedDriverId || standing.retiredLap !== null
                       ? "opacity-60"
                       : null,
                 )}
               >
                 <div className="tabular w-8 font-mono font-medium text-muted">
-                  {standing.position}
+                  {standing.retiredLap === null ? standing.position : "OUT"}
                 </div>
                 <div className="flex-1 flex items-center gap-2 overflow-hidden">
                   <div 
