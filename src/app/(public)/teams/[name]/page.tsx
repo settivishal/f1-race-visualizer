@@ -22,6 +22,11 @@ export async function generateStaticParams() {
   return prerenderParams(teams.map((team) => ({ name: encodeURIComponent(team.name) })));
 }
 
+// Blocks on purpose: the existence check and its notFound() sit above Suspense
+// in this page, because below a boundary they bake the 404 into the prerendered
+// shell. Without this, next dev flags the awaited params as non-instant.
+export const instant = false;
+
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
   const { name } = await params;
   const { team } = await getTeamProfile(decodeURIComponent(name));
