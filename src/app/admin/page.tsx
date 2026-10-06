@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { executeAsAdmin } from '@/graphql/execute';
 import type { AdminRacesQuery } from '@/graphql/generated/graphql';
@@ -147,17 +148,16 @@ async function RaceList({ searchParams }: { searchParams: SearchParams }) {
       <form method="get" className="mt-8 flex flex-wrap items-end gap-3">
         {/* The season applies on pick; the search box still needs the button. */}
         <AutoSubmit />
-        <label className="flex flex-col gap-1.5">
-          <span className="text-eyebrow font-semibold uppercase text-muted">Season</span>
-          <select name="season" defaultValue={season ?? ''} className={fieldClasses}>
-            <option value="">All seasons</option>
-            {seasons.map((entry) => (
-              <option key={entry.year} value={entry.year}>
-                {entry.year}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Season"
+          name="season"
+          defaultValue={season === null ? 'all' : String(season)}
+          options={[
+            { value: 'all', label: 'All seasons' },
+            ...seasons.map((entry) => ({ value: String(entry.year), label: String(entry.year) })),
+          ]}
+          className="w-40"
+        />
         <label className="flex min-w-56 flex-1 flex-col gap-1.5">
           <span className="text-eyebrow font-semibold uppercase text-muted">Search</span>
           <input

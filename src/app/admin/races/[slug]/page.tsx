@@ -5,6 +5,7 @@ import { ActionForm } from '@/components/admin/action-form';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -97,25 +98,23 @@ async function EditForm({ params }: { params: Promise<{ slug: string }> }) {
             hint="The scheduled distance. The replay derives its own lap list from the data."
           />
 
-          <label className="block">
-            <span className="mb-1.5 block text-eyebrow font-semibold uppercase text-muted">
-              Status
-            </span>
-            <select
+          <div>
+            <Select
+              label="Status"
               name="status"
               defaultValue={race.status}
-              className="w-full rounded-md border border-line bg-panel px-3 py-2 text-sm text-foreground"
-            >
-              <option value="SCHEDULED">Scheduled — not yet run</option>
-              <option value="COMPLETED">Completed — has a result</option>
-              <option value="CANCELLED">Cancelled — did not take place</option>
-            </select>
+              options={[
+                { value: 'SCHEDULED', label: 'Scheduled — not yet run' },
+                { value: 'COMPLETED', label: 'Completed — has a result' },
+                { value: 'CANCELLED', label: 'Cancelled — did not take place' },
+              ]}
+            />
             <span className="mt-1.5 block text-sm text-muted">
               The ingest sets the first two from the data. Cancelled is only ever
               yours to set: no upstream publishes it.
             </span>
             <PinNote column="status" pinned={racePinned} />
-          </label>
+          </div>
 
           <div className="flex items-center gap-3 pt-1">
             <Button type="submit">Save</Button>
