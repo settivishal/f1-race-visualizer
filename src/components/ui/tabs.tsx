@@ -23,9 +23,9 @@ export type Tab = {
  * not there, so they are marked up as what they are — navigation, with the
  * current one carrying `aria-current`.
  */
-export function Tabs({ tabs, active }: { tabs: Tab[]; active: string }) {
+export function Tabs({ tabs, active, label = "Race views" }: { tabs: Tab[]; active: string; label?: string }) {
   return (
-    <nav aria-label="Race views" className="border-b border-line">
+    <nav aria-label={label} className="border-b border-line">
       <ul className="hide-scrollbar -mb-px flex gap-1 overflow-x-auto">
         {tabs.map((tab) => {
           const isActive = tab.id === active;

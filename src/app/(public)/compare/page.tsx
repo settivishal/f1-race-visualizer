@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs } from '@/components/ui/tabs';
 import { getArchiveIndex, getDriverProfile, getTeamProfile } from '@/lib/queries';
 
 /**
@@ -73,11 +74,19 @@ async function CompareBody({ searchParams }: { searchParams: Promise<Search> }) 
         {/* No AutoSubmit here, deliberately: a comparison needs two sides, so
             applying on every change would navigate twice on the way to one
             answer — once through a half-picked pair. The button stays. */}
-        <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
-          <Picker label="Compare" name="kind" value={kind}>
-            <option value="driver">Drivers</option>
-            <option value="team">Constructors</option>
-          </Picker>
+        {/* Links, not a select: the name lists below depend on the kind, and a
+            select only changes them after a submit, which sent driver codes as
+            team names. A link reloads with the right lists and drops the picks. */}
+        <Tabs
+          label="Compare"
+          active={kind}
+          tabs={[
+            { id: 'driver', label: 'Drivers', href: kindHref('driver', season) },
+            { id: 'team', label: 'Constructors', href: kindHref('team', season) },
+          ]}
+        />
+        <form className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+          <input type="hidden" name="kind" value={kind} />
 
           {(['a', 'b'] as const).map((slot) => (
             <Picker
@@ -108,9 +117,6 @@ async function CompareBody({ searchParams }: { searchParams: Promise<Search> }) 
         </form>
       </Card>
 
-      {/* Changing `kind` invalidates whichever names were picked for the other
-          kind, so an unresolvable pair is the normal state of a half-changed
-          form rather than an error worth shouting about. */}
       {a && b ? (
         <ComparisonTable a={a} b={b} season={season} />
       ) : (
@@ -128,6 +134,9 @@ async function CompareBody({ searchParams }: { searchParams: Promise<Search> }) 
     </>
   );
 }
+
+const kindHref = (kind: 'driver' | 'team', season: number | null) =>
+  `/compare?kind=${kind}${season === null ? '' : `&season=${season}`}`;
 
 async function loadSide(
   kind: 'driver' | 'team',
