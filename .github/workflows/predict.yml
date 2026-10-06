@@ -69,7 +69,8 @@ jobs:
         working-directory: ml
         run: uv run python train.py
         env:
-          MPLBACKEND: Agg
+          # Skips the experiment cells; the prediction is all this run needs.
+          PREDICT_ONLY: 1
 
       - name: Import predictions
         if: steps.next.outputs.slug
