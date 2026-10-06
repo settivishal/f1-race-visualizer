@@ -24,22 +24,23 @@ pnpm tsx --env-file=.env.prod scripts/import-predictions.ts
 
 ## Evaluation
 
-Walk-forward over 2025–2026 (39 races). Each race is predicted by a model trained only on the races before it. No weekend is ever on both sides of the split.
+Walk-forward over 2025–2026 (40 races, through Kuala Lumpur 2026). Each race is predicted by a model trained only on the races before it. No weekend is ever on both sides of the split.
+
+Trained on 2018–2026 (189 races):
 
 | | Brier | favourite won |
 |---|---|---|
-| lgbm-v1 | 0.0254 | 26/39 |
-| quali-rate table | 0.0251 | 26/39 |
-| pole wins (0/1) | 0.0321 | 26/39 |
-| all features | 0.0280 | 22/39 |
+| lgbm-v1 | 0.0250 | 27/40 |
+| quali-rate table | 0.0253 | 27/40 |
+| pole wins (0/1) | 0.0313 | 27/40 |
+| quali + driver and constructor form, no weighting | 0.0244 | 27/40 |
+| all features | 0.0265 | 25/40 |
 
-On 2023–2026 data (85 races), adding driver form, constructor form, the sprint result, the circuit or the team made the model worse, so v1 is quali only. Calibration is fine within noise (`out/calibration.png`).
+Half-lives of 365, 730 and 1095 days tie; no weighting (0.0253) and 180 (0.0254) are worse. Adding form helps a little, but the per-race difference from v1 (−0.012 ± 0.036) is well inside the noise, and the circuit adds nothing. So v1 stays quali only. Recheck form after another dozen races.
+
+Calibration is fine within noise (`out/calibration.png`). Predictions of 0.2 or less: 13 winners from 779 drivers, 1.7% against 1.7% predicted. Favourites at 0.4–0.8: 27 of 40 won, against about 60% predicted, so slightly under-confident.
 
 ## Known data quirks
 
 - 2018–2022 have no sprint results, so `sprint_finish_position` is blank there. On the six 2021–22 sprint weekends, the GP started from the sprint result, not from qualifying.
-- `analysis_grid_position` is blank for 2023 onward.
-
-## To do after the 2018–2022 backfill
-
-Rebuild `features.csv` and rerun from the top. Recheck the half-life sweep (on the current data, no weighting scores 0.0251 against 0.0254 at 365) and the feature subsets. If no weighting still wins, set `HALF_LIFE = None` and flag early-2026 predictions as low confidence instead.
+- Classified retirements count as finishes. `round` is our internal numbering, which counts cancelled rounds; don't use it as a feature.

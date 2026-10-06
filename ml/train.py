@@ -19,7 +19,7 @@ HALF_LIFE = 365
 df = pd.read_csv("data/features.csv")
 os.makedirs("out", exist_ok=True)
 df["date"] = pd.to_datetime(df.date)
-# No quali time means starting from the back, not "unknown". NaN let LightGBM put him on pole.
+# No quali time means starting from the back, not "unknown". Left as NaN, LightGBM once made such a driver the favourite.
 df["quali_position"] = df.quali_position.fillna(df.field_size)
 
 upcoming = df[df.finished_p1.isna()]
@@ -84,7 +84,7 @@ cmp = (top.merge(pole, on="race_slug", suffixes=("_pick", "_pole"))
 cmp[cmp.driver_code_pick != cmp.driver_code_pole]
 
 # %%
-# Re-check after the 2018–2022 backfill: on 2023–2026 data no weighting edged out 365 (0.0251 vs 0.0254).
+# On 2018–2026 data (189 races), 365, 730 and 1095 tie (0.0249–0.0250); None (0.0253) and 180 (0.0254) are worse.
 for hl in [None, 730, 365, 180, 90]:
     print(f"half-life {hl}:", score(walk_forward(half_life=hl)))
 
