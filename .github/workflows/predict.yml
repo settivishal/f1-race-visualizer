@@ -1,0 +1,79 @@
+name: Predict
+
+# Win predictions for the next grand prix, once its qualifying is out: the same
+# three commands as a manual run (ml/README.md), against production. A workflow
+# and not the Vercel cron because training needs Python and LightGBM.
+#
+# Qualifying is at least ~20 hours before the race, so a run every three hours
+# over the weekend predicts in time. Most runs stop at the Jolpica check in
+# scripts/next-prediction.ts without touching the database.
+on:
+  # Off until the first run by hand matches a manual one.
+  # schedule:
+  #   - cron: '17 */3 * * 5,6,0'
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Race to predict (blank: the next one with qualifying out)'
+        required: false
+        type: string
+      force:
+        description: 'Predict again when predictions already exist'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: predict
+  cancel-in-progress: false
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pick the race
+        id: next
+        run: |
+          test -n "$DATABASE_URL" || { echo "::error::DATABASE_URL secret is empty"; exit 1; }
+          if [ -n "$SLUG" ]; then
+            echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+          else
+            pnpm tsx scripts/next-prediction.ts $FORCE
+          fi
+        env:
+          SLUG: ${{ inputs.slug }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+
+      - name: Build features
+        if: steps.next.outputs.slug
+        run: pnpm tsx scripts/build-features.ts --upcoming "$SLUG"
+        env:
+          SLUG: ${{ steps.next.outputs.slug }}
+
+      - uses: astral-sh/setup-uv@v6
+        if: steps.next.outputs.slug
+
+      - name: Train and predict
+        if: steps.next.outputs.slug
+        working-directory: ml
+        run: uv run python train.py
+        env:
+          MPLBACKEND: Agg
+
+      - name: Import predictions
+        if: steps.next.outputs.slug
+        run: pnpm tsx scripts/import-predictions.ts
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
