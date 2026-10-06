@@ -151,8 +151,10 @@ test('the chart is drawn at the size it is displayed', async ({ page }) => {
       (node) => node.getBoundingClientRect().height,
     );
 
+    // Not the ghost lap number behind the plot: it is decoration, and it is
+    // meant to sit under the axis.
     const ticks = [...svg.querySelectorAll('text')]
-      .filter((node) => /^\d+$/.test(node.textContent ?? ''))
+      .filter((node) => /^\d+$/.test(node.textContent ?? '') && !node.closest('[aria-hidden]'))
       .map((node) => node.getBoundingClientRect())
       .sort((a, b) => a.left - b.left);
 
