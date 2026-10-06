@@ -1,5 +1,3 @@
-"use client";
-
 import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { linearScale, type Scale } from "@/lib/scale";
@@ -12,7 +10,7 @@ import {
   easeLapProgress,
   getDriverPointForLap,
   getReplayEventMarkerColor,
-  inferredRetirementLaps,
+  getRetirementLapByDriver,
   isHollowMarker,
   ReplayRaceControl,
   withFocusLast,
@@ -213,38 +211,6 @@ function getVisibleLapTicks(laps: number[], maxTicks: number) {
   return laps.filter(
     (_, index) => index === 0 || index === last || (index % step === 0 && last - index >= step / 2),
   );
-}
-
-function isRetirementKind(event: ReplayEvent) {
-  const kind = classifyReplayEvent(event);
-  return kind === "dnf" || kind === "dns" || kind === "dnq" || kind === "dsq";
-}
-
-function getRetirementLapByDriver(events: ReplayEvent[], drivers: ReplayEntry[]) {
-  const result = new Map<string, ReplayEvent>();
-
-  for (const event of events) {
-    if (!event.driver || !isRetirementKind(event)) {
-      continue;
-    }
-
-    const existing = result.get(event.driver.id);
-    if (!existing || event.lap < existing.lap) {
-      result.set(event.driver.id, event);
-    }
-  }
-
-  // A car that stopped without a retirement event (see inferredRetirementLaps)
-  // is drawn the same way, so its badge leaves instead of sitting on the car
-  // that took its place. Local to the chart: the story panel lists what the
-  // upstreams reported, and this is an inference.
-  for (const [driverId, lap] of inferredRetirementLaps(drivers)) {
-    const entry = drivers.find((candidate) => candidate.driver.id === driverId);
-    if (!entry || result.has(driverId)) continue;
-    result.set(driverId, { lap, type: "RETIREMENT", details: "Stopped", driver: entry.driver });
-  }
-
-  return result;
 }
 
 /**

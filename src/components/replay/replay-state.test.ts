@@ -7,6 +7,8 @@ import {
   classifyReplayEvent,
   easeLapProgress,
   inferredRetirementLaps,
+  getRetirementLapByDriver,
+  compareTowerRows,
   getReplayEventMarkerColor,
   getReplayEventTone,
   isHollowMarker,
@@ -226,5 +228,34 @@ describe('inferredRetirementLaps', () => {
     const leader = entry('ver', run([57, 1], [58, 1]));
     const lapped = entry('sar', run([56, 15], [57, 15]));
     expect(inferredRetirementLaps([leader, lapped])).toEqual(new Map());
+  });
+});
+
+describe('getRetirementLapByDriver', () => {
+  const run = (...laps: [number, number][]): ReplayPosition[] =>
+    laps.map(([lap, position]) => ({ lap, position, lapTime: null, sector1: null, sector2: null, sector3: null }));
+
+  it('takes the earliest retirement event, and infers the rest from stopped rows', () => {
+    const lec = entry('lec', run([1, 1], [2, 1]));
+    const ham = entry('ham', run([1, 2], [2, 2]));
+    const nor = entry('nor', run([1, 3], [2, 3], [3, 2]));
+    const retired = { ...event(4, 'DNF'), driver: lec.driver };
+    const result = getRetirementLapByDriver(
+      [{ ...retired, lap: 5 }, retired],
+      [lec, ham, nor],
+    );
+    expect([...result].map(([id, { lap }]) => [id, lap])).toEqual([['lec', 4], ['ham', 2]]);
+  });
+});
+
+describe('compareTowerRows', () => {
+  it('puts a retired car below the one that took its place, latest retirement first', () => {
+    const rows = [
+      { id: 'ham', position: 8, retiredLap: 55 },
+      { id: 'nor', position: 8, retiredLap: null },
+      { id: 'sar', position: 3, retiredLap: 10 },
+      { id: 'ver', position: 1, retiredLap: null },
+    ];
+    expect(rows.sort(compareTowerRows).map(({ id }) => id)).toEqual(['ver', 'nor', 'ham', 'sar']);
   });
 });

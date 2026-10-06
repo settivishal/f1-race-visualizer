@@ -83,7 +83,7 @@ export async function PredictionPanel({ slug }: { slug: string }) {
       ) : null}
 
       <p className="mt-4 text-xs text-muted">
-        A model&apos;s estimate from qualifying and recent form, not a certainty.
+        A model&apos;s estimate from qualifying, not a certainty.
       </p>
     </Card>
   );

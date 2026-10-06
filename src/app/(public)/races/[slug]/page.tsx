@@ -12,6 +12,11 @@ import { RacePageShell, ReplayPanel, raceStaticParams } from './race-view';
  */
 export const generateStaticParams = raceStaticParams;
 
+// Blocks on purpose: the existence check and its notFound() sit above Suspense
+// in RacePageShell, because below a boundary they bake the 404 into the prerendered
+// shell. Without this, next dev flags the awaited params as non-instant.
+export const instant = false;
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const { race } = await getRaceHeader(slug);

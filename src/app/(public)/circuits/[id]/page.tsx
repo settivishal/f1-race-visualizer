@@ -13,6 +13,11 @@ export async function generateStaticParams() {
   return prerenderParams(circuits.map((circuit) => ({ id: circuit.ergastId })));
 }
 
+// Blocks on purpose: the existence check and its notFound() sit above Suspense
+// in this page, because below a boundary they bake the 404 into the prerendered
+// shell. Without this, next dev flags the awaited params as non-instant.
+export const instant = false;
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { circuit } = await getCircuitProfile(id);
