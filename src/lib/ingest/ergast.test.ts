@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import circuitsPayload from './__fixtures__/circuits-2025-ergast.json';
 import qualifyingPage0 from './__fixtures__/qualifying-2026-ergast/page-0.json';
 import qualifyingPage100 from './__fixtures__/qualifying-2026-ergast/page-100.json';
-import { fetchSeasonCircuits, fetchSeasonQualifying } from './ergast';
+import { ErgastLapSchema, fetchSeasonCircuits, fetchSeasonQualifying } from './ergast';
 
 /**
  * The circuits endpoint, against its real payload.
@@ -125,5 +125,19 @@ describe('fetchSeasonQualifying', () => {
     respondWith({ MRData: { total: '0', CircuitTable: { Circuits: [] } } });
 
     await expect(fetchSeasonQualifying(2026)).rejects.toThrow(/unrecognised envelope/);
+  });
+});
+
+describe('ErgastLapSchema', () => {
+  it('drops a timing with no position instead of failing the race', () => {
+    // 2018 US GP lap 5: Alonso, out on lap 1, still has a time and no position.
+    const lap = ErgastLapSchema.parse({
+      number: '5',
+      Timings: [
+        { driverId: 'raikkonen', position: '1', time: '1:39.788' },
+        { driverId: 'alonso', time: '1:40.933' },
+      ],
+    });
+    expect(lap.Timings).toEqual([{ driverId: 'raikkonen', position: 1, time: '1:39.788' }]);
   });
 });
