@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     // never hand-edited, so linting it only produces noise about its own
     // generated preamble.
     "src/graphql/generated/**",
+    // uv's virtualenv; matplotlib ships browser JS in it.
+    "ml/.venv/**",
   ]),
   // Turns off every rule oxlint already enforces (read from .oxlintrc.json), so
   // `pnpm lint` reports each problem once. Must stay last.
