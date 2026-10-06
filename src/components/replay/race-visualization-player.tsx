@@ -263,6 +263,7 @@ export function RaceVisualizationPlayer({
                 onHoverDriver={setHoveredDriverId}
                 lapProgress={lapProgress}
                 raceControl={activeRaceControl}
+                onJumpToLap={jumpToLap}
                 controls={
                   <ReplayControls
                     currentLap={currentLap}

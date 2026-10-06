@@ -198,7 +198,7 @@ const SEASON_PULSE = /* GraphQL */ `
 
 const RACE_SLUGS = /* GraphQL */ `
   query RaceSlugs {
-    raceSlugs { slug date }
+    raceSlugs { slug date type name }
   }
 `;
 
