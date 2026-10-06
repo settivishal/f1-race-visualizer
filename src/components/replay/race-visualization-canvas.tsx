@@ -1,5 +1,3 @@
-"use client";
-
 import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { linearScale, type Scale } from "@/lib/scale";

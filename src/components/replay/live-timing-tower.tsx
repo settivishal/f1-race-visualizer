@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence, MotionValue, useMotionValueEvent } from "framer-motion";
 import { cn } from "@/lib/cn";

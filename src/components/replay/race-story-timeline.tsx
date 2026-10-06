@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getReplayEventMarkerColor, isHollowMarker, type ReplayEventKind } from "./replay-state";
 import type { StoryMoment } from "./story-moments";

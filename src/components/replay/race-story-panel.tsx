@@ -1,5 +1,3 @@
-"use client";
-
 import { useMemo, useState } from "react";
 import { getReplayEventTone, type ReplayRaceControl } from "./replay-state";
 import { RaceStoryTimeline } from "./race-story-timeline";
