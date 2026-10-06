@@ -270,6 +270,14 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
         </table>
         </Card>
       </section>
+
+      {race.type === 'GRAND_PRIX' ? (
+        <Suspense fallback={null}>
+          <div className="mt-10 empty:hidden">
+            <PredictionPanel slug={race.slug} results={race.results} />
+          </div>
+        </Suspense>
+      ) : null}
         </>
       )}
     </>

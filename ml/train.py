@@ -58,6 +58,35 @@ def score(preds, name="p"):
     return f"brier {brier:.4f}  hit {hits}/{n}"
 
 # %%
+MODEL_VERSION = "lgbm-v1"
+
+def predict(rows, half_life=HALF_LIFE):
+    """Fit on every labelled race before these rows' date, return normalised probabilities."""
+    date = rows.date.min()
+    train = df[df.date < date]
+    w = 0.5 ** ((date - train.date).dt.days / half_life) if half_life else None
+    model = LGBMClassifier(n_estimators=200, learning_rate=0.05, num_leaves=7, verbose=-1,
+                           monotone_constraints=[MONO[f] for f in FEATURES])
+    model.fit(train[FEATURES], train.finished_p1, sample_weight=w)
+    out = rows[["race_slug", "driver_code"]].copy()
+    p = model.predict_proba(rows[FEATURES])[:, 1]
+    out["win_probability"] = p / p.sum()
+    out["model_version"] = MODEL_VERSION
+    return out
+
+if upcoming.empty:
+    print("no upcoming rows; build with --upcoming <slug> first")
+else:
+    for slug, rows in upcoming.groupby("race_slug"):
+        out = predict(rows)
+        assert abs(out.win_probability.sum() - 1) < 1e-6
+        out.to_csv("out/predictions.csv", index=False)
+        print(out.sort_values("win_probability", ascending=False).head(5))
+
+if os.environ.get("PREDICT_ONLY"):
+    raise SystemExit
+
+# %%
 preds = walk_forward()
 for name in ["p", "p_quali", "p_pole"]:
     print(f"{name:8}", score(preds, name))
@@ -95,31 +124,6 @@ for feats in [["quali_position"],
               ["quali_position", "constructor_form", "driver_form"],
               ["quali_position", "field_size", "driver_form", "constructor_form", "sprint_finish_position"]]:
     print(f"{str(feats):60}", score(walk_forward(features=feats)))
+
 # %%
 preds.groupby(pd.cut(preds.p, [0, .2, .4, .6, .8, 1])).finished_p1.agg(["count", "sum", "mean"])
-
-# %%
-MODEL_VERSION = "lgbm-v1"
-
-def predict(rows, half_life=HALF_LIFE):
-    """Fit on every labelled race before these rows' date, return normalised probabilities."""
-    date = rows.date.min()
-    train = df[df.date < date]
-    w = 0.5 ** ((date - train.date).dt.days / half_life) if half_life else None
-    model = LGBMClassifier(n_estimators=200, learning_rate=0.05, num_leaves=7, verbose=-1,
-                           monotone_constraints=[MONO[f] for f in FEATURES])
-    model.fit(train[FEATURES], train.finished_p1, sample_weight=w)
-    out = rows[["race_slug", "driver_code"]].copy()
-    p = model.predict_proba(rows[FEATURES])[:, 1]
-    out["win_probability"] = p / p.sum()
-    out["model_version"] = MODEL_VERSION
-    return out
-
-if upcoming.empty:
-    print("no upcoming rows; build with --upcoming <slug> first")
-else:
-    for slug, rows in upcoming.groupby("race_slug"):
-        out = predict(rows)
-        assert abs(out.win_probability.sum() - 1) < 1e-6
-        out.to_csv("out/predictions.csv", index=False)
-        print(out.sort_values("win_probability", ascending=False).head(5))

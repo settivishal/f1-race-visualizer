@@ -12,16 +12,25 @@ const generatedLabel = (iso: string) =>
     hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
   }) + ' UTC';
 
+type Result = { finalPosition: number | null; status: string; driver: { code: string } | null };
+
+/** "P3", or the status for a car that has no finishing position. */
+const finishLabel = (result: Result | undefined) =>
+  result ? (result.finalPosition !== null ? `P${result.finalPosition}` : result.status) : '—';
+
 /**
- * The model's win probabilities for a race that has not run. Renders nothing
+ * The model's win probabilities for a race. Renders nothing
  * when there are none, which is most races: an empty panel would only say
  * "no prediction" about every race the model never ran on.
  *
  * How many drivers it lists, and how many "Show more" opens it to, are the
  * admin's (app_config). A <details> rather than client state, as in the site
  * header, so the disclosure works before any JavaScript.
+ *
+ * Given the race's results, it is the after-the-race view: each driver's
+ * finish beside their chance, and a line on what the model gave the winner.
  */
-export async function PredictionPanel({ slug }: { slug: string }) {
+export async function PredictionPanel({ slug, results }: { slug: string; results?: Result[] }) {
   const { race, predictionDisplay } = await getRacePredictions(slug);
   const predictions = race?.predictions ?? [];
   if (predictions.length === 0) return null;
@@ -32,6 +41,9 @@ export async function PredictionPanel({ slug }: { slug: string }) {
   // Bars are scaled to the favourite so the field reads at a glance; the
   // percentage beside each is the actual number.
   const max = predictions[0].winProbability;
+  const resultByCode = new Map(results?.map((result) => [result.driver?.code, result]));
+  const winner = results?.find((result) => result.finalPosition === 1)?.driver?.code;
+  const winnerRank = predictions.findIndex((prediction) => prediction.driver?.code === winner);
 
   const rows = (list: typeof predictions, offset: number) => (
     <ol start={offset + 1} className="space-y-2">
@@ -57,6 +69,11 @@ export async function PredictionPanel({ slug }: { slug: string }) {
           <span className="tabular w-14 text-right font-semibold">
             {formatProbability(prediction.winProbability)}
           </span>
+          {results ? (
+            <span className="tabular w-10 text-right text-muted">
+              {finishLabel(resultByCode.get(prediction.driver?.code))}
+            </span>
+          ) : null}
         </li>
       ))}
     </ol>
@@ -64,11 +81,20 @@ export async function PredictionPanel({ slug }: { slug: string }) {
 
   return (
     <Card>
-      <h2 className="type-card-title">Win prediction</h2>
+      <h2 className="type-card-title">{results ? 'Prediction vs result' : 'Win prediction'}</h2>
       <p className="mt-1 text-sm text-muted">
         Model <code className="font-mono text-xs">{predictions[0].modelVersion}</code> · generated{' '}
         {generatedLabel(predictions[0].generatedAt)}
       </p>
+
+      {winner ? (
+        <p className="mt-3 text-sm">
+          Won by <span className="font-semibold">{winner}</span>
+          {winnerRank === -1
+            ? ', whom the model did not rate.'
+            : `, the model's pick #${winnerRank + 1} at ${formatProbability(predictions[winnerRank].winProbability)}.`}
+        </p>
+      ) : null}
 
       <div className="mt-5">{rows(top, 0)}</div>
 
