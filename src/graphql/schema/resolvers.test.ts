@@ -311,6 +311,14 @@ describe('raceSlugs', () => {
     // Every race, not a page of them.
     expect(raceSlugs.length).toBeGreaterThan(1);
   });
+
+  it('carries each race\'s type and meeting name, for the prev/next links', async () => {
+    const { raceSlugs } = await run<{ raceSlugs: { type: string; name: string }[] }>(
+      'query { raceSlugs { type name } }',
+    );
+    expect(raceSlugs.every((race) => race.name.length > 0)).toBe(true);
+    expect(raceSlugs.some((race) => race.type === 'GRAND_PRIX')).toBe(true);
+  });
 });
 
 describe('activeSeason', () => {

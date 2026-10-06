@@ -129,6 +129,8 @@ query RaceSlugs {
   raceSlugs {
     slug
     date
+    type
+    name
   }
 }
 

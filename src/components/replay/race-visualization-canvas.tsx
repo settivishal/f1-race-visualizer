@@ -252,6 +252,7 @@ export function RaceVisualizationCanvas({
   highlightedDriverId,
   onToggleDriver,
   onHoverDriver,
+  onJumpToLap,
 }: {
   visualization: ReplayView;
   currentLap: number;
@@ -266,6 +267,8 @@ export function RaceVisualizationCanvas({
   highlightedDriverId: string | null;
   onToggleDriver: (driverId: string) => void;
   onHoverDriver: (driverId: string | null) => void;
+  /** Clicking an event dot jumps here. The story timeline is the keyboard path. */
+  onJumpToLap?: (lap: number) => void;
 }) {
   const { race, summary, laps, drivers } = visualization;
 
@@ -515,6 +518,35 @@ export function RaceVisualizationCanvas({
               fill="var(--track)"
             />
 
+            {/* The lap as a ghost behind the plot, ticking with the replay.
+                Decoration: the chart's label already says which lap it is. */}
+            <g aria-hidden style={{ pointerEvents: "none" }}>
+              <text
+                x={margin.left + (layout.width - margin.left - margin.right) / 2}
+                y={margin.top + (layout.height - margin.top - margin.bottom) / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={Math.min(240, (layout.height - margin.top - margin.bottom) * 0.4)}
+                fontWeight="800"
+                fill="rgba(255,255,255,0.06)"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                {currentLap}
+              </text>
+              <text
+                x={margin.left + (layout.width - margin.left - margin.right) / 2}
+                y={margin.top + (layout.height - margin.top - margin.bottom) / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={layout.compact ? "10" : "12"}
+                fontWeight="700"
+                letterSpacing="0.5em"
+                fill="rgba(255,255,255,0.18)"
+              >
+                LAP · OF {summary.maxLap || race.laps}
+              </text>
+            </g>
+
             {/* The plot's own bounds. Everything that pans is clipped to this,
                 so a lap label sliding out of the window stops at the axis
                 instead of drifting into the P-number gutter — which is also
@@ -642,8 +674,14 @@ export function RaceVisualizationCanvas({
               const color = getReplayEventMarkerColor(kind);
               const isRaceControl = RACE_CONTROL_KINDS.has(kind);
 
+              const cy = margin.top - layout.eventRowGap;
+
               return (
-                <g key={`${event.lap}-${event.type}-${eventIndex}`}>
+                <g
+                  key={`${event.lap}-${event.type}-${eventIndex}`}
+                  onClick={onJumpToLap ? () => onJumpToLap(event.lap) : undefined}
+                  className={onJumpToLap ? "cursor-pointer" : undefined}
+                >
                     {isRaceControl ? (
                       <line
                         x1={cx}
@@ -664,8 +702,24 @@ export function RaceVisualizationCanvas({
                       strokeWidth="2"
                     />
                     {isHollowMarker(kind) ? null : (
-                      <circle cx={cx} cy={margin.top - layout.eventRowGap} r="2" fill={color} />
+                      <circle cx={cx} cy={cy} r="2" fill={color} />
                     )}
+                    {/* Pings as the playhead reaches it; keyed on the lap so a
+                        replay that comes back round pings again. */}
+                    {event.lap === currentLap ? (
+                      <circle
+                        key={currentLap}
+                        className="hotspot-ping"
+                        cx={cx}
+                        cy={cy}
+                        r={layout.compact ? "4" : "6"}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="2"
+                      />
+                    ) : null}
+                    {/* A finger-sized target around a 6px dot. */}
+                    {onJumpToLap ? <circle cx={cx} cy={cy} r="12" fill="transparent" /> : null}
                 </g>
               );
             })}
