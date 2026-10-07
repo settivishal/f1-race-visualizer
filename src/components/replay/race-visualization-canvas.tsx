@@ -67,9 +67,9 @@ export function layoutFor({ width, height }: ChartSize): ChartLayout {
       ? { top: 34, right: 14, bottom: 30, left: 34 }
       : {
           top: 80,
-          // The driver badges ride the playhead rather than sitting at the
-          // right edge, so this only has to clear the last lap label.
-          right: 56,
+          // The driver badges ride the playhead, just to the right of it, so
+          // this has to fit a badge on the last lap.
+          right: 64,
           // Room for the lap labels (`lapLabelGap`) and no more. This was 96
           // to stop P18 clipping, but the clipping came from a frame too short
           // for its rows, which `minFrameHeight` now prevents.
@@ -735,6 +735,9 @@ type DriverFrame = {
   trail: string;
 };
 
+/** How far a car gaining places swings out to pass, at mid-lap: a badge and a gap, so it clears the car it passes. */
+const SWING_X = 50;
+
 function AnimatedCar({
   layer,
   frame,
@@ -802,6 +805,16 @@ function AnimatedCar({
 
   const x = useTransform(lapProgress, (p) => travelX * p);
   const y = useTransform(lapProgress, (p) => travelY * easeLapProgress(p));
+  // A car gaining places swings its badge out and back over the lap, so it
+  // passes the cars it overtakes alongside them instead of sliding through
+  // their badges. Only the badge: the line and its head stay on the position.
+  // Zero at both ends of the lap, so a reduced-motion step never shows it.
+  const gaining =
+    isCarActive && currentPoint && nextPoint && currentPoint.position > nextPoint.position;
+  const badgeX = useTransform(
+    lapProgress,
+    (p) => travelX * p + (gaining ? SWING_X * Math.sin(Math.PI * p) : 0),
+  );
 
   if (!first || !last || !fullPath || !currentPoint || !nextPoint) {
     return null;
@@ -866,6 +879,20 @@ function AnimatedCar({
             strokeLinecap="round"
           />
         ) : null}
+        {/* Where the car is. The badge sits to the right of it rather than on
+            it, so the column of badges covers the race still to come — only
+            the faint ghost paths — and never the laps already drawn. */}
+        {isCarActive ? (
+          <motion.circle
+            cx={x}
+            cy={y}
+            r={compact ? 2.5 : 3.5}
+            fill={team.color}
+            fillOpacity={dim}
+            stroke="var(--track)"
+            strokeWidth="1.5"
+          />
+        ) : null}
       </g>
     </g>
   );
@@ -922,7 +949,7 @@ function AnimatedCar({
             color={team.color}
             driverCode={driver.code}
             label={positions.length === 1 ? driver.name : undefined}
-            x={x}
+            x={badgeX}
             y={y}
             accent={
               currentPoint.position > nextPoint.position
