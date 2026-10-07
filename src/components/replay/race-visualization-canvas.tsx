@@ -326,6 +326,7 @@ export function RaceVisualizationCanvas({
   // duplicate clipPath id would have both of them clipped by whichever mounted
   // last.
   const plotClipId = `${useId()}-plot`;
+  const floorId = `${plotClipId}-floor`;
   const retirementEventByDriver = useMemo(
     () => getRetirementLapByDriver(visualization.events, drivers),
     [visualization.events, drivers],
@@ -530,7 +531,29 @@ export function RaceVisualizationCanvas({
                   height={layout.height}
                 />
               </clipPath>
+              <pattern id={`${floorId}-dots`} width="16" height="16" patternUnits="userSpaceOnUse">
+                <circle cx="8" cy="8" r="1" fill="white" fillOpacity="0.1" />
+              </pattern>
+              <radialGradient id={`${floorId}-fade`}>
+                <stop offset="0.4" stopColor="white" />
+                <stop offset="1" stopColor="white" stopOpacity="0" />
+              </radialGradient>
+              <mask id={`${floorId}-mask`}>
+                <rect width={layout.width} height={layout.height} fill={`url(#${floorId}-fade)`} />
+              </mask>
             </defs>
+
+            {/* A faint dot floor under the plot, fading out toward the edges.
+                Decoration only, drawn before the grid so every line sits on it. */}
+            <rect
+              x={margin.left}
+              y={margin.top}
+              width={layout.width - margin.left - margin.right}
+              height={layout.height - margin.top - margin.bottom}
+              fill={`url(#${floorId}-dots)`}
+              mask={`url(#${floorId}-mask)`}
+              pointerEvents="none"
+            />
 
             {/* Horizontal position grid lines. Outside the panning group: they
                 are horizontal, so panning them would only shorten them at the
