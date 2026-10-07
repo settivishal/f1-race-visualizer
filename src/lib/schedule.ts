@@ -78,3 +78,17 @@ export function nextByClock<T extends { date: string }>(races: T[], now: number)
       .find((race) => Date.parse(race.date) > cutoff) ?? null
   );
 }
+
+type SlugRow = { slug: string; date: string; type: string; name: string };
+
+/**
+ * The grands prix either side of one, for the links at the foot of a race
+ * page. `rows` is `raceSlugs`, newest first; sprints are skipped because the
+ * weekend switcher already reaches them.
+ */
+export function adjacentGrandsPrix(rows: readonly SlugRow[], slug: string) {
+  const grandsPrix = rows.filter((row) => row.type === 'GRAND_PRIX');
+  const index = grandsPrix.findIndex((row) => row.slug === slug);
+  if (index === -1) return { previous: null, next: null };
+  return { previous: grandsPrix[index + 1] ?? null, next: grandsPrix[index - 1] ?? null };
+}

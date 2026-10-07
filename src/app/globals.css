@@ -665,6 +665,26 @@ html:has(:root.light) {
   }
 }
 
+/* An event dot on the race chart as the playhead reaches it. The reduced-motion
+ * reset above cuts this to one 0.01ms run, which ends transparent: the dot
+ * stays, the ring never shows. */
+@keyframes hotspot-ping {
+  from {
+    opacity: 0.7;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 2.6;
+  }
+}
+
+.hotspot-ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hotspot-ping 1.2s ease-out 2 forwards;
+}
+
 /* The dropdown list (components/ui/select.tsx) opening from its box. Radix
  * sets the side it opened on, so the list grows away from the trigger. */
 .select-content {

@@ -293,7 +293,9 @@ type RaceResult {
 
 type RaceSlug {
   date: DateTime!
+  name: String!
   slug: String!
+  type: RaceType!
 }
 
 enum RaceStatus {
