@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { AutoSubmit } from '@/components/ui/auto-submit';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,9 @@ export default function AdminRacesPage({ searchParams }: { searchParams: SearchP
  * The button is the manual catch-up for when it is not.
  */
 async function IngestStatus() {
+  // A live status, so it waits for a request: queried during the prerender, a
+  // fresh DB connection's random bytes fail the build.
+  await connection();
   const report = await readHealth(getDb());
   const lastRun = report.lastRun
     ? `Last import ${new Date(report.lastRun.startedAt).toUTCString()} (${report.lastRun.status.toLowerCase()}).`
