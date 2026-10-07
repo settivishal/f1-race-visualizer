@@ -7,6 +7,8 @@ import bahrainPositions from './__fixtures__/bahrain-2025/positions.json';
 import laps from './__fixtures__/australia-2025/laps.json';
 import pits from './__fixtures__/australia-2025/pits.json';
 import positions from './__fixtures__/australia-2025/positions.json';
+import { buildRaceControlByLap } from '@/components/replay/replay-state';
+import type { ReplayEvent } from '@/components/replay/types';
 import raceControl from './__fixtures__/australia-2025/raceControl.json';
 import results from './__fixtures__/australia-2025/results.json';
 import stints from './__fixtures__/australia-2025/stints.json';
@@ -470,5 +472,24 @@ describe('zeroPointResults', () => {
       row({ finalPosition: null, status: 'DNS' }),
       row({ finalPosition: 1, points: 25 }),         // scored
     ])).toEqual([]);
+  });
+});
+
+describe('cautions end — Australia 2025, three safety cars', () => {
+  const events = transformRace(bundle).events;
+  const control = buildRaceControlByLap(
+    Array.from({ length: 57 }, (_, index) => index + 1),
+    events as unknown as ReplayEvent[],
+  );
+  const status = (lap: number) => control.get(lap)?.status;
+
+  it('keeps the track clear that ends each one', () => {
+    expect(events.filter((e) => e.details === 'TRACK CLEAR').map((e) => e.lap)).toEqual([7, 41, 51]);
+  });
+
+  it('turns the replay green on the lap after the safety car comes in', () => {
+    expect([status(1), status(7), status(8)]).toEqual(['safety-car', 'safety-car', 'green']);
+    expect([status(33), status(34), status(41), status(42)]).toEqual(['green', 'safety-car', 'safety-car', 'green']);
+    expect([status(47), status(51), status(52)]).toEqual(['safety-car', 'safety-car', 'green']);
   });
 });
