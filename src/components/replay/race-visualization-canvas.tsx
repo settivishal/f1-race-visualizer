@@ -666,8 +666,10 @@ export function RaceVisualizationCanvas({
               );
             })}
 
-            {/* Render trails and active telemetry badges */}
-            {withFocusLast(
+            {/* Two passes over the same order: every line, then every badge. In
+                one pass a car's line is painted after the cars sorted before
+                it, and cuts across their badges whenever two of them swap. */}
+            {(["lines", "cars"] as const).map((layer) => withFocusLast(
               // Movers last. Two cars trading places occupy the same pixels for
               // most of the lap, and in document order the one being passed can
               // paint over the one passing it — which draws the overtake
@@ -680,7 +682,8 @@ export function RaceVisualizationCanvas({
             ).map((frame) => {
               return (
                 <AnimatedCar
-                  key={frame.entry.driver.id}
+                  key={`${layer}-${frame.entry.driver.id}`}
+                  layer={layer}
                   frame={frame}
                   isDimmed={
                     highlightedDriverId !== null && frame.entry.driver.id !== highlightedDriverId
@@ -694,7 +697,7 @@ export function RaceVisualizationCanvas({
                   compact={layout.compact}
                 />
               );
-            })}
+            }))}
             </motion.g>
           </svg>
         </div>
@@ -729,6 +732,7 @@ type DriverFrame = {
 };
 
 function AnimatedCar({
+  layer,
   frame,
   isDimmed,
   raceControl,
@@ -739,6 +743,7 @@ function AnimatedCar({
   positionY,
   compact,
 }: {
+  layer: "lines" | "cars";
   frame: DriverFrame;
   /** True when another driver is focused: this one drops back, it does not go. */
   isDimmed: boolean;
@@ -798,7 +803,7 @@ function AnimatedCar({
     return null;
   }
 
-  return (
+  if (layer === "lines") return (
     <g>
       {/* One string, not an expression list: React treats `title` children as
           text and warns when handed an array of more than one child. */}
@@ -835,6 +840,34 @@ function AnimatedCar({
         />
       ) : null}
 
+      <g transform={`translate(${baseX} ${baseY})`}>
+        {/* The lap the car is currently driving.
+            `trail` is built in React from the laps already completed, so it only
+            grows when the lap index does — while the badge slides continuously
+            toward the next lap. That left every car detached from the end of its
+            own line for the whole lap, and the line snapping a lap-width to catch
+            up at the boundary. This segment is the gap: it ends on the same two
+            motion values the badge rides, so the line arrives exactly where the
+            recomputed `trail` picks it up. Under a reduced-motion preference
+            `lapProgress` stays at 0 and the segment has no length. */}
+        {isCarActive && currentPoint ? (
+          <motion.line
+            x1={0}
+            y1={0}
+            x2={x}
+            y2={y}
+            stroke={team.color}
+            strokeOpacity={0.8 * dim}
+            strokeWidth="3.2"
+            strokeLinecap="round"
+          />
+        ) : null}
+      </g>
+    </g>
+  );
+
+  return (
+    <g>
       {isRetiredAtCurrentLap && markerPoint ? (
         <motion.g
           transform={`translate(${
@@ -859,27 +892,6 @@ function AnimatedCar({
           the moment the lap changes; the motion values inside it are the
           travel away from that point, and they are zero at rest. */}
       <g transform={`translate(${baseX} ${baseY})`}>
-        {/* The lap the car is currently driving.
-            `trail` is built in React from the laps already completed, so it only
-            grows when the lap index does — while the badge slides continuously
-            toward the next lap. That left every car detached from the end of its
-            own line for the whole lap, and the line snapping a lap-width to catch
-            up at the boundary. This segment is the gap: it ends on the same two
-            motion values the badge rides, so the line arrives exactly where the
-            recomputed `trail` picks it up. Under a reduced-motion preference
-            `lapProgress` stays at 0 and the segment has no length. */}
-        {isCarActive && currentPoint ? (
-          <motion.line
-            x1={0}
-            y1={0}
-            x2={x}
-            y2={y}
-            stroke={team.color}
-            strokeOpacity={0.8 * dim}
-            strokeWidth="3.2"
-            strokeLinecap="round"
-          />
-        ) : null}
         {/* Kept mounted for the lap the car retires on, so it fades out under the
             cross rather than blinking out from under it. */}
         {/* Twenty-two badges down a 390px screen would be a column of labels
