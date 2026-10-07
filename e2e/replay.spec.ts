@@ -96,6 +96,24 @@ test('hovering a driver previews the emphasis without committing to it', async (
   await expect.poll(fullStrengthCars).toBeGreaterThan(1);
 });
 
+test('the story moves the chart to the chapter being read', async ({ page }) => {
+  await page.goto(`/races/${RACE}/story`);
+
+  const chart = page.getByRole('img', { name: /race position chart/i });
+  await expect(chart).toBeVisible({ timeout: 30_000 });
+
+  const chapters = page.getByRole('list', { name: 'Race story' }).getByRole('listitem');
+  expect(await chapters.count()).toBeGreaterThan(2);
+
+  // The third chapter's own lap, read off its eyebrow, is where the chart
+  // should land once that chapter is in the middle of the screen.
+  const third = chapters.nth(2);
+  const lap = Number(/Lap (\d+)/.exec(await third.innerText())?.[1]);
+  await third.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+
+  await expect.poll(async () => lapFrom(await chart.getAttribute('aria-label'))).toBe(lap);
+});
+
 /**
  * The reduced-motion path, which had shipped untested.
  *
