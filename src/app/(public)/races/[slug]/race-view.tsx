@@ -12,6 +12,7 @@ import { UpcomingRace } from '@/components/schedule/upcoming-race';
 import { CircuitInfoPanel } from '@/components/replay/circuit-info-panel';
 import { raceHeaderFact, seasonRoundLabel } from '@/lib/schedule';
 import { ReplayAtLap } from '@/components/replay/replay-at-lap';
+import { RaceStory } from '@/components/replay/race-story';
 import { toReplayView } from '@/components/replay/types';
 import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
@@ -29,7 +30,7 @@ import { prerenderParams } from '@/lib/prerender';
  * inside its own small Suspense boundary.
  */
 
-export type View = 'replay' | 'analysis';
+export type View = 'replay' | 'story' | 'analysis';
 
 /**
  * The newest races are prerendered at build; older ones render on their first
@@ -196,6 +197,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
           active={view}
           tabs={[
             { id: 'replay', label: 'Replay', href: `/races/${slug}` },
+            { id: 'story', label: 'Story', href: `/races/${slug}/story` },
             { id: 'analysis', label: 'Analysis', href: `/races/${slug}/analysis` },
           ]}
         />
@@ -312,6 +314,27 @@ async function Replay({ slug }: { slug: string }) {
   if (!race) return null;
 
   return <ReplayAtLap visualization={toReplayView(race)} />;
+}
+
+/**
+ * The story tab's panel: the same cached replay payload, told as chapters. No
+ * `?lap=` to read, so unlike the replay it does not suspend on the URL.
+ */
+export function StoryPanel({ slug }: { slug: string }) {
+  return (
+    <div className="mt-8">
+      <Suspense fallback={<ReplaySkeleton />}>
+        <Story slug={slug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function Story({ slug }: { slug: string }) {
+  const { race } = await getRaceReplay(slug);
+  if (!race) return null;
+
+  return <RaceStory visualization={toReplayView(race)} slug={slug} />;
 }
 
 /** The shell's fallback: header, player and classification, in that order. */

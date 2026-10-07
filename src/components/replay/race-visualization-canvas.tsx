@@ -248,6 +248,7 @@ export function RaceVisualizationCanvas({
   highlightedDriverId,
   onToggleDriver,
   onHoverDriver,
+  minimal = false,
 }: {
   visualization: ReplayView;
   currentLap: number;
@@ -262,6 +263,8 @@ export function RaceVisualizationCanvas({
   highlightedDriverId: string | null;
   onToggleDriver: (driverId: string) => void;
   onHoverDriver: (driverId: string | null) => void;
+  /** Just the plot, sized by its parent: no title, chips or minimum height. */
+  minimal?: boolean;
 }) {
   const { race, summary, laps, drivers } = visualization;
 
@@ -394,7 +397,7 @@ export function RaceVisualizationCanvas({
     // instrument on a light page, the way a video player does. It is the one
     // surface here that does not follow the theme.
     <div className={cn("flex min-w-0 flex-col overflow-hidden rounded-xl border border-line-strong bg-track p-5 text-white shadow-lg", className)}>
-      <div className="border-b border-white/10 px-4 pb-5">
+      {minimal ? null : <div className="border-b border-white/10 px-4 pb-5">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           {/* min-w-0 so a long race name wraps instead of pushing the controls
               off; the chips used to live in here and inherited the squeeze. */}
@@ -463,7 +466,7 @@ export function RaceVisualizationCanvas({
             );
           })}
         </ul>
-      </div>
+      </div>}
 
       {/* min-h-0 so this can shrink inside the card's flex column: without it
           an `h-auto` SVG keeps its intrinsic height, the column overflows the
@@ -482,7 +485,7 @@ export function RaceVisualizationCanvas({
           thinner lines — the trade already made for the lap window in #81. */}
       <div
         ref={frame}
-        className="mt-4 min-h-[32rem] flex-1 sm:min-h-[var(--frame-min)]"
+        className={cn("min-h-0 flex-1", !minimal && "mt-4 min-h-[32rem] sm:min-h-[var(--frame-min)]")}
         style={{ "--frame-min": `${minFrameHeight(summary.maxPosition)}px` } as React.CSSProperties}
       >
         <div className="h-full">
