@@ -108,7 +108,7 @@ test('the story moves the chart to the chapter being read', async ({ page }) => 
   // The third chapter's own lap, read off its eyebrow, is where the chart
   // should land once that chapter is in the middle of the screen.
   const third = chapters.nth(2);
-  const lap = Number(/Lap (\d+)/.exec(await third.innerText())?.[1]);
+  const lap = Number(/lap (\d+)/i.exec(await third.innerText())?.[1]);
   await third.evaluate((node) => node.scrollIntoView({ block: 'center' }));
 
   await expect.poll(async () => lapFrom(await chart.getAttribute('aria-label'))).toBe(lap);
