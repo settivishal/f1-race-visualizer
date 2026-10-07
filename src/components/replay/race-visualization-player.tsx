@@ -53,9 +53,6 @@ export function RaceVisualizationPlayer({
   const nextLap = laps[Math.min(currentLapIndex + 1, Math.max(0, laps.length - 1))] ?? currentLap;
   const canAdvance = currentLapIndex < Math.max(0, laps.length - 1);
 
-
-  const replayProgressPercent =
-    laps.length <= 1 ? 100 : (currentLapIndex / Math.max(1, laps.length - 1)) * 100;
   const raceControlByLap = useMemo(
     () => buildRaceControlByLap(laps, visualization.events),
     [laps, visualization.events],
@@ -270,7 +267,6 @@ export function RaceVisualizationPlayer({
                     maxLap={visualization.summary.maxLap || visualization.race.laps}
                     isPlaying={isPlaying}
                     speed={speed}
-                    progressPercent={replayProgressPercent}
                     lapProgress={lapProgress}
                     canStepBackward={currentLapIndex > 0}
                     canStepForward={canAdvance}
