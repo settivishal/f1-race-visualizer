@@ -1,6 +1,7 @@
 import Form from 'next/form';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Select } from '@/components/ui/select';
 import { HeadToHead } from '@/components/analysis/head-to-head';
 import { getHeadToHead, getRaceHeader } from '@/lib/queries';
 
@@ -66,6 +67,11 @@ export async function HeadToHeadSection({
     ? (await getHeadToHead(slug, codeA, codeB)).race?.analysis.headToHead ?? null
     : null;
 
+  const options = classified.map((row) => ({
+    value: row.driver!.code,
+    label: `P${row.finalPosition} · ${row.driver!.name}`,
+  }));
+
   return (
     <div className="space-y-5">
       {/* next/form rather than a bare <form>: a plain GET submit is a document
@@ -74,8 +80,8 @@ export async function HeadToHeadSection({
           the client and `scroll={false}` leaves the page where it was. Still a
           GET to the same URL, so it degrades to the native form without JS. */}
       <Form action={`/races/${slug}/analysis`} scroll={false} className="flex flex-wrap items-end gap-3">
-        <Picker label="Driver" name="a" value={codeA} drivers={classified} />
-        <Picker label="Against" name="b" value={codeB} drivers={classified} />
+        <Select label="Driver" name="a" defaultValue={codeA} options={options} className="w-full sm:w-64" />
+        <Select label="Against" name="b" defaultValue={codeB} options={options} className="w-full sm:w-64" />
         <Button type="submit" variant="secondary">
           Compare
         </Button>
@@ -96,34 +102,5 @@ export async function HeadToHeadSection({
         />
       )}
     </div>
-  );
-}
-
-function Picker({
-  label,
-  name,
-  value,
-  drivers,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  drivers: { finalPosition: number | null; driver: { code: string; name: string } | null }[];
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-eyebrow font-semibold uppercase text-muted">{label}</span>
-      <select
-        name={name}
-        defaultValue={value}
-        className="h-10 rounded-md border border-line bg-panel px-3 text-sm text-foreground hover:border-line-strong"
-      >
-        {drivers.map((row) => (
-          <option key={row.driver!.code} value={row.driver!.code}>
-            P{row.finalPosition} · {row.driver!.name}
-          </option>
-        ))}
-      </select>
-    </label>
   );
 }

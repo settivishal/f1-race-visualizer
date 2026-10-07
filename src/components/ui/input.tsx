@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -52,26 +52,6 @@ export function Input({ label, hint, error, className, ...props }: InputProps) {
         className={cn(fieldClasses, error && "border-flag-red", className)}
         {...props}
       />
-    </Field>
-  );
-}
-
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
-  label: string;
-  hint?: string;
-  error?: string | null;
-};
-
-export function Select({ label, hint, error, className, children, ...props }: SelectProps) {
-  return (
-    <Field label={label} hint={hint} error={error}>
-      <select
-        aria-invalid={error ? true : undefined}
-        className={cn(fieldClasses, error && "border-flag-red", className)}
-        {...props}
-      >
-        {children}
-      </select>
     </Field>
   );
 }

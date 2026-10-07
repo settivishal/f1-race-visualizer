@@ -684,3 +684,22 @@ html:has(:root.light) {
   transform-origin: center;
   animation: hotspot-ping 1.2s ease-out 2 forwards;
 }
+
+/* The dropdown list (components/ui/select.tsx) opening from its box. Radix
+ * sets the side it opened on, so the list grows away from the trigger. */
+.select-content {
+  animation: select-in 120ms ease-out;
+}
+.select-content[data-side='bottom'] {
+  transform-origin: top;
+}
+.select-content[data-side='top'] {
+  transform-origin: bottom;
+}
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}

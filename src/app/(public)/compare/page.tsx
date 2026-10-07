@@ -4,7 +4,9 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs } from '@/components/ui/tabs';
 import { getArchiveIndex, getDriverProfile, getTeamProfile } from '@/lib/queries';
 
 /**
@@ -15,9 +17,9 @@ import { getArchiveIndex, getDriverProfile, getTeamProfile } from '@/lib/queries
  * cached. Adding a field that fetches two of something the schema can fetch one
  * of would buy a round trip that `Promise.all` already saves.
  *
- * The picker is a plain GET form. No client component, no state — the URL *is*
- * the state, which is what makes a comparison shareable, and the browser
- * submits a form without help.
+ * The picker is a plain GET form. No page state — the URL *is* the state, which
+ * is what makes a comparison shareable, and the browser submits a form without
+ * help. The dropdowns are client components only for their looks.
  */
 
 export const metadata = {
@@ -73,44 +75,49 @@ async function CompareBody({ searchParams }: { searchParams: Promise<Search> }) 
         {/* No AutoSubmit here, deliberately: a comparison needs two sides, so
             applying on every change would navigate twice on the way to one
             answer — once through a half-picked pair. The button stays. */}
-        <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end">
-          <Picker label="Compare" name="kind" value={kind}>
-            <option value="driver">Drivers</option>
-            <option value="team">Constructors</option>
-          </Picker>
+        {/* Links, not a select: the name lists below depend on the kind, and a
+            select only changes them after a submit, which sent driver codes as
+            team names. A link reloads with the right lists and drops the picks. */}
+        <Tabs
+          label="Compare"
+          active={kind}
+          tabs={[
+            { id: 'driver', label: 'Drivers', href: kindHref('driver', season) },
+            { id: 'team', label: 'Constructors', href: kindHref('team', season) },
+          ]}
+        />
+        <form className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
+          <input type="hidden" name="kind" value={kind} />
 
           {(['a', 'b'] as const).map((slot) => (
-            <Picker
+            <Select
               key={slot}
               label={slot === 'a' ? 'First' : 'Second'}
               name={slot}
-              value={params[slot] ?? ''}
-            >
-              <option value="">Choose…</option>
-              {kind === 'driver'
-                ? index.drivers.map((driver) => (
-                    <option key={driver.id} value={driver.code}>{driver.name}</option>
-                  ))
-                : index.teams.map((team) => (
-                    <option key={team.id} value={team.name}>{team.name}</option>
-                  ))}
-            </Picker>
+              defaultValue={params[slot]}
+              placeholder="Choose…"
+              options={
+                kind === 'driver'
+                  ? index.drivers.map((driver) => ({ value: driver.code, label: driver.name }))
+                  : index.teams.map((team) => ({ value: team.name, label: team.name }))
+              }
+            />
           ))}
 
-          <Picker label="Season" name="season" value={season === null ? '' : String(season)}>
-            <option value="">All seasons</option>
-            {[...index.seasons].reverse().map((entry) => (
-              <option key={entry.year} value={entry.year}>{entry.year}</option>
-            ))}
-          </Picker>
+          <Select
+            label="Season"
+            name="season"
+            defaultValue={season === null ? 'all' : String(season)}
+            options={[
+              { value: 'all', label: 'All seasons' },
+              ...[...index.seasons].reverse().map((entry) => ({ value: String(entry.year), label: String(entry.year) })),
+            ]}
+          />
 
           <Button type="submit">Compare</Button>
         </form>
       </Card>
 
-      {/* Changing `kind` invalidates whichever names were picked for the other
-          kind, so an unresolvable pair is the normal state of a half-changed
-          form rather than an error worth shouting about. */}
       {a && b ? (
         <ComparisonTable a={a} b={b} season={season} />
       ) : (
@@ -128,6 +135,9 @@ async function CompareBody({ searchParams }: { searchParams: Promise<Search> }) 
     </>
   );
 }
+
+const kindHref = (kind: 'driver' | 'team', season: number | null) =>
+  `/compare?kind=${kind}${season === null ? '' : `&season=${season}`}`;
 
 async function loadSide(
   kind: 'driver' | 'team',
@@ -193,33 +203,6 @@ function total(rows: SeasonRow[]): Totals {
     bestFinish: finishes.length > 0 ? Math.min(...finishes) : null,
     seasonCount: new Set(rows.map((row) => row.season)).size,
   };
-}
-
-function Picker({
-  label,
-  name,
-  value,
-  children,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-eyebrow font-semibold uppercase text-muted">{label}</span>
-      {/* Uncontrolled: `defaultValue` lets the browser own the field, which is
-          what keeps this a server component. */}
-      <select
-        name={name}
-        defaultValue={value}
-        className="h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-foreground hover:border-line-strong"
-      >
-        {children}
-      </select>
-    </label>
-  );
 }
 
 const METRICS = [

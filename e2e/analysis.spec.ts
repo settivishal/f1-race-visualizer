@@ -103,9 +103,8 @@ test('head to head compares two drivers and follows the picker', async ({ page }
 
   // Switching the second driver keeps the Analysis view: the form submits to
   // the analysis route itself.
-  const against = page.locator('select[name="b"]');
-  const options = await against.locator('option').all();
-  await against.selectOption(await options[options.length - 1].getAttribute('value') ?? '');
+  await page.getByRole('combobox', { name: 'Against' }).click();
+  await page.getByRole('option').last().click();
   await page.getByRole('button', { name: 'Compare' }).click();
 
   await expect(page.getByText('Two drivers, lap by lap')).toBeVisible();
