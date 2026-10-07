@@ -115,9 +115,13 @@ const RACE_CONTROL_KINDS = new Set<ReplayEventKind>([
   "green",
 ]);
 
-/** Race control plus the non-finishes: a line that stops should say why. */
+/**
+ * Race control plus the non-finishes: a line that stops should say why. Not
+ * the green that ends a caution — the cars losing their yellow already say so,
+ * and a second dot per safety car would double the flag count.
+ */
 const CHART_EVENT_KINDS = new Set<ReplayEventKind>([
-  ...RACE_CONTROL_KINDS,
+  ...[...RACE_CONTROL_KINDS].filter((kind) => kind !== "green"),
   "dnf",
   "dns",
   "dsq",
