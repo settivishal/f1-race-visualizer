@@ -1,6 +1,6 @@
 import { formatDriverName } from '@/lib/format-name';
 import type { ErgastLap, ErgastPitStop, ErgastRace, ErgastResult } from './ergast';
-import { buildOvertakes } from './transform';
+import { buildOvertakes, byLapThenType, pitStopEvents, pitStopRows, slugify, type Stop } from './events';
 import type {
   EventRow, LineupRow, PitStopRow, PositionRow, ResultRow, TransformedRace,
 } from './types';
@@ -49,10 +49,6 @@ const CONSTRUCTOR_COLOR: Record<string, string> = {
   lotus_f1: '#FFB800',
   manor: '#323232',
 };
-
-const slugify = (value: string) =>
-  value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /**
  * The same slug the OpenF1 path produces, so the two upstreams cannot create
@@ -224,23 +220,18 @@ export function buildArchiveResults(
   }));
 }
 
-export function buildArchivePitStops(
-  stops: ErgastPitStop[],
-  numbers: Map<string, number>,
-): PitStopRow[] {
-  const byKey = new Map<string, PitStopRow>();
-  for (const stop of stops) {
+/** Ergast's stops, in the shape both upstreams share; unknown drivers dropped. */
+function stopsOf(stops: ErgastPitStop[], numbers: Map<string, number>): Stop[] {
+  return stops.flatMap((stop) => {
     const driverNumber = numbers.get(stop.driverId);
-    if (driverNumber === undefined) continue;
-    const seconds = parseDuration(stop.duration);
-    byKey.set(`${driverNumber}:${stop.lap}`, {
-      driverNumber,
-      lap: stop.lap,
-      durationMs: seconds === null ? null : Math.round(seconds * 1000),
-    });
-  }
-  return [...byKey.values()].sort((a, b) => a.lap - b.lap || a.driverNumber - b.driverNumber);
+    return driverNumber === undefined
+      ? []
+      : [{ driverNumber, lap: stop.lap, seconds: parseDuration(stop.duration) }];
+  });
 }
+
+export const buildArchivePitStops = (stops: ErgastPitStop[], numbers: Map<string, number>): PitStopRow[] =>
+  pitStopRows(stopsOf(stops, numbers));
 
 /**
  * Events, from what this era actually says.
@@ -259,17 +250,7 @@ export function buildArchiveEvents(
 ): EventRow[] {
   const events: EventRow[] = [];
 
-  for (const stop of stops) {
-    const driverNumber = numbers.get(stop.driverId);
-    if (driverNumber === undefined) continue;
-    const seconds = parseDuration(stop.duration);
-    events.push({
-      lap: stop.lap,
-      driverNumber,
-      type: 'PIT_STOP',
-      details: seconds === null ? 'Pit stop' : `${seconds.toFixed(1)}s in the pit lane`,
-    });
-  }
+  events.push(...pitStopEvents(stopsOf(stops, numbers)));
 
   for (const result of results) {
     const status = classifyResult(result);
@@ -296,7 +277,7 @@ export function buildArchiveEvents(
 
   events.push(...buildOvertakes(positions));
 
-  return events.sort((a, b) => a.lap - b.lap || a.type.localeCompare(b.type));
+  return events.sort(byLapThenType);
 }
 
 /** One archive race, in the same shape the writer already knows how to store. */

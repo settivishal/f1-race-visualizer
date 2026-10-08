@@ -3,7 +3,8 @@ import laps from './__fixtures__/australia-2018-ergast/laps.json';
 import pitStops from './__fixtures__/australia-2018-ergast/pitStops.json';
 import race from './__fixtures__/australia-2018-ergast/race.json';
 import {
-  archiveRaceSlug, buildArchivePositions, buildArchiveResults, buildNumbersByDriverId,
+  archiveRaceSlug, buildArchiveEvents, buildArchivePitStops, buildArchivePositions,
+  buildArchiveResults, buildNumbersByDriverId,
   classifyResult, parseDuration, transformArchiveRace,
 } from './ergast-transform';
 import type { ErgastLap, ErgastPitStop, ErgastRace, ErgastResult } from './ergast';
@@ -193,5 +194,26 @@ describe('grid position 0', () => {
       new Map([['x', 7]]),
     );
     expect(rows[0].gridPosition).toBe(0);
+  });
+});
+
+describe('a stop under a red flag', () => {
+  // Monza 2021-style: the field waits in the pit lane for half an hour. Ergast
+  // files it as a pit stop like any other.
+  const stops = [
+    { driverId: 'x', lap: 20, stop: 1, duration: '23.4' },
+    { driverId: 'x', lap: 31, stop: 2, duration: '30:12.5' },
+  ] as ErgastPitStop[];
+  const numbers = new Map([['x', 7]]);
+
+  it('is kept as a row, verbatim', () => {
+    expect(buildArchivePitStops(stops, numbers).map((row) => row.lap)).toEqual([20, 31]);
+  });
+
+  it('is not narrated as a pit stop', () => {
+    const events = buildArchiveEvents([], stops, [], numbers).filter((e) => e.type === 'PIT_STOP');
+    expect(events).toEqual([
+      { lap: 20, driverNumber: 7, type: 'PIT_STOP', details: '23.4s in the pit lane' },
+    ]);
   });
 });

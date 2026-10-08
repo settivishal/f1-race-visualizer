@@ -98,7 +98,7 @@ builder.mutationType({
       args: { sessionKey: t.arg.int({ required: true }) },
       resolve: async (_root, args, ctx) => {
         requireSession(ctx);
-        return ingestRace(args.sessionKey);
+        return ingestRace(args.sessionKey, ctx.db);
       },
     }),
 

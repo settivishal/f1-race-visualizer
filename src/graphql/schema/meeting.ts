@@ -1,5 +1,6 @@
 import { asc, desc, eq } from 'drizzle-orm';
-import { appConfig, circuits, meetings, races, seasons } from '@/db/schema';
+import { circuits, meetings, races, seasons } from '@/db/schema';
+import { readAppConfig } from '@/lib/app-config';
 import { builder } from '../builder';
 import { Race } from './race';
 
@@ -100,12 +101,8 @@ builder.queryField('seasons', (t) =>
 builder.queryField('activeSeason', (t) =>
   t.int({
     resolve: async (_root, _args, ctx) => {
-      const [config] = await ctx.db
-        .select({ season: appConfig.activeSeason })
-        .from(appConfig)
-        .where(eq(appConfig.id, 1))
-        .limit(1);
-      if (config) return config.season;
+      const config = await readAppConfig(ctx.db);
+      if (config) return config.activeSeason;
 
       const [newest] = await ctx.db
         .selectDistinct({ year: meetings.seasonYear })

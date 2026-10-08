@@ -1,7 +1,7 @@
 import { and, eq, gte, isNull, sql } from 'drizzle-orm';
 import * as schema from '@/db/schema';
 import { ergastRaceOn, fetchSeasonResults } from './ergast';
-import type { Db } from './run';
+import type { Db } from '@/db';
 
 const { drivers, driverTeamAssignments, meetings, raceResults, races } = schema;
 

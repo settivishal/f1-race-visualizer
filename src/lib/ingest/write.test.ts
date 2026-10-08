@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as dbSchema from '@/db/schema';
-import { writeRace } from './run';
+import { writeRace } from './write';
 import type { TransformedRace } from './types';
 
 /**

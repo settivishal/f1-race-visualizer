@@ -1,10 +1,10 @@
 'use server';
 
 import { updateTag } from 'next/cache';
-import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { getDb } from '@/db';
 import { appConfig } from '@/db/schema';
+import { readAppConfig } from '@/lib/app-config';
 import { executeAsAdmin } from '@/graphql/execute';
 import { drainPending } from '@/lib/ingest/pending';
 import {
@@ -190,7 +190,7 @@ export async function catchUpAction(): Promise<ActionResult> {
   await requireAdmin();
 
   const db = getDb();
-  const [config] = await db.select().from(appConfig).where(eq(appConfig.id, 1)).limit(1);
+  const config = await readAppConfig(db);
   if (!config) return { ok: false, message: 'No active season is set — see Settings.' };
 
   const { imported, failed, abandoned, remaining } = await drainPending(db, config);
@@ -297,7 +297,5 @@ export async function updateConfigAction(
 
 export async function getAppConfig() {
   await requireAdmin();
-  const db = getDb();
-  const [row] = await db.select().from(appConfig).where(eq(appConfig.id, 1)).limit(1);
-  return row ?? null;
+  return readAppConfig(getDb());
 }
