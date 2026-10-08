@@ -1,8 +1,8 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { nextByClock, untilLabel } from '@/lib/schedule';
+import { useNow } from '@/lib/use-now';
 
 /**
  * A race that has not been run yet.
@@ -21,25 +21,6 @@ import { nextByClock, untilLabel } from '@/lib/schedule';
  * reader's own timezone. The server does not know it, and a cached page could
  * not vary by it even if it did.
  */
-
-// One clock for every countdown on the page, ticking once a minute — the
-// resolution the labels show. Same shape as the season status'; see the note
-// there about why a snapshot must be cached rather than freshly read.
-let clock = 0;
-
-function subscribe(onChange: () => void) {
-  clock = Date.now();
-  onChange();
-  const timer = setInterval(() => {
-    clock = Date.now();
-    onChange();
-  }, 60_000);
-  return () => clearInterval(timer);
-}
-
-function useNow() {
-  return useSyncExternalStore(subscribe, () => clock, () => 0);
-}
 
 /**
  * The start time in the reader's timezone, with the countdown beside it.

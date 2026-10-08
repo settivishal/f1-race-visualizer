@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { buttonClasses } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 
@@ -24,10 +24,8 @@ export default function NotFound() {
         title="Page not found"
         description="That race or page does not exist. It may never have been imported."
         action={
-          <Link href="/races">
-            <Button variant="secondary" size="sm">
-              Browse races
-            </Button>
+          <Link href="/races" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+            Browse races
           </Link>
         }
       />

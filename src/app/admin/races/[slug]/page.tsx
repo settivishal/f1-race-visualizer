@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ActionForm } from '@/components/admin/action-form';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -11,7 +11,9 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { executeAsAdmin } from '@/graphql/execute';
 import { AdminRaceDocument } from '@/graphql/generated/graphql';
+import { sessionLabel } from '@/lib/session-title';
 import { updateMetadataAction } from '../../actions';
+import { BackLink } from '@/components/ui/back-link';
 
 export const metadata = {
   title: 'Edit race — Admin',
@@ -31,12 +33,7 @@ export const metadata = {
 export default function EditRacePage({ params }: { params: Promise<{ slug: string }> }) {
   return (
     <PageContainer className="max-w-2xl">
-      <Link
-        href="/admin"
-        className="inline-flex rounded-sm text-eyebrow font-semibold uppercase text-muted transition-colors hover:text-foreground"
-      >
-        ← All races
-      </Link>
+      <BackLink href="/admin">All races</BackLink>
       <Suspense fallback={<Skeleton className="mt-6 h-[30rem] w-full rounded-xl" />}>
         <EditForm params={params} />
       </Suspense>
@@ -57,7 +54,7 @@ async function EditForm({ params }: { params: Promise<{ slug: string }> }) {
     <div className="mt-5">
       <SectionHeader
         title={race.meeting?.name ?? race.slug}
-        description={`${race.slug} · ${race.type === 'SPRINT' ? 'Sprint' : 'Grand Prix'}`}
+        description={`${race.slug} · ${sessionLabel(race.type)}`}
       />
 
       <Card className="mt-8">
@@ -118,10 +115,8 @@ async function EditForm({ params }: { params: Promise<{ slug: string }> }) {
 
           <div className="flex items-center gap-3 pt-1">
             <Button type="submit">Save</Button>
-            <Link href={`/races/${race.slug}`} target="_blank" rel="noreferrer">
-              <Button type="button" variant="ghost">
-                View public page
-              </Button>
+            <Link href={`/races/${race.slug}`} target="_blank" rel="noreferrer" className={buttonClasses({ variant: 'ghost' })}>
+              View public page
             </Link>
           </div>
         </ActionForm>

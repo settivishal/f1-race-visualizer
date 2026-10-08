@@ -1,8 +1,6 @@
 import { Suspense } from 'react';
-import { getRaceHeader } from '@/lib/queries';
-import { sessionTitle } from '@/lib/session-title';
 import { AnalysisPanel } from '../analysis-panel';
-import { AnalysisSkeleton, RacePageShell, raceStaticParams } from '../race-view';
+import { AnalysisSkeleton, RacePageShell, raceStaticParams, raceMetadata } from '../race-view';
 
 /**
  * The race detail page, on its Analysis tab.
@@ -18,18 +16,11 @@ export const generateStaticParams = raceStaticParams;
 // shell. Without this, next dev flags the awaited params as non-instant.
 export const instant = false;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const { race } = await getRaceHeader(slug);
-
-  if (!race) return { title: 'Race not found' };
-
-  const name = race.meeting ? sessionTitle(race.meeting.name, race.type) : race.slug;
-  return {
+export const generateMetadata = ({ params }: { params: Promise<{ slug: string }> }) =>
+  raceMetadata(params, (name, season) => ({
     title: `${name} analysis`,
-    description: `Lap times, tyre strategy and pace from the ${race.meeting?.season ?? ''} ${name}.`.trim(),
-  };
-}
+    description: `Lap times, tyre strategy and pace from the ${season} ${name}.`,
+  }));
 
 export default async function RaceAnalysisPage({
   params,

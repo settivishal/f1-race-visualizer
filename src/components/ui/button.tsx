@@ -35,6 +35,26 @@ const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
   lg: "h-12 gap-2 px-6 text-base",
 };
 
+/**
+ * The button's look, for a link that should read as one. A `<Link>` around a
+ * `<Button>` nests a button inside a link, two interactive elements where a
+ * keyboard and a screen reader expect one; style the link instead.
+ */
+export function buttonClasses({
+  variant = "primary",
+  size = "md",
+  className,
+}: Pick<ButtonProps, "variant" | "size" | "className"> = {}) {
+  return cn(
+    "inline-flex select-none items-center justify-center rounded-md font-semibold",
+    "transition-[background-color,border-color,color,filter]",
+    "disabled:pointer-events-none disabled:opacity-50",
+    variantClasses[variant],
+    sizeClasses[size],
+    className,
+  );
+}
+
 export function Button({
   children,
   className,
@@ -44,18 +64,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   return (
-    <button
-      type={type}
-      className={cn(
-        "inline-flex select-none items-center justify-center rounded-md font-semibold",
-        "transition-[background-color,border-color,color,filter]",
-        "disabled:pointer-events-none disabled:opacity-50",
-        variantClasses[variant],
-        sizeClasses[size],
-        className,
-      )}
-      {...props}
-    >
+    <button type={type} className={buttonClasses({ variant, size, className })} {...props}>
       {children}
     </button>
   );

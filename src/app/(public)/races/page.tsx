@@ -2,7 +2,8 @@ import { Suspense, ViewTransition } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { RaceStartTime, UpcomingBadge } from '@/components/schedule/upcoming-race';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
+import { SeasonFilter } from '@/components/ui/season-filter';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
@@ -10,13 +11,12 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getActiveSeason, getRaceLibrary } from '@/lib/queries';
 import { seasonRoundLabel } from '@/lib/schedule';
+import { first, seasonFilter, type SearchParams } from '@/lib/search-params';
 
 export const metadata = {
   title: 'Races',
   description: 'Every grand prix and sprint in the archive, by season.',
 };
-
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 /**
  * The race library.
@@ -56,19 +56,10 @@ export default function RacesPage({ searchParams }: { searchParams: SearchParams
 async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
 
-  const first = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? value[0] : value;
-
-  const seasonParam = first(params.season);
-  const parsedSeason = seasonParam ? Number(seasonParam) : NaN;
   // `?season=all` is explicit, because the default is no longer "everything":
   // landing on the current season is what almost everyone wants, and it fits a
   // single page, which is what makes the pagination controls disappear.
-  const season = seasonParam === 'all'
-    ? null
-    : Number.isInteger(parsedSeason)
-      ? parsedSeason
-      : await getActiveSeason();
+  const season = await seasonFilter(params.season, getActiveSeason);
 
   const search = first(params.q)?.trim() || null;
   const after = first(params.after) ?? null;
@@ -97,39 +88,14 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
 
   return (
     <>
-      {/* Links, not a select with a Filter button. A year is a destination,
-          and a destination is an href — it filters on click, needs no
-          JavaScript, and each season is a URL someone can send. */}
-      <nav aria-label="Season" className="mt-8 flex flex-wrap gap-1.5">
-        {[...seasons].reverse().map((entry) => {
-          const isActive = season === entry.year;
-          return (
-            <Link
-              key={entry.year}
-              href={{ pathname: '/races', query: { season: String(entry.year), ...(search ? { q: search } : {}) } }}
-              aria-current={isActive ? 'page' : undefined}
-              className={`tap tabular inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-                isActive
-                  ? 'bg-accent-fill text-on-accent'
-                  : 'border border-line text-muted hover:border-line-strong hover:text-foreground'
-              }`}
-            >
-              {entry.year}
-            </Link>
-          );
-        })}
-        <Link
-          href={{ pathname: '/races', query: { season: 'all', ...(search ? { q: search } : {}) } }}
-          aria-current={season === null ? 'page' : undefined}
-          className={`tap inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-            season === null
-              ? 'bg-accent-fill text-on-accent'
-              : 'border border-line text-muted hover:border-line-strong hover:text-foreground'
-          }`}
-        >
-          All seasons
-        </Link>
-      </nav>
+      <div className="mt-8">
+        <SeasonFilter
+          pathname="/races"
+          seasons={seasons.map((entry) => entry.year)}
+          active={season}
+          extra={search ? { q: search } : {}}
+        />
+      </div>
 
       <form method="get" className="mt-4 flex flex-wrap items-end gap-3">
         {/* The season rides along as a hidden field, so searching does not
@@ -158,10 +124,8 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
             title="No races match"
             description="Try a different season, or clear the search."
             action={
-              <Link href="/races">
-                <Button variant="secondary" size="sm">
-                  Clear filters
-                </Button>
+              <Link href="/races" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+                Clear filters
               </Link>
             }
           />
@@ -326,17 +290,17 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
           {races.pageInfo.hasPreviousPage && races.pageInfo.startCursor ? (
             <Link
               href={{ pathname: '/races', query: { ...context, before: races.pageInfo.startCursor } }}
-              className="rounded-md"
+              className={buttonClasses({ variant: 'secondary' })}
             >
-              <Button variant="secondary">← Previous</Button>
+              ← Previous
             </Link>
           ) : null}
           {races.pageInfo.hasNextPage && races.pageInfo.endCursor ? (
             <Link
               href={{ pathname: '/races', query: { ...context, after: races.pageInfo.endCursor } }}
-              className="rounded-md"
+              className={buttonClasses({ variant: 'secondary' })}
             >
-              <Button variant="secondary">Next →</Button>
+              Next →
             </Link>
           ) : null}
         </div>

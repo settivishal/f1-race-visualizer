@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ProfileSkeleton } from '@/components/ui/skeleton';
 import { RecordTable, StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getDriverProfile } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
+import { BackLink } from '@/components/ui/back-link';
 
 /**
  * A driver's record across the seasons in the database.
@@ -59,12 +59,7 @@ export default async function DriverPage({ params }: { params: Promise<{ code: s
 
   return (
     <PageContainer>
-      <Link
-        href="/drivers"
-        className="inline-flex rounded-sm text-eyebrow font-semibold uppercase text-muted transition-colors hover:text-foreground"
-      >
-        ← All drivers
-      </Link>
+      <BackLink href="/drivers">All drivers</BackLink>
 
       <Suspense fallback={<ProfileSkeleton />}>
         <DriverDetail params={params} />
@@ -131,17 +126,5 @@ async function DriverDetail({ params }: { params: Promise<{ code: string }> }) {
         </div>
       </section>
     </>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <div className="mt-5">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="mt-3 h-12 w-80 max-w-full" />
-      <Skeleton className="mt-3 h-5 w-56" />
-      <Skeleton className="mt-8 h-24 w-full rounded-xl" />
-      <Skeleton className="mt-10 h-72 w-full rounded-xl" />
-    </div>
   );
 }

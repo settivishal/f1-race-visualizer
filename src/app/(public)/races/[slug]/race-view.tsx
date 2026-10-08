@@ -1,21 +1,22 @@
 import { Suspense, type ReactNode } from 'react';
-import { PredictionPanel } from '@/components/schedule/prediction-panel';
+import { PredictionPanel } from '@/components/race/prediction-panel';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Classification } from '@/components/race/classification';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
-import { sessionTitle } from '@/lib/session-title';
+import { raceTitle, sessionLabel } from '@/lib/session-title';
 import { Tabs } from '@/components/ui/tabs';
 import { UpcomingRace } from '@/components/schedule/upcoming-race';
-import { CircuitInfoPanel } from '@/components/replay/circuit-info-panel';
+import { CircuitInfoPanel } from '@/components/race/circuit-info-panel';
 import { adjacentGrandsPrix, raceHeaderFact, seasonRoundLabel } from '@/lib/schedule';
 import { ReplayAtLap } from '@/components/replay/replay-at-lap';
 import { RaceStory } from '@/components/replay/race-story';
 import { toReplayView } from '@/components/replay/types';
 import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
+import { BackLink } from '@/components/ui/back-link';
 
 /**
  * What the replay and analysis routes share: the header, the tabs, the
@@ -49,6 +50,21 @@ export async function raceStaticParams() {
 }
 
 /**
+ * A race route's metadata: the three tabs differ only in the words around the
+ * race's name.
+ */
+export async function raceMetadata(
+  params: Promise<{ slug: string }>,
+  describe: (name: string, season: number | string) => { title: string; description: string },
+) {
+  const { slug } = await params;
+  const { race } = await getRaceHeader(slug);
+  if (!race) return { title: 'Race not found' };
+  const { title, description } = describe(raceTitle(race), race.meeting?.season ?? '');
+  return { title, description: description.trim() };
+}
+
+/**
  * The race page, around whichever view's panel it is given.
  *
  * Whether the race exists is checked here, above the Suspense boundary: a bad
@@ -77,12 +93,7 @@ export async function RacePageShell({
 
   return (
     <PageContainer>
-      <Link
-        href="/races"
-        className="inline-flex rounded-sm text-eyebrow font-semibold uppercase text-muted transition-colors hover:text-foreground"
-      >
-        ← All races
-      </Link>
+      <BackLink href="/races">All races</BackLink>
 
       <Suspense fallback={<RaceSkeleton />}>
         <RaceDetail slug={slug} view={view}>
@@ -115,7 +126,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
           eyebrow={meeting ? seasonRoundLabel(meeting.season, meeting.round) : 'Season unknown'}
           // "British Sprint", not "British Grand Prix" with a pill beside it
           // saying otherwise.
-          title={meeting ? sessionTitle(meeting.name, race.type) : race.slug}
+          title={raceTitle(race)}
           viewTransitionName={`race-title-${race.slug}`}
           description={
             <>
@@ -130,13 +141,13 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
             sibling ? (
               <nav aria-label="Weekend sessions" className="flex items-center gap-1 rounded-lg border border-line bg-panel p-1">
                 <span className="rounded-md bg-panel-strong px-3 py-1.5 text-sm font-semibold text-foreground">
-                  {race.type === 'SPRINT' ? 'Sprint' : 'Grand prix'}
+                  {sessionLabel(race.type)}
                 </span>
                 <Link
                   href={`/races/${sibling.slug}`}
                   className="tap inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-muted transition-colors hover:bg-panel-strong hover:text-foreground"
                 >
-                  {sibling.type === 'SPRINT' ? 'Sprint' : 'Grand prix'}
+                  {sessionLabel(sibling.type)}
                   <span aria-hidden className="text-accent">→</span>
                 </Link>
               </nav>
@@ -152,7 +163,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
           <div className="mt-8">
             <UpcomingRace
               date={race.date}
-              name={meeting ? sessionTitle(meeting.name, race.type) : race.slug}
+              name={raceTitle(race)}
               cancelled={race.status === 'CANCELLED'}
             />
           </div>
@@ -205,7 +216,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
       <Classification
         results={race.results}
         caption={`Final classification for the ${
-          meeting ? sessionTitle(meeting.name, race.type) : race.slug
+          raceTitle(race)
         }`}
       />
 

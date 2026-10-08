@@ -1,5 +1,5 @@
 import type { RaceReplayFieldsFragment, RaceReplayQuery } from '@/graphql/generated/graphql';
-import { sessionTitle } from '@/lib/session-title';
+import { raceTitle } from '@/lib/session-title';
 
 /**
  * The shape the replay components consume.
@@ -85,7 +85,7 @@ export function toReplayView(race: RaceNode): ReplayView {
       // The session's name, not the weekend's: the player heading said "Miami
       // Grand Prix" above the sprint's own laps, which is the same mistake the
       // page heading used to make.
-      name: race.meeting ? sessionTitle(race.meeting.name, race.type) : race.slug,
+      name: raceTitle(race),
       season: race.meeting?.season ?? 0,
       round: race.meeting?.round ?? 0,
       country: race.meeting?.country ?? '',

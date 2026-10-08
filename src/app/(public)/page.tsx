@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { buttonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { PageContainer } from '@/components/ui/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -140,10 +140,8 @@ async function HeroChart() {
         finally got past.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/races">
-          <Button size="lg" className="transition-transform hover:scale-[1.03]">
-            Browse races
-          </Button>
+        <Link href="/races" className={buttonClasses({ size: 'lg', className: 'transition-transform hover:scale-[1.03]' })}>
+          Browse races
         </Link>
       </div>
     </HeroReplay>

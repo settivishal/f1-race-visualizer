@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { RaceStoryPanel } from "./race-story-panel";
 import { RaceVisualizationCanvas } from "./race-visualization-canvas";
 import {
+  GREEN_FLAG,
   buildRaceControlByLap,
   describeMissingLaps,
   nearestLapIndex,
@@ -60,11 +61,7 @@ export function RaceVisualizationPlayer({
     () => buildRaceControlByLap(laps, visualization.events),
     [laps, visualization.events],
   );
-  const activeRaceControl = raceControlByLap.get(currentLap) ?? {
-    status: "green" as const,
-    label: "Green Flag",
-    details: null,
-  };
+  const activeRaceControl = raceControlByLap.get(currentLap) ?? GREEN_FLAG;
   const missingLapsNotice = useMemo(
     () => describeMissingLaps(laps, visualization.race.laps),
     [laps, visualization.race.laps],
@@ -75,13 +72,24 @@ export function RaceVisualizationPlayer({
   const toggleFocusedDriver = useCallback((driverId: string) => {
     setFocusedDriverId((current) => (current === driverId ? null : driverId));
   }, []);
-  const jumpToLap = useCallback(
-    (lap: number) => {
+  // Every manual move does the same three things: stop, start the lap from
+  // its beginning, and go there.
+  const lastIndex = Math.max(0, laps.length - 1);
+  const goTo = useCallback(
+    (index: number | ((current: number) => number)) => {
       setIsPlaying(false);
       lapProgress.set(0);
-      setCurrentLapIndex(Math.max(0, laps.findIndex((entry) => entry === lap)));
+      setCurrentLapIndex(index);
     },
-    [laps, lapProgress],
+    [lapProgress],
+  );
+  const stepBy = useCallback(
+    (delta: number) => goTo((current) => Math.min(Math.max(current + delta, 0), lastIndex)),
+    [goTo, lastIndex],
+  );
+  const jumpToLap = useCallback(
+    (lap: number) => goTo(Math.max(0, laps.findIndex((entry) => entry === lap))),
+    [laps, goTo],
   );
 
   useEffect(() => {
@@ -168,23 +176,15 @@ export function RaceVisualizationPlayer({
         setIsPlaying((current) => !current);
       } else if (event.code === "ArrowRight") {
         event.preventDefault();
-        if (canAdvance) {
-          setIsPlaying(false);
-          lapProgress.set(0);
-          setCurrentLapIndex((current) => Math.min(current + 1, Math.max(0, laps.length - 1)));
-        }
+        if (canAdvance) stepBy(1);
       } else if (event.code === "ArrowLeft") {
         event.preventDefault();
-        setIsPlaying(false);
-        lapProgress.set(0);
-        setCurrentLapIndex((current) => Math.max(current - 1, 0));
+        stepBy(-1);
       } else if (event.code === "Escape") {
         setFocusedDriverId(null);
       } else if (event.code === "Home") {
         event.preventDefault();
-        setIsPlaying(false);
-        lapProgress.set(0);
-        setCurrentLapIndex(0);
+        goTo(0);
       }
     }
 
@@ -192,7 +192,7 @@ export function RaceVisualizationPlayer({
     return () => {
       window.removeEventListener("keydown", handleKeydown);
     };
-  }, [canAdvance, laps.length, lapProgress]);
+  }, [canAdvance, goTo, stepBy]);
 
   return (
     // `reducedMotion="user"` makes every framer-motion animation below here
@@ -281,23 +281,9 @@ export function RaceVisualizationPlayer({
                       }
                       setIsPlaying((current) => !current);
                     }}
-                    onRestart={() => {
-                      setIsPlaying(false);
-                      setCurrentLapIndex(0);
-                      lapProgress.set(0);
-                    }}
-                    onPrevious={() => {
-                      setIsPlaying(false);
-                      lapProgress.set(0);
-                      setCurrentLapIndex((current) => Math.max(current - 1, 0));
-                    }}
-                    onNext={() => {
-                      setIsPlaying(false);
-                      lapProgress.set(0);
-                      setCurrentLapIndex((current) =>
-                        Math.min(current + 1, Math.max(0, laps.length - 1)),
-                      );
-                    }}
+                    onRestart={() => goTo(0)}
+                    onPrevious={() => stepBy(-1)}
+                    onNext={() => stepBy(1)}
                     onJumpToLap={jumpToLap}
                     onChangeSpeed={(nextSpeed) => setSpeed(nextSpeed)}
                   />
@@ -313,7 +299,7 @@ export function RaceVisualizationPlayer({
                     visualization={visualization}
                     currentLap={currentLap}
                     raceControl={activeRaceControl}
-                        onJumpToLap={jumpToLap}
+                    onJumpToLap={jumpToLap}
                   />
                 </div>
               ) : null}
