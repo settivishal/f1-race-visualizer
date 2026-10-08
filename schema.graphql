@@ -126,7 +126,6 @@ type Meeting {
   races: [Race!]!
   round: Int!
   season: Int!
-  startDate: DateTime!
 }
 
 type Mutation {
@@ -140,7 +139,6 @@ type Pace {
   consistency: Float
   lapsCounted: Int!
   lapsExcluded: Int!
-  mean: Float
   median: Float
 }
 
@@ -155,7 +153,6 @@ type PitStop {
   driver: Driver
   durationSeconds: Float
   lap: Int!
-  team: Team
   underStoppage: Boolean!
 }
 
@@ -214,14 +211,13 @@ type Race {
   analysis: RaceAnalysis!
   dataTier: DataTier!
   date: DateTime!
-  events(lap: Int): [RaceEvent!]!
   id: ID!
   isFeatured: Boolean!
   laps: Int!
   meeting: Meeting
   openf1SessionKey: Int
   podium: [PodiumSlot!]!
-  predictions(modelVersion: String): [RacePrediction!]!
+  predictions: [RacePrediction!]!
   replay: RaceReplay!
   results: [RaceResult!]!
   slug: String!

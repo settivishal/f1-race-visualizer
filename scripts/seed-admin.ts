@@ -10,10 +10,10 @@ import { users } from '@/db/schema';
  *   ADMIN_EMAIL=… ADMIN_PASSWORD=… pnpm tsx scripts/seed-admin.ts
  *
  * **No credential defaults anywhere.** A missing variable is a failure, not a
- * fallback. `docs/whiteboard/05-delivery.md` names this rule after the v1
- * defect it exists to prevent: `feature/supabase` shipped a hardcoded
- * administrator login in `auth.service.ts` with no NODE_ENV guard, so a line
- * that read as a development convenience was a production backdoor.
+ * fallback. The rule comes from the v1 defect it exists to prevent:
+ * `feature/supabase` shipped a hardcoded administrator login in
+ * `auth.service.ts` with no NODE_ENV guard, so a line that read as a
+ * development convenience was a production backdoor.
  *
  * The dangerous shape is a nullish-coalescing fallback on a credential read
  * from the environment. It works locally, it works in CI, and it works in

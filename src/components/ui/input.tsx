@@ -1,4 +1,4 @@
-import { InputHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -50,24 +50,6 @@ export function Input({ label, hint, error, className, ...props }: InputProps) {
       <input
         aria-invalid={error ? true : undefined}
         className={cn(fieldClasses, error && "border-flag-red", className)}
-        {...props}
-      />
-    </Field>
-  );
-}
-
-type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
-  label: string;
-  hint?: string;
-  error?: string | null;
-};
-
-export function Textarea({ label, hint, error, className, ...props }: TextareaProps) {
-  return (
-    <Field label={label} hint={hint} error={error}>
-      <textarea
-        aria-invalid={error ? true : undefined}
-        className={cn(fieldClasses, "min-h-28", error && "border-flag-red", className)}
         {...props}
       />
     </Field>

@@ -300,15 +300,14 @@ Race.implement({
     }),
 
     /**
-     * Win probabilities, most likely first. Without a version, the newest one
+     * Win probabilities, most likely first, from the newest model version
      * imported for this race; empty when the race has none.
      */
     predictions: t.field({
       type: [RacePrediction],
-      args: { modelVersion: t.arg.string() },
-      resolve: async (race, args, ctx) => {
+      resolve: async (race, _args, ctx) => {
         const rows = await ctx.loaders.predictionsByRaceId.load(race.id);
-        const version = args.modelVersion ?? rows.reduce<PredictionRow | undefined>(
+        const version = rows.reduce<PredictionRow | undefined>(
           (newest, row) => (!newest || row.generatedAt > newest.generatedAt ? row : newest),
           undefined,
         )?.modelVersion;
@@ -316,19 +315,6 @@ Race.implement({
           .filter((row) => row.modelVersion === version)
           .sort((a, b) => b.winProbability - a.winProbability);
       },
-    }),
-
-    events: t.field({
-      type: [RaceEvent],
-      args: { lap: t.arg.int() },
-      resolve: (race, args, ctx) =>
-        ctx.db.select().from(raceEvents)
-          .where(
-            args.lap == null
-              ? eq(raceEvents.raceId, race.id)
-              : and(eq(raceEvents.raceId, race.id), eq(raceEvents.lap, args.lap)),
-          )
-          .orderBy(asc(raceEvents.lap)),
     }),
 
     /**

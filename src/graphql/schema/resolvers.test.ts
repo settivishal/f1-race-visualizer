@@ -376,10 +376,10 @@ describe('race', () => {
   });
 
   it('keeps a race-wide event, which has no driver', async () => {
-    const data = await run<{ race: { events: { type: string; driver: { code: string } | null }[] } }>(`
-      query { race(slug: "2025-test") { events { type driver { code } } } }
+    const data = await run<{ race: { replay: { events: { type: string; driver: { code: string } | null }[] } } }>(`
+      query { race(slug: "2025-test") { replay { events { type driver { code } } } } }
     `);
-    expect(data.race.events).toEqual([
+    expect(data.race.replay.events).toEqual([
       { type: 'SAFETY_CAR', driver: null },
       { type: 'RETIREMENT', driver: { code: 'NOR' } },
     ]);
