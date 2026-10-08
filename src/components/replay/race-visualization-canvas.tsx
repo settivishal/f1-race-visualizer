@@ -195,28 +195,25 @@ export function RaceVisualizationCanvas({
         {/* Compact on purpose: the header used to take a third of the screen
             (a three-line title beside a boxed control card), which is what
             pushed the chart below the fold. The controls are the dock now. */}
-        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
-          <div className="min-w-0">
-            <p className="text-eyebrow font-semibold uppercase text-white/55">
-              {race.season} · Round {race.round}
-            </p>
-            <h3 className="font-heading mt-1 break-words text-2xl font-bold leading-tight tracking-tight text-white">
-              {race.name}
-            </h3>
-          </div>
-          {/* Facts, not controls, so plain text rather than chips that look
-              pressable. The flag count is what the chart draws, not what the
-              race recorded — "186 events" above five markers reads as a bug. */}
-          <p className="tabular text-xs font-semibold text-white/55">
-            {summary.driverCount} drivers · {summary.maxLap || race.laps} laps · {chartEvents.length} flags
-          </p>
-        </div>
+        {/* One eyebrow line carries the round and the facts, so the title has
+            nothing beside it: stats pushed to the far right left a wide gap
+            between the two that read as empty space. Plain text, not chips,
+            because none of it is pressable. The flag count is what the chart
+            draws, not what the race recorded. */}
+        <p className="tabular text-eyebrow font-semibold uppercase text-white/55">
+          {race.season} · Round {race.round}
+          <span className="font-medium"> · {summary.driverCount} drivers · {summary.maxLap || race.laps} laps · {chartEvents.length} flags</span>
+        </p>
+        <h3 className="font-heading mt-1 break-words text-2xl font-bold leading-tight tracking-tight text-white">
+          {race.name}
+        </h3>
 
         {/* The second way in to the same state — the timing tower's rows are
             the first. One row that scrolls sideways rather than two that wrap:
             the tower beside it already lists every driver, so this earns one
-            line and no more. */}
-        <ul data-testid="driver-chips" className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+            line and no more. The scrollbar is hidden (wheel, trackpad and touch
+            still scroll it) and the right edge fades out to say there is more. */}
+        <ul data-testid="driver-chips" className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)] [&::-webkit-scrollbar]:hidden">
           {drivers.map((entry) => {
             const isFocused = entry.driver.id === focusedDriverId;
             const isHighlighted = entry.driver.id === highlightedDriverId;

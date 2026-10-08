@@ -52,7 +52,7 @@ function SpeedButton({
       type="button"
       aria-pressed={isActive}
       onClick={() => onSelect(option)}
-      className={`tap inline-flex h-8 min-w-7 items-center justify-center rounded px-1 sm:min-w-9 sm:px-2 text-eyebrow font-bold uppercase transition ${
+      className={`tap inline-flex h-8 min-w-7 items-center justify-center rounded-md px-1 sm:min-w-9 sm:px-2 text-eyebrow font-bold uppercase transition ${
         isActive
           ? "bg-accent-fill text-on-accent hover:bg-accent-strong"
           : "text-white/65 hover:bg-white/10 hover:text-white"
@@ -153,7 +153,7 @@ export function ReplayControls({
         </div>
       </div>
 
-      <div role="group" aria-label="Replay speed" className="ml-auto flex rounded-lg border border-white/15 bg-white/5 p-0.5 sm:ml-0">
+      <div role="group" aria-label="Replay speed" className="ml-auto flex rounded-[10px] border border-white/15 bg-white/5 p-[3px] sm:ml-0">
         {SPEED_OPTIONS.map((option) => (
           <SpeedButton key={option} option={option} isActive={option === speed} onSelect={onChangeSpeed} />
         ))}
