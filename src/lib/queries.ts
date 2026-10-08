@@ -108,7 +108,7 @@ const RACE_HEADER = /* GraphQL */ `
         races { slug type status }
       }
       results {
-        finalPosition lapsCompleted points status fastestLap
+        gridPosition finalPosition lapsCompleted points status fastestLap
         driver { code name number }
         team { name color }
       }

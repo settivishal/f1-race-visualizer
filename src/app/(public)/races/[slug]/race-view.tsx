@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from 'react';
 import { PredictionPanel } from '@/components/schedule/prediction-panel';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Card } from '@/components/ui/card';
+import { Classification } from '@/components/race/classification';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -92,13 +92,6 @@ export async function RacePageShell({
   );
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  FINISHED: '',
-  DNF: 'DNF',
-  DNS: 'DNS',
-  DSQ: 'DSQ',
-};
-
 async function RaceDetail({ slug, view, children }: { slug: string; view: View; children: ReactNode }) {
   const { race } = await getRaceHeader(slug);
 
@@ -113,13 +106,6 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
   // this is how someone gets from a grand prix to its sprint and back without
   // going through the library again.
   const sibling = meeting?.races.find((session) => session.slug !== race.slug) ?? null;
-  const classified = [...race.results].sort((a, b) => {
-    // A DNF has no finishing position, so it sorts after everyone who has one
-    // rather than to the front on a null.
-    if (a.finalPosition === null) return b.finalPosition === null ? 0 : 1;
-    if (b.finalPosition === null) return -1;
-    return a.finalPosition - b.finalPosition;
-  });
 
   return (
     <>
@@ -214,68 +200,12 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
         </div>
       ) : null}
 
-      <section className="mt-10">
-        <h2 className="type-section-title">Classification</h2>
-        <Card className="mt-4 overflow-x-auto p-0">
-        <table className="w-full min-w-[34rem] text-left text-sm">
-          <caption className="sr-only">
-            Final classification for the{' '}
-            {meeting ? sessionTitle(meeting.name, race.type) : race.slug}
-          </caption>
-          <thead>
-            <tr className="border-b border-line text-eyebrow uppercase text-muted">
-              <th scope="col" className="py-3 pl-5 pr-3 font-semibold">Pos</th>
-              <th scope="col" className="py-3 pr-3 font-semibold">Driver</th>
-              <th scope="col" className="py-3 pr-3 font-semibold">Team</th>
-              <th scope="col" className="py-3 pr-3 text-right font-semibold">Laps</th>
-              <th scope="col" className="py-3 pr-5 text-right font-semibold">Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {classified.map((result, index) => (
-              <tr
-                key={result.driver?.code ?? `row-${index}`}
-                className="border-b border-line/60 last:border-0"
-              >
-                <td className="tabular py-2.5 pl-5 pr-3 text-muted">
-                  {result.finalPosition ?? STATUS_LABEL[result.status] ?? '—'}
-                </td>
-                <td className="py-2.5 pr-3">
-                  <span className="flex items-center gap-2.5">
-                    <span
-                      className="h-4 w-1 shrink-0 rounded-full"
-                      style={{ backgroundColor: result.team?.color ?? 'var(--muted)' }}
-                      aria-hidden
-                    />
-                    <span className="font-mono text-xs font-medium text-muted">
-                      {result.driver?.code ?? '—'}
-                    </span>
-                    <span className="font-medium">{result.driver?.name ?? 'Unknown driver'}</span>
-                    {/* The broadcast's mark for it: a purple stopwatch, the
-                        colour the timing tower already uses for fastest of all. */}
-                    {result.fastestLap ? (
-                      <span
-                        className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-timing-best text-white dark:text-track"
-                        title="Fastest lap"
-                      >
-                        <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
-                          <circle cx="8" cy="9" r="5" />
-                          <path d="M8 9V6.5M6.5 2h3M12 4.5l1-1" />
-                        </svg>
-                        <span className="sr-only">Fastest lap</span>
-                      </span>
-                    ) : null}
-                  </span>
-                </td>
-                <td className="py-2.5 pr-3 text-muted">{result.team?.name ?? '—'}</td>
-                <td className="tabular py-2.5 pr-3 text-right">{result.lapsCompleted}</td>
-                <td className="tabular py-2.5 pr-5 text-right font-semibold">{result.points}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </Card>
-      </section>
+      <Classification
+        results={race.results}
+        caption={`Final classification for the ${
+          meeting ? sessionTitle(meeting.name, race.type) : race.slug
+        }`}
+      />
 
       {race.type === 'GRAND_PRIX' ? (
         <Suspense fallback={null}>
