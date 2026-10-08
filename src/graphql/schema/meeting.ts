@@ -57,7 +57,6 @@ Meeting.implement({
     }),
     season: t.exposeInt('seasonYear'),
     adminEdited: t.exposeStringList('adminEdited'),
-    startDate: t.field({ type: 'DateTime', resolve: (m) => m.startDate }),
     // A weekend's sessions: the grand prix, and a sprint where there was one.
     // This is the other half of the Race -> Meeting -> races cycle, which is
     // why the endpoint carries a depth limit.
