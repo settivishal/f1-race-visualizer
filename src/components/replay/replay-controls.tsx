@@ -34,29 +34,28 @@ const RestartIcon = () => (
 );
 
 /**
- * One speed option. Hoisted out of the component: defined inside it, this would
- * be a new component type on every render, and React would unmount and remount
- * the buttons rather than update them.
+ * One segment of the speed control. Hoisted out of the component: defined
+ * inside it, this would be a new component type on every render, and React
+ * would unmount and remount the buttons rather than update them.
  */
 function SpeedButton({
   option,
   isActive,
   onSelect,
-  className = "",
 }: {
   option: number;
   isActive: boolean;
   onSelect: (speed: number) => void;
-  className?: string;
 }) {
   return (
     <button
       type="button"
+      aria-pressed={isActive}
       onClick={() => onSelect(option)}
-      className={`tap inline-flex h-9 items-center justify-center rounded-md px-2.5 text-eyebrow font-bold uppercase transition ${className} ${
+      className={`tap inline-flex h-8 min-w-7 items-center justify-center rounded px-1 sm:min-w-9 sm:px-2 text-eyebrow font-bold uppercase transition ${
         isActive
           ? "bg-accent-fill text-on-accent hover:bg-accent-strong"
-          : "border border-white/15 bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+          : "text-white/65 hover:bg-white/10 hover:text-white"
       }`}
     >
       {option}x
@@ -64,12 +63,14 @@ function SpeedButton({
   );
 }
 
+const transportClasses =
+  "tap-square flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-md border border-white/15 bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-30";
+
 export function ReplayControls({
   currentLap,
   maxLap,
   isPlaying,
   speed,
-  progressPercent,
   lapProgress,
   canStepBackward,
   canStepForward,
@@ -84,7 +85,6 @@ export function ReplayControls({
   maxLap: number;
   isPlaying: boolean;
   speed: number;
-  progressPercent: number;
   lapProgress: MotionValue<number>;
   canStepBackward: boolean;
   canStepForward: boolean;
@@ -98,107 +98,48 @@ export function ReplayControls({
   const percent = useTransform(lapProgress, (p) => {
     return Math.max(0, Math.min(100, ((currentLap - 1 + p) / Math.max(1, maxLap - 1)) * 100));
   });
-  
+
   const widthStr = useTransform(percent, (p) => `${p}%`);
   const thumbStr = useTransform(percent, (p) => `calc(${p}% - 7px)`);
 
-  // These controls render inside the chart panel, which stays dark in
-  // both themes (see docs/decisions.md, "The chart panel stays dark in both
-  // themes"). So its surfaces are fixed dark values, not theme tokens — with
-  // tokens it turned into white buttons on a black chart in light mode. Only
-  // the accent is a token, because it is red either way.
+  // A dock that floats over the page, so its surfaces are fixed dark values in
+  // both themes, like the chart panel it controls (docs/decisions.md, "The
+  // chart panel stays dark in both themes"). Only the accent is a token.
+  //
+  // One row on a desktop: transport, scrubber, speed. On a phone the scrubber
+  // drops to a second row of its own (order-last + w-full) rather than
+  // squeezing between nine buttons.
   return (
-    <div className="w-full rounded-xl border border-white/10 bg-black/55 px-4 py-4 shadow-lg backdrop-blur-md sm:px-6 sm:py-5">
-      {/* Two deliberate rows rather than one that wraps: at 390px the four
-          transport buttons and five speeds cannot share a line, and letting
-          them wrap put a lone 8x on a third row of its own. */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onPrevious}
-          disabled={!canStepBackward}
-          aria-label="Previous lap"
-          className="tap-square h-9 w-9 flex items-center justify-center rounded-md border border-white/15 bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-30"
-        >
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-2.5 rounded-2xl border border-white/10 bg-black/80 px-2.5 py-2.5 sm:gap-x-4 text-white shadow-2xl backdrop-blur-md sm:flex-nowrap sm:px-4">
+      <div className="flex items-center gap-1 sm:gap-1.5">
+        <button type="button" onClick={onPrevious} disabled={!canStepBackward} aria-label="Previous lap" className={transportClasses}>
           <PrevIcon />
         </button>
-        <button
-          type="button"
-          onClick={onPlayPause}
-          aria-label={isPlaying ? "Pause replay" : "Play replay"}
-          // The same button as its three neighbours. It used to be a red
-          // disc, which made one control in a row of four read as a
-          // different kind of thing; the accent is carried by the speed
-          // selection and the progress bar, which is enough red for one
-          // panel.
-          className="tap-square h-9 w-9 flex items-center justify-center rounded-md border border-white/15 bg-white/10 text-white transition hover:bg-white/20 active:brightness-90"
-        >
+        <button type="button" onClick={onPlayPause} aria-label={isPlaying ? "Pause replay" : "Play replay"} className={transportClasses}>
           {isPlaying ? <PauseIcon /> : <PlayIcon />}
         </button>
-        <button
-          type="button"
-          onClick={onNext}
-          disabled={!canStepForward}
-          aria-label="Next lap"
-          className="tap-square h-9 w-9 flex items-center justify-center rounded-md border border-white/15 bg-white/10 text-white transition hover:bg-white/20 disabled:opacity-30"
-        >
+        <button type="button" onClick={onNext} disabled={!canStepForward} aria-label="Next lap" className={transportClasses}>
           <NextIcon />
         </button>
-        <button
-          type="button"
-          onClick={onRestart}
-          aria-label="Restart replay"
-          className="tap-square h-9 w-9 flex items-center justify-center rounded-md border border-white/15 bg-white/10 text-white transition hover:bg-white/20"
-        >
+        <button type="button" onClick={onRestart} aria-label="Restart replay" className={transportClasses}>
           <RestartIcon />
         </button>
-
-        {/* A segmented control on its own line: five options that share the
-            width rather than five pills that wrap. */}
-        <div className="ml-auto hidden gap-1 sm:flex">
-          {SPEED_OPTIONS.map((option) => (
-            <SpeedButton
-              key={option}
-              option={option}
-              isActive={option === speed}
-              onSelect={onChangeSpeed}
-            />
-          ))}
-        </div>
       </div>
 
-      <div className="mt-2 flex gap-1 sm:hidden">
-        {SPEED_OPTIONS.map((option) => (
-          <SpeedButton
-            key={option}
-            option={option}
-            isActive={option === speed}
-            onSelect={onChangeSpeed}
-            className="flex-1"
-          />
-        ))}
-      </div>
-
-      <div className="mt-3.5 grid gap-2">
-        <div className="flex items-center justify-between text-eyebrow font-bold uppercase text-white/60">
-          <span>Lap {currentLap}</span>
-          <span>{Math.round(progressPercent)}%</span>
-        </div>
-        
-        <div className="relative w-full h-1.5 mt-1">
-          {/* The visual progress track */}
-          <div className="absolute inset-0 h-full overflow-hidden rounded-full bg-line">
-            <motion.div
-              className="h-full rounded-full bg-accent"
-              style={{ width: widthStr }}
-            />
+      <div className="order-last flex w-full min-w-0 items-center gap-3 sm:order-none sm:w-auto sm:flex-1">
+        <span className="tabular shrink-0 text-eyebrow font-bold uppercase text-white/70">
+          Lap {currentLap}/{maxLap}
+        </span>
+        <div className="relative h-1.5 w-full">
+          <div className="absolute inset-0 h-full overflow-hidden rounded-full bg-white/15">
+            <motion.div className="h-full rounded-full bg-accent" style={{ width: widthStr }} />
           </div>
-          {/* The visible scrubber head (thumb) */}
           <motion.div
-            className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-foreground border-2 border-accent pointer-events-none"
+            className="pointer-events-none absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-accent bg-white"
             style={{ left: thumbStr }}
           />
-          {/* The invisible interactive range slider on top */}
+          {/* The invisible native range on top: keyboard and screen reader
+              support for free, drawn by the two layers under it. */}
           <input
             type="range"
             min={1}
@@ -206,10 +147,16 @@ export function ReplayControls({
             step={1}
             value={Math.max(1, currentLap)}
             onChange={(event) => onJumpToLap(Number(event.target.value))}
-            className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             aria-label="Lap scrubber"
           />
         </div>
+      </div>
+
+      <div role="group" aria-label="Replay speed" className="ml-auto flex rounded-lg border border-white/15 bg-white/5 p-0.5 sm:ml-0">
+        {SPEED_OPTIONS.map((option) => (
+          <SpeedButton key={option} option={option} isActive={option === speed} onSelect={onChangeSpeed} />
+        ))}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { ReplayView } from "./types";
 import { TIMING_TOWER_ID } from "./live-timing-tower";
@@ -35,7 +35,6 @@ export function RaceVisualizationCanvas({
   nextLap,
   lapProgress,
   raceControl,
-  controls,
   className,
   focusedDriverId,
   highlightedDriverId,
@@ -49,7 +48,6 @@ export function RaceVisualizationCanvas({
   nextLap: number;
   lapProgress: MotionValue<number>;
   raceControl: ReplayRaceControl;
-  controls?: ReactNode;
   className?: string;
   /** The driver held by a click — what `aria-pressed` and the label report. */
   focusedDriverId: string | null;
@@ -193,48 +191,38 @@ export function RaceVisualizationCanvas({
     // instrument on a light page, the way a video player does. It is the one
     // surface here that does not follow the theme.
     <div className={cn("flex min-w-0 flex-col overflow-hidden rounded-xl border border-line-strong bg-track p-5 text-white shadow-lg", className)}>
-      {minimal ? null : <div className="border-b border-white/10 px-4 pb-5">
-        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-          {/* min-w-0 so a long race name wraps instead of pushing the controls
-              off; the chips used to live in here and inherited the squeeze. */}
-          <div className="min-w-0 max-w-xl flex-1">
-            <h3 className="font-heading break-words text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-              {race.season} R{race.round} • {race.name}
+      {minimal ? null : <div className="border-b border-white/10 px-1 pb-4">
+        {/* Compact on purpose: the header used to take a third of the screen
+            (a three-line title beside a boxed control card), which is what
+            pushed the chart below the fold. The controls are the dock now. */}
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
+          <div className="min-w-0">
+            <p className="text-eyebrow font-semibold uppercase text-white/55">
+              {race.season} · Round {race.round}
+            </p>
+            <h3 className="font-heading mt-1 break-words text-2xl font-bold leading-tight tracking-tight text-white">
+              {race.name}
             </h3>
           </div>
-          <div className="flex flex-col items-start gap-3 md:flex-shrink-0 md:items-end">
-            {controls ? <div>{controls}</div> : null}
-          </div>
-        </div>
-
-        {/* Their own row, full width. In the title's column they were sharing
-            space with a flex-shrink-0 sibling and wrapped one-then-two. */}
-        <div className="mt-3.5 flex flex-wrap gap-2 text-xs">
-          <span className="tabular rounded-md border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-white/90">
-            {summary.driverCount} Drivers
-          </span>
-          <span className="tabular rounded-md border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-white/90">
-            {summary.maxLap || race.laps} Laps
-          </span>
-          <span className="tabular rounded-md border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-white/90">
-            {/* What the chart draws, not what the race recorded — a "186
-                Events" chip above five visible markers reads as a bug. The
-                full count is the timeline's business. */}
-            {chartEvents.length} Flags
-          </span>
+          {/* Facts, not controls, so plain text rather than chips that look
+              pressable. The flag count is what the chart draws, not what the
+              race recorded — "186 events" above five markers reads as a bug. */}
+          <p className="tabular text-xs font-semibold text-white/55">
+            {summary.driverCount} drivers · {summary.maxLap || race.laps} laps · {chartEvents.length} flags
+          </p>
         </div>
 
         {/* The second way in to the same state — the timing tower's rows are
-            the first. Same chip shape as the row above so the dark panel keeps
-            one vocabulary, rather than importing the analysis tab's chips,
-            which live on a light surface and hold a different kind of state. */}
-        <ul data-testid="driver-chips" className="mt-2.5 flex flex-wrap gap-1.5">
+            the first. One row that scrolls sideways rather than two that wrap:
+            the tower beside it already lists every driver, so this earns one
+            line and no more. */}
+        <ul data-testid="driver-chips" className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
           {drivers.map((entry) => {
             const isFocused = entry.driver.id === focusedDriverId;
             const isHighlighted = entry.driver.id === highlightedDriverId;
 
             return (
-              <li key={entry.driver.id}>
+              <li key={entry.driver.id} className="shrink-0">
                 <button
                   type="button"
                   aria-pressed={isFocused}
