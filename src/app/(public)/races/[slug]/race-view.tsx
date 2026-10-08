@@ -253,12 +253,18 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
                       {result.driver?.code ?? '—'}
                     </span>
                     <span className="font-medium">{result.driver?.name ?? 'Unknown driver'}</span>
+                    {/* The broadcast's mark for it: a purple stopwatch, the
+                        colour the timing tower already uses for fastest of all. */}
                     {result.fastestLap ? (
                       <span
-                        className="text-eyebrow font-bold uppercase text-accent"
+                        className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-timing-best text-white dark:text-track"
                         title="Fastest lap"
                       >
-                        FL
+                        <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden>
+                          <circle cx="8" cy="9" r="5" />
+                          <path d="M8 9V6.5M6.5 2h3M12 4.5l1-1" />
+                        </svg>
+                        <span className="sr-only">Fastest lap</span>
                       </span>
                     ) : null}
                   </span>

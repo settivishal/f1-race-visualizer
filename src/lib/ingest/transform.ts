@@ -464,12 +464,18 @@ export function buildEvents(bundle: RaceBundle, positions: PositionRow[]): Event
       events.push({
         lap,
         driverNumber: null,
-        type: /VIRTUAL/i.test(message.message) ? 'VIRTUAL_SAFETY_CAR' : 'SAFETY_CAR',
+        // Some seasons send "VSC DEPLOYED" rather than spelling it out.
+        type: /VIRTUAL|VSC/i.test(message.message) ? 'VIRTUAL_SAFETY_CAR' : 'SAFETY_CAR',
         details: message.message,
       });
     } else if (message.flag === 'RED') {
       events.push({ lap, driverNumber: null, type: 'RED_FLAG', details: message.message });
       stoppageLaps.delete(lap);
+    } else if (message.flag === 'CLEAR' && message.scope === 'Track') {
+      // The one message that ends a safety car, a VSC and a red flag alike.
+      // Without it the replay had nothing to clear the caution with, and every
+      // car stayed yellow from the first deployment to the flag.
+      events.push({ lap, driverNumber: null, type: 'OTHER', details: message.message });
     }
   }
 

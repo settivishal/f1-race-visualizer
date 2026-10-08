@@ -182,6 +182,7 @@ export function buildRaceControlByLap(
     label: "Green Flag",
     details: null,
   };
+  let clearsAfter: ReplayRaceControl | null = null;
 
   for (const lap of laps) {
     while (eventIndex < sortedEvents.length && sortedEvents[eventIndex]?.lap === lap) {
@@ -203,7 +204,9 @@ export function buildRaceControlByLap(
           details: event.details,
         };
       } else if (kind === "green") {
-        current = { status: "green", label: "Green Flag", details: event.details };
+        // Race control clears the track on the last lap behind the safety
+        // car, so the racing starts on the lap after.
+        clearsAfter = { status: "green", label: "Green Flag", details: event.details };
       } else if (kind === "chequered") {
         current = { status: "chequered", label: "Chequered Flag", details: event.details };
       }
@@ -212,6 +215,10 @@ export function buildRaceControlByLap(
     }
 
     result.set(lap, current);
+    if (clearsAfter) {
+      current = clearsAfter;
+      clearsAfter = null;
+    }
   }
 
   return result;

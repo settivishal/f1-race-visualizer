@@ -59,7 +59,8 @@ describe('buildRaceControlByLap', () => {
     expect(control.get(2)?.status).toBe('safety-car');
     // Lap 3 has no event of its own and stays under the safety car.
     expect(control.get(3)?.status).toBe('safety-car');
-    expect(control.get(4)?.status).toBe('green');
+    // The track clears during lap 4, the safety car's last; racing is lap 5.
+    expect(control.get(4)?.status).toBe('safety-car');
     expect(control.get(5)?.status).toBe('green');
   });
 
