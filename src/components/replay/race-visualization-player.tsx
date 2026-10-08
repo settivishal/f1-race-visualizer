@@ -55,8 +55,6 @@ export function RaceVisualizationPlayer({
   const canAdvance = currentLapIndex < Math.max(0, laps.length - 1);
 
 
-  const replayProgressPercent =
-    laps.length <= 1 ? 100 : (currentLapIndex / Math.max(1, laps.length - 1)) * 100;
   const raceControlByLap = useMemo(
     () => buildRaceControlByLap(laps, visualization.events),
     [laps, visualization.events],
@@ -231,7 +229,7 @@ export function RaceVisualizationPlayer({
                 content — so the canvas's `min-w-[760px]` propagated up through
                 the shared column and stretched this tower to 802px on a 390px
                 screen, taking the page with it. */}
-            <div className="min-w-0 max-h-[800px] lg:sticky lg:top-20">
+            <div className="min-w-0 max-h-[800px] lg:sticky lg:top-20 lg:h-[calc(100svh-10rem)] lg:max-h-none">
               <LiveTimingTower
                 visualization={visualization}
                 currentLap={currentLap}
@@ -250,10 +248,12 @@ export function RaceVisualizationPlayer({
             <div className="flex min-w-0 flex-col">
               <RaceVisualizationCanvas
                 // Shorter on a phone: at 600px the chart is the whole viewport
-                // and you pan a window you cannot see around. No max height on
-                // a desktop: the frame inside sets its own minimum from the
-                // number of cars, and a cap would crop it.
-                className="sm:min-h-[600px] flex-1"
+                // and you pan a window you cannot see around. On a desktop it
+                // is one screen tall, less the site header and the dock, so
+                // play, chart and tower are all in view at once. min-h-fit
+                // keeps the frame's own floor (rows never under 20px): a short
+                // screen gets a taller card rather than a cropped chart.
+                className="flex-1 sm:max-lg:min-h-[600px] lg:h-[calc(100svh-10rem)] lg:min-h-fit lg:flex-none"
                 visualization={visualization}
                 currentLap={currentLap}
                 nextLap={nextLap}
@@ -264,30 +264,6 @@ export function RaceVisualizationPlayer({
                 lapProgress={lapProgress}
                 raceControl={activeRaceControl}
                 onJumpToLap={jumpToLap}
-                controls={
-                  <ReplayControls
-                    currentLap={currentLap}
-                    maxLap={visualization.summary.maxLap || visualization.race.laps}
-                    isPlaying={isPlaying}
-                    speed={speed}
-                    progressPercent={replayProgressPercent}
-                    lapProgress={lapProgress}
-                    canStepBackward={currentLapIndex > 0}
-                    canStepForward={canAdvance}
-                    onPlayPause={() => {
-                      if (!canAdvance && currentLapIndex >= laps.length - 1) {
-                        setCurrentLapIndex(0);
-                        lapProgress.set(0);
-                      }
-                      setIsPlaying((current) => !current);
-                    }}
-                    onRestart={() => goTo(0)}
-                    onPrevious={() => stepBy(-1)}
-                    onNext={() => stepBy(1)}
-                    onJumpToLap={jumpToLap}
-                    onChangeSpeed={(nextSpeed) => setSpeed(nextSpeed)}
-                  />
-                }
               />
 
               {/* Under the canvas and inside its column, so the timeline shares
@@ -305,6 +281,33 @@ export function RaceVisualizationPlayer({
               ) : null}
             </div>
 
+          </div>
+
+          {/* The controls dock. Sticky to the bottom of the screen while any of
+              the replay is in view, so pausing never means scrolling back up
+              to the chart; it settles here, under the story, at the end. */}
+          <div className="sticky bottom-3 z-30 mx-auto mt-5 max-w-4xl">
+            <ReplayControls
+              currentLap={currentLap}
+              maxLap={visualization.summary.maxLap || visualization.race.laps}
+              isPlaying={isPlaying}
+              speed={speed}
+              lapProgress={lapProgress}
+              canStepBackward={currentLapIndex > 0}
+              canStepForward={canAdvance}
+              onPlayPause={() => {
+                if (!canAdvance && currentLapIndex >= laps.length - 1) {
+                  setCurrentLapIndex(0);
+                  lapProgress.set(0);
+                }
+                setIsPlaying((current) => !current);
+              }}
+              onRestart={() => goTo(0)}
+              onPrevious={() => stepBy(-1)}
+              onNext={() => stepBy(1)}
+              onJumpToLap={jumpToLap}
+              onChangeSpeed={(nextSpeed) => setSpeed(nextSpeed)}
+            />
           </div>
         </div>
       </div>
