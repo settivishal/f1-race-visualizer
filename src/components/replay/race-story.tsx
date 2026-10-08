@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig, useMotionValue } from "framer-motion";
 import { RaceVisualizationCanvas } from "./race-visualization-canvas";
-import { buildRaceControlByLap } from "./replay-state";
+import { GREEN_FLAG, buildRaceControlByLap } from "./replay-state";
 import { buildStoryChapters } from "./story-chapters";
 import type { ReplayView } from "./types";
 
@@ -63,9 +63,7 @@ export function RaceStory({ visualization, slug }: { visualization: ReplayView; 
             currentLap={lap}
             nextLap={lap}
             lapProgress={lapProgress}
-            raceControl={
-              raceControlByLap.get(lap) ?? { status: "green", label: "Green Flag", details: null }
-            }
+            raceControl={raceControlByLap.get(lap) ?? GREEN_FLAG}
             focusedDriverId={null}
             highlightedDriverId={hovered ?? chapter.driverId}
             onToggleDriver={() => {}}

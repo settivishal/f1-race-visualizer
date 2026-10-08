@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { buttonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
@@ -8,13 +8,12 @@ import { SeasonFilter } from '@/components/ui/season-filter';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getActiveSeason, getSeasonStandings } from '@/lib/queries';
+import { yearParam, type SearchParams } from '@/lib/search-params';
 
 export const metadata = {
   title: 'Standings',
   description: 'Drivers and constructors championships, derived from race results.',
 };
-
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 /**
  * The championship tables.
@@ -45,13 +44,8 @@ export default function StandingsPage({ searchParams }: { searchParams: SearchPa
 async function Standings({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
 
-  const first = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? value[0] : value;
-
-  const seasonParam = first(params.season);
-  const parsedSeason = seasonParam ? Number(seasonParam) : NaN;
   // `?season=` still wins; only the default follows the configured season.
-  const season = Number.isInteger(parsedSeason) ? parsedSeason : await getActiveSeason();
+  const season = yearParam(params.season) ?? await getActiveSeason();
 
   const { driverStandings, constructorStandings, seasons } = await getSeasonStandings(season);
 
@@ -82,10 +76,8 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
             title={`No results for ${season}`}
             description="Nothing has been imported for this season yet. Pick another, or browse the archive."
             action={
-              <Link href="/races">
-                <Button variant="secondary" size="sm">
-                  Browse races
-                </Button>
+              <Link href="/races" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
+                Browse races
               </Link>
             }
           />

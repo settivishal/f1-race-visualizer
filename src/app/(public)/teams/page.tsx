@@ -4,16 +4,15 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Skeleton } from '@/components/ui/skeleton';
+import { GridSkeleton } from '@/components/ui/skeleton';
 import { SeasonFilter } from '@/components/ui/season-filter';
 import { getActiveSeason, getArchiveIndex } from '@/lib/queries';
+import { seasonFilter, type SearchParams } from '@/lib/search-params';
 
 export const metadata = {
   title: 'Teams',
   description: 'Every constructor in the archive, with their season-by-season record.',
 };
-
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default function TeamsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -24,7 +23,7 @@ export default function TeamsPage({ searchParams }: { searchParams: SearchParams
         description="Every constructor that has entered a race in the seasons imported here. A team that rebranded appears under each name it raced with, which is how the championship counted it."
       />
       <div className="mt-8">
-        <Suspense fallback={<GridSkeleton />}>
+        <Suspense fallback={<GridSkeleton count={6} itemClassName="h-16" />}>
           <TeamGrid searchParams={searchParams} />
         </Suspense>
       </div>
@@ -34,13 +33,7 @@ export default function TeamsPage({ searchParams }: { searchParams: SearchParams
 
 async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const raw = Array.isArray(params.season) ? params.season[0] : params.season;
-  const parsed = raw ? Number(raw) : NaN;
-  const season = raw === 'all'
-    ? null
-    : Number.isInteger(parsed)
-      ? parsed
-      : await getActiveSeason();
+  const season = await seasonFilter(params.season, getActiveSeason);
 
   const { teams, seasons } = await getArchiveIndex(season);
 
@@ -86,15 +79,5 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
       ))}
     </ul>
     </>
-  );
-}
-
-function GridSkeleton() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }, (_, i) => (
-        <Skeleton key={i} className="h-16 w-full rounded-xl" />
-      ))}
-    </div>
   );
 }

@@ -1,12 +1,12 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ProfileSkeleton } from '@/components/ui/skeleton';
 import { RecordTable, StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getTeamProfile } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
+import { BackLink } from '@/components/ui/back-link';
 
 /**
  * A constructor's record.
@@ -61,14 +61,9 @@ export default async function TeamPage({ params }: { params: Promise<{ name: str
 
   return (
     <PageContainer>
-      <Link
-        href="/teams"
-        className="inline-flex rounded-sm text-eyebrow font-semibold uppercase text-muted transition-colors hover:text-foreground"
-      >
-        ← All teams
-      </Link>
+      <BackLink href="/teams">All teams</BackLink>
 
-      <Suspense fallback={<ProfileSkeleton />}>
+      <Suspense fallback={<ProfileSkeleton subtitleClassName="w-72" />}>
         <TeamDetail params={params} />
       </Suspense>
     </PageContainer>
@@ -139,17 +134,5 @@ async function TeamDetail({ params }: { params: Promise<{ name: string }> }) {
         </div>
       </section>
     </>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <div className="mt-5">
-      <Skeleton className="h-4 w-24" />
-      <Skeleton className="mt-3 h-12 w-80 max-w-full" />
-      <Skeleton className="mt-3 h-5 w-72" />
-      <Skeleton className="mt-8 h-24 w-full rounded-xl" />
-      <Skeleton className="mt-10 h-72 w-full rounded-xl" />
-    </div>
   );
 }

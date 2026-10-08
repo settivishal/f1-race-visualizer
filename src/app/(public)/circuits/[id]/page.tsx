@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getCircuitProfile } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
+import { BackLink } from '@/components/ui/back-link';
 
 export async function generateStaticParams() {
   const { circuits } = await getArchiveIndex();
@@ -52,12 +53,7 @@ export default async function CircuitPage({ params }: { params: Promise<{ id: st
 
   return (
     <PageContainer>
-      <Link
-        href="/circuits"
-        className="inline-flex rounded-sm text-eyebrow font-semibold uppercase text-muted transition-colors hover:text-foreground"
-      >
-        ← All circuits
-      </Link>
+      <BackLink href="/circuits">All circuits</BackLink>
 
       <Suspense fallback={<CircuitSkeleton />}>
         <CircuitDetail params={params} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lapWindowFor, minFrameHeight } from './race-visualization-canvas';
+import { lapWindowFor, minFrameHeight } from './chart-layout';
 
 describe('lapWindowFor', () => {
   it('shows the whole race on a desktop, however narrow the chart', () => {

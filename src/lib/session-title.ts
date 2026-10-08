@@ -18,3 +18,15 @@ export function sessionTitle(meetingName: string, type: 'GRAND_PRIX' | 'SPRINT')
   // name and gains the word, rather than silently reading as a grand prix.
   return renamed === meetingName ? `${meetingName} Sprint` : renamed.trim();
 }
+
+/** A race's title, or its slug for a race with no meeting to name it. */
+export function raceTitle(race: {
+  slug: string;
+  type: 'GRAND_PRIX' | 'SPRINT';
+  meeting?: { name: string } | null;
+}): string {
+  return race.meeting ? sessionTitle(race.meeting.name, race.type) : race.slug;
+}
+
+/** The kind of session, as a label. */
+export const sessionLabel = (type: 'GRAND_PRIX' | 'SPRINT') => (type === 'SPRINT' ? 'Sprint' : 'Grand Prix');

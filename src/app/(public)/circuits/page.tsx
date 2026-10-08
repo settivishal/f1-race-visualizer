@@ -4,15 +4,14 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
-import { Skeleton } from '@/components/ui/skeleton';
+import { GridSkeleton } from '@/components/ui/skeleton';
 import { getActiveSeason, getArchiveIndex } from '@/lib/queries';
+import { seasonFilter, type SearchParams } from '@/lib/search-params';
 
 export const metadata = {
   title: 'Circuits',
   description: 'Every circuit that has held a race in the archive.',
 };
-
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 export default function CircuitsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -23,7 +22,7 @@ export default function CircuitsPage({ searchParams }: { searchParams: SearchPar
         description="Every circuit that has held one of the races imported here — including the ones the current calendar has left behind."
       />
       <div className="mt-8">
-        <Suspense fallback={<GridSkeleton />}>
+        <Suspense fallback={<GridSkeleton count={6} itemClassName="h-20" />}>
           <CircuitGrid searchParams={searchParams} />
         </Suspense>
       </div>
@@ -33,13 +32,7 @@ export default function CircuitsPage({ searchParams }: { searchParams: SearchPar
 
 async function CircuitGrid({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const raw = Array.isArray(params.season) ? params.season[0] : params.season;
-  const parsed = raw ? Number(raw) : NaN;
-  const season = raw === 'all'
-    ? null
-    : Number.isInteger(parsed)
-      ? parsed
-      : await getActiveSeason();
+  const season = await seasonFilter(params.season, getActiveSeason);
 
   const { circuits } = await getArchiveIndex(season);
 
@@ -77,15 +70,5 @@ async function CircuitGrid({ searchParams }: { searchParams: SearchParams }) {
       ))}
     </ul>
     </>
-  );
-}
-
-function GridSkeleton() {
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {Array.from({ length: 6 }, (_, i) => (
-        <Skeleton key={i} className="h-20 w-full rounded-xl" />
-      ))}
-    </div>
   );
 }
