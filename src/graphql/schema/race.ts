@@ -526,20 +526,26 @@ const RaceConnection = builder
  * than dragging whole race rows through an edge type to spell a slug, and the
  * bound is a ceiling nobody is near rather than a page size.
  */
-const RaceSlug = builder.objectRef<{ slug: string; date: Date }>('RaceSlug').implement({
-  fields: (t) => ({
-    slug: t.exposeString('slug'),
-    date: t.field({ type: 'DateTime', resolve: (r) => r.date }),
-  }),
-});
+const RaceSlug = builder
+  .objectRef<{ slug: string; date: Date; type: 'GRAND_PRIX' | 'SPRINT'; name: string }>('RaceSlug')
+  .implement({
+    fields: (t) => ({
+      slug: t.exposeString('slug'),
+      date: t.field({ type: 'DateTime', resolve: (r) => r.date }),
+      type: t.field({ type: RaceType, resolve: (r) => r.type }),
+      /** The meeting's name, for a link that has to say where it goes. */
+      name: t.exposeString('name'),
+    }),
+  });
 
 builder.queryField('raceSlugs', (t) =>
   t.field({
     type: [RaceSlug],
     resolve: (_root, _args, ctx) =>
       ctx.db
-        .select({ slug: races.slug, date: races.date })
+        .select({ slug: races.slug, date: races.date, type: races.type, name: meetings.name })
         .from(races)
+        .innerJoin(meetings, eq(meetings.id, races.meetingId))
         .orderBy(desc(races.date), desc(races.id))
         .limit(1000),
   }),

@@ -10,8 +10,9 @@ import { sessionTitle } from '@/lib/session-title';
 import { Tabs } from '@/components/ui/tabs';
 import { UpcomingRace } from '@/components/schedule/upcoming-race';
 import { CircuitInfoPanel } from '@/components/replay/circuit-info-panel';
-import { raceHeaderFact, seasonRoundLabel } from '@/lib/schedule';
+import { adjacentGrandsPrix, raceHeaderFact, seasonRoundLabel } from '@/lib/schedule';
 import { ReplayAtLap } from '@/components/replay/replay-at-lap';
+import { RaceStory } from '@/components/replay/race-story';
 import { toReplayView } from '@/components/replay/types';
 import { getRaceHeader, getRaceReplay, getRaceSlugs } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
@@ -29,7 +30,7 @@ import { prerenderParams } from '@/lib/prerender';
  * inside its own small Suspense boundary.
  */
 
-export type View = 'replay' | 'analysis';
+export type View = 'replay' | 'story' | 'analysis';
 
 /**
  * The newest races are prerendered at build; older ones render on their first
@@ -182,6 +183,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
           active={view}
           tabs={[
             { id: 'replay', label: 'Replay', href: `/races/${slug}` },
+            { id: 'story', label: 'Story', href: `/races/${slug}/story` },
             { id: 'analysis', label: 'Analysis', href: `/races/${slug}/analysis` },
           ]}
         />
@@ -216,7 +218,46 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
       ) : null}
         </>
       )}
+
+      {race.type === 'GRAND_PRIX' ? <RaceNeighbours slug={race.slug} /> : null}
     </>
+  );
+}
+
+/**
+ * The grands prix either side of this one, at the foot of the page: the way to
+ * walk a season without going back to the library.
+ */
+async function RaceNeighbours({ slug }: { slug: string }) {
+  const { raceSlugs } = await getRaceSlugs();
+  const { previous, next } = adjacentGrandsPrix(raceSlugs, slug);
+  if (!previous && !next) return null;
+
+  const link = (race: NonNullable<typeof previous>, direction: 'previous' | 'next') => (
+    <Link
+      href={`/races/${race.slug}`}
+      className={`tap group flex flex-col gap-1.5 py-2 ${direction === 'next' ? 'items-end text-right' : ''}`}
+    >
+      <span className="flex items-center gap-3 text-eyebrow font-semibold uppercase tracking-[0.3em] text-muted group-hover:text-foreground">
+        {direction === 'previous' ? (
+          <span aria-hidden className="h-px w-10 bg-current transition-[width] group-hover:w-14" />
+        ) : null}
+        {direction === 'previous' ? 'Prev' : 'Next'}
+        {direction === 'next' ? (
+          <span aria-hidden className="h-px w-10 bg-current transition-[width] group-hover:w-14" />
+        ) : null}
+      </span>
+      <span className="font-heading text-base font-bold tracking-tight">
+        {race.date.slice(0, 4)} {race.name}
+      </span>
+    </Link>
+  );
+
+  return (
+    <nav aria-label="Other races" className="mt-14 grid grid-cols-2 gap-4 border-t border-line pt-6">
+      <div>{previous ? link(previous, 'previous') : null}</div>
+      <div>{next ? link(next, 'next') : null}</div>
+    </nav>
   );
 }
 
@@ -248,6 +289,27 @@ async function Replay({ slug }: { slug: string }) {
   if (!race) return null;
 
   return <ReplayAtLap visualization={toReplayView(race)} />;
+}
+
+/**
+ * The story tab's panel: the same cached replay payload, told as chapters. No
+ * `?lap=` to read, so unlike the replay it does not suspend on the URL.
+ */
+export function StoryPanel({ slug }: { slug: string }) {
+  return (
+    <div className="mt-8">
+      <Suspense fallback={<ReplaySkeleton />}>
+        <Story slug={slug} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function Story({ slug }: { slug: string }) {
+  const { race } = await getRaceReplay(slug);
+  if (!race) return null;
+
+  return <RaceStory visualization={toReplayView(race)} slug={slug} />;
 }
 
 /** The shell's fallback: header, player and classification, in that order. */

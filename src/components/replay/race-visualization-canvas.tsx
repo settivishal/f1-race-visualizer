@@ -252,6 +252,8 @@ export function RaceVisualizationCanvas({
   highlightedDriverId,
   onToggleDriver,
   onHoverDriver,
+  onJumpToLap,
+  minimal = false,
 }: {
   visualization: ReplayView;
   currentLap: number;
@@ -266,6 +268,10 @@ export function RaceVisualizationCanvas({
   highlightedDriverId: string | null;
   onToggleDriver: (driverId: string) => void;
   onHoverDriver: (driverId: string | null) => void;
+  /** Clicking an event dot jumps here. The story timeline is the keyboard path. */
+  onJumpToLap?: (lap: number) => void;
+  /** Just the plot, sized by its parent: no title, chips or minimum height. */
+  minimal?: boolean;
 }) {
   const { race, summary, laps, drivers } = visualization;
 
@@ -398,7 +404,7 @@ export function RaceVisualizationCanvas({
     // instrument on a light page, the way a video player does. It is the one
     // surface here that does not follow the theme.
     <div className={cn("flex min-w-0 flex-col overflow-hidden rounded-xl border border-line-strong bg-track p-5 text-white shadow-lg", className)}>
-      <div className="border-b border-white/10 px-4 pb-5">
+      {minimal ? null : <div className="border-b border-white/10 px-4 pb-5">
         <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           {/* min-w-0 so a long race name wraps instead of pushing the controls
               off; the chips used to live in here and inherited the squeeze. */}
@@ -467,7 +473,7 @@ export function RaceVisualizationCanvas({
             );
           })}
         </ul>
-      </div>
+      </div>}
 
       {/* min-h-0 so this can shrink inside the card's flex column: without it
           an `h-auto` SVG keeps its intrinsic height, the column overflows the
@@ -486,7 +492,7 @@ export function RaceVisualizationCanvas({
           thinner lines — the trade already made for the lap window in #81. */}
       <div
         ref={frame}
-        className="mt-4 min-h-[32rem] flex-1 sm:min-h-[var(--frame-min)]"
+        className={cn("min-h-0 flex-1", !minimal && "mt-4 min-h-[32rem] sm:min-h-[var(--frame-min)]")}
         style={{ "--frame-min": `${minFrameHeight(summary.maxPosition)}px` } as React.CSSProperties}
       >
         <div className="h-full">
@@ -514,6 +520,35 @@ export function RaceVisualizationCanvas({
               rx={layout.compact ? "16" : "28"}
               fill="var(--track)"
             />
+
+            {/* The lap as a ghost behind the plot, ticking with the replay.
+                Decoration: the chart's label already says which lap it is. */}
+            <g aria-hidden style={{ pointerEvents: "none" }}>
+              <text
+                x={margin.left + (layout.width - margin.left - margin.right) / 2}
+                y={margin.top + (layout.height - margin.top - margin.bottom) / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={Math.min(240, (layout.height - margin.top - margin.bottom) * 0.4)}
+                fontWeight="800"
+                fill="rgba(255,255,255,0.06)"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                {currentLap}
+              </text>
+              <text
+                x={margin.left + (layout.width - margin.left - margin.right) / 2}
+                y={margin.top + (layout.height - margin.top - margin.bottom) / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={layout.compact ? "10" : "12"}
+                fontWeight="700"
+                letterSpacing="0.5em"
+                fill="rgba(255,255,255,0.18)"
+              >
+                LAP · OF {summary.maxLap || race.laps}
+              </text>
+            </g>
 
             {/* The plot's own bounds. Everything that pans is clipped to this,
                 so a lap label sliding out of the window stops at the axis
@@ -642,8 +677,14 @@ export function RaceVisualizationCanvas({
               const color = getReplayEventMarkerColor(kind);
               const isRaceControl = RACE_CONTROL_KINDS.has(kind);
 
+              const cy = margin.top - layout.eventRowGap;
+
               return (
-                <g key={`${event.lap}-${event.type}-${eventIndex}`}>
+                <g
+                  key={`${event.lap}-${event.type}-${eventIndex}`}
+                  onClick={onJumpToLap ? () => onJumpToLap(event.lap) : undefined}
+                  className={onJumpToLap ? "cursor-pointer" : undefined}
+                >
                     {isRaceControl ? (
                       <line
                         x1={cx}
@@ -664,8 +705,24 @@ export function RaceVisualizationCanvas({
                       strokeWidth="2"
                     />
                     {isHollowMarker(kind) ? null : (
-                      <circle cx={cx} cy={margin.top - layout.eventRowGap} r="2" fill={color} />
+                      <circle cx={cx} cy={cy} r="2" fill={color} />
                     )}
+                    {/* Pings as the playhead reaches it; keyed on the lap so a
+                        replay that comes back round pings again. */}
+                    {event.lap === currentLap ? (
+                      <circle
+                        key={currentLap}
+                        className="hotspot-ping"
+                        cx={cx}
+                        cy={cy}
+                        r={layout.compact ? "4" : "6"}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth="2"
+                      />
+                    ) : null}
+                    {/* A finger-sized target around a 6px dot. */}
+                    {onJumpToLap ? <circle cx={cx} cy={cy} r="12" fill="transparent" /> : null}
                 </g>
               );
             })}

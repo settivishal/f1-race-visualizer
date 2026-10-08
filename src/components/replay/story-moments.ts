@@ -24,6 +24,8 @@ export type StoryMoment = {
   eventKind: ReplayEventKind;
   /** Places gained, on a moment derived from the lap order. */
   places?: number;
+  /** The driver it is about, where there is one. */
+  driverId?: string;
 };
 
 /**
@@ -100,6 +102,7 @@ function fromEvent(event: ReplayEvent, index: number): StoryMoment {
     description: event.driver ? `${event.driver.name} — ${event.details}` : event.details,
     kind: storyKindOf(eventKind),
     eventKind,
+    driverId: event.driver?.id,
   };
 }
 
@@ -125,6 +128,7 @@ function fromPositions(entry: ReplayEntry): StoryMoment[] {
       kind: "overtake",
       eventKind: "overtake",
       places: gained,
+      driverId: entry.driver.id,
     });
   }
 

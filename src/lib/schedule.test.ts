@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nextByClock, raceHeaderFact, untilLabel } from '@/lib/schedule';
+import { adjacentGrandsPrix, nextByClock, raceHeaderFact, untilLabel } from '@/lib/schedule';
 
 const at = (minutesFromNow: number) => new Date(NOW + minutesFromNow * 60_000).toISOString();
 const NOW = Date.parse('2026-03-01T12:00:00Z');
@@ -66,5 +66,24 @@ describe('nextByClock', () => {
 
   it('is null once the season is over', () => {
     expect(nextByClock([madring, baku], NOW)).toBeNull();
+  });
+});
+
+describe('adjacentGrandsPrix', () => {
+  // Newest first, as raceSlugs returns them.
+  const row = (slug: string, type = 'GRAND_PRIX') => ({ slug, date: '', type, name: slug });
+  const rows = [row('c'), row('c-sprint', 'SPRINT'), row('b'), row('a')];
+
+  it('links the grands prix either side, skipping sprints', () => {
+    expect(adjacentGrandsPrix(rows, 'b')).toEqual({ previous: row('a'), next: row('c') });
+  });
+
+  it('has no previous for the first race and no next for the newest', () => {
+    expect(adjacentGrandsPrix(rows, 'a').previous).toBeNull();
+    expect(adjacentGrandsPrix(rows, 'c').next).toBeNull();
+  });
+
+  it('links nothing from a slug it does not list', () => {
+    expect(adjacentGrandsPrix(rows, 'c-sprint')).toEqual({ previous: null, next: null });
   });
 });
