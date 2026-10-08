@@ -665,6 +665,25 @@ html:has(:root.light) {
   }
 }
 
+/* The dropdown list (components/ui/select.tsx) opening from its box. Radix
+ * sets the side it opened on, so the list grows away from the trigger. */
+.select-content {
+  animation: select-in 120ms ease-out;
+}
+.select-content[data-side='bottom'] {
+  transform-origin: top;
+}
+.select-content[data-side='top'] {
+  transform-origin: bottom;
+}
+
+@keyframes select-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 /* An event dot on the race chart as the playhead reaches it. The reduced-motion
  * reset above cuts this to one 0.01ms run, which ends transparent: the dot
  * stays, the ring never shows. */
@@ -683,23 +702,4 @@ html:has(:root.light) {
   transform-box: fill-box;
   transform-origin: center;
   animation: hotspot-ping 1.2s ease-out 2 forwards;
-}
-
-/* The dropdown list (components/ui/select.tsx) opening from its box. Radix
- * sets the side it opened on, so the list grows away from the trigger. */
-.select-content {
-  animation: select-in 120ms ease-out;
-}
-.select-content[data-side='bottom'] {
-  transform-origin: top;
-}
-.select-content[data-side='top'] {
-  transform-origin: bottom;
-}
-
-@keyframes select-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
 }

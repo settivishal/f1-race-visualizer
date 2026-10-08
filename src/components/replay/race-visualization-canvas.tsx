@@ -252,8 +252,8 @@ export function RaceVisualizationCanvas({
   highlightedDriverId,
   onToggleDriver,
   onHoverDriver,
-  minimal = false,
   onJumpToLap,
+  minimal = false,
 }: {
   visualization: ReplayView;
   currentLap: number;
@@ -268,10 +268,10 @@ export function RaceVisualizationCanvas({
   highlightedDriverId: string | null;
   onToggleDriver: (driverId: string) => void;
   onHoverDriver: (driverId: string | null) => void;
-  /** Just the plot, sized by its parent: no title, chips or minimum height. */
-  minimal?: boolean;
   /** Clicking an event dot jumps here. The story timeline is the keyboard path. */
   onJumpToLap?: (lap: number) => void;
+  /** Just the plot, sized by its parent: no title, chips or minimum height. */
+  minimal?: boolean;
 }) {
   const { race, summary, laps, drivers } = visualization;
 
