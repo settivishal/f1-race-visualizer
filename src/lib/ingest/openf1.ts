@@ -45,6 +45,7 @@ export const MeetingSchema = z.object({
   country_name: z.string(),
   circuit_short_name: z.string().nullable(),
   date_start: z.string(),
+  gmt_offset: z.string().nullable(),
   year: z.number(),
 });
 

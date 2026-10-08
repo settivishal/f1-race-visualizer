@@ -1,6 +1,6 @@
 import {
   pgTable, pgEnum, uuid, text, integer, real, boolean, jsonb,
-  timestamp, uniqueIndex, index, primaryKey, check,
+  timestamp, interval, uniqueIndex, index, primaryKey, check,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -125,6 +125,9 @@ export const meetings = pgTable('meetings', {
   // render a race.
   circuitId: uuid('circuit_id').references(() => circuits.id),
   startDate: timestamp('start_date', { withTimezone: true }).notNull(),
+  // The track's offset from UTC that weekend ("08:00:00"), from OpenF1. Null for
+  // an archive meeting, which Ergast publishes no clock for.
+  utcOffset: interval('utc_offset'),
   weather: jsonb('weather'),                     // upstream shape, read-only for us
   openf1MeetingKey: integer('openf1_meeting_key').unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

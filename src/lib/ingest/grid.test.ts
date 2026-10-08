@@ -25,7 +25,7 @@ beforeEach(async () => {
 const vegas: TransformedRace = {
   meeting: {
     seasonYear: 2024, round: 22, name: 'Las Vegas Grand Prix', country: 'United States',
-    circuitName: 'Las Vegas', startDate: new Date('2024-11-24T06:00:00Z'), weather: null,
+    circuitName: 'Las Vegas', startDate: new Date('2024-11-24T06:00:00Z'), utcOffset: null, weather: null,
     openf1MeetingKey: 1250,
   },
   race: {

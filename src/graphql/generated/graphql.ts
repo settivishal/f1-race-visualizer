@@ -180,7 +180,7 @@ export type RaceLibraryQueryVariables = Exact<{
 }>;
 
 
-export type RaceLibraryQuery = { races: { edges: Array<{ cursor: string, node: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, isFeatured: boolean, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null } | null, podium: Array<{ position: number, code: string, teamColor: string | null }>, weekendSprint: { slug: string, status: RaceStatus, podium: Array<{ position: number, code: string, teamColor: string | null }> } | null } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } }, seasons: Array<{ year: number }>, latestRace: { slug: string } | null, nextRace: { slug: string } | null };
+export type RaceLibraryQuery = { races: { edges: Array<{ cursor: string, node: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, isFeatured: boolean, meeting: { name: string, country: string, circuitName: string | null, season: number, weekendStart: string, round: number | null } | null, podium: Array<{ position: number, code: string, teamColor: string | null }>, weekendSprint: { slug: string, status: RaceStatus, podium: Array<{ position: number, code: string, teamColor: string | null }> } | null } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } }, seasons: Array<{ year: number }> };
 
 export type RaceHeaderQueryVariables = Exact<{
   slug: string;
@@ -763,6 +763,7 @@ export const RaceLibraryDocument = new TypedDocumentString(`
           circuitName
           round: officialRound
           season
+          weekendStart
         }
         podium {
           position
@@ -789,12 +790,6 @@ export const RaceLibraryDocument = new TypedDocumentString(`
   }
   seasons {
     year
-  }
-  latestRace {
-    slug
-  }
-  nextRace {
-    slug
   }
 }
     `) as unknown as TypedDocumentString<RaceLibraryQuery, RaceLibraryQueryVariables>;

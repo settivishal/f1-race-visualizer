@@ -30,6 +30,7 @@ const base = {
     country: 'Australia',
     circuitName: 'Melbourne',
     startDate: new Date('2019-03-17T05:10:00Z'),
+    utcOffset: null,
     weather: null,
     openf1MeetingKey: null as number | null,
   },
@@ -50,7 +51,7 @@ const base = {
 /** What an OpenF1 import of this race looks like: livery, keys, no grid. */
 const fromOpenF1: TransformedRace = {
   ...base,
-  meeting: { ...base.meeting, openf1MeetingKey: 1234, weather: [{ air_temperature: 21 }] },
+  meeting: { ...base.meeting, openf1MeetingKey: 1234, utcOffset: '11:00:00', weather: [{ air_temperature: 21 }] },
   race: { ...base.race, openf1SessionKey: 9999, dataTier: 'FULL' },
   lineup: [{
     driverNumber: 44, code: 'HAM', name: 'Lewis Hamilton', country: 'GBR',
@@ -162,13 +163,14 @@ describe('two upstreams, one race', () => {
     expect((await meetingRow())?.openf1MeetingKey).toBe(1234);
   });
 
-  it('keeps the circuit and the weather, each known to only one source', async () => {
+  it('keeps the circuit, the weather and the offset, each known to only one source', async () => {
     await writeRace(fromOpenF1, db);
     await writeRace(fromErgast, db);
 
     const meeting = await meetingRow();
     expect(meeting?.circuitId).not.toBeNull();
     expect(meeting?.weather).not.toBeNull();
+    expect(meeting?.utcOffset).toBe('11:00:00');
 
     const circuit = await db.query.circuits.findFirst();
     expect(circuit?.ergastCircuitId).toBe('albert_park');

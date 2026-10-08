@@ -79,6 +79,20 @@ export function nextByClock<T extends { date: string }>(races: T[], now: number)
   );
 }
 
+/**
+ * Where the race list is in the calendar: the next race, and whether its
+ * weekend has begun. From `weekendStart` (midnight at the track on the day of
+ * first practice) until the race window closes it is race week; before that
+ * the race is upcoming.
+ */
+export function weekendPhase<T extends { date: string; weekendStart: string }>(
+  races: T[],
+  now: number,
+): { race: T; raceWeek: boolean } | null {
+  const race = nextByClock(races, now);
+  return race && { race, raceWeek: now >= Date.parse(race.weekendStart) };
+}
+
 type SlugRow = { slug: string; date: string; type: string; name: string };
 
 /**
