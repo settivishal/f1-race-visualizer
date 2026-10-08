@@ -3,7 +3,7 @@
 type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 /** Internal type. DO NOT USE DIRECTLY. */
 export type Incremental<T> = T | { [P in keyof T]?: P extends ' $fragmentName' | '__typename' ? T[P] : never };
-import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+import { DocumentTypeDecoration } from '@graphql-typed-document-node/core';
 export type DataTier =
   | 'FULL'
   | 'LAPS';
@@ -32,6 +32,12 @@ export type RaceStatus =
 export type RaceType =
   | 'GRAND_PRIX'
   | 'SPRINT';
+
+export type SearchKind =
+  | 'CIRCUIT'
+  | 'DRIVER'
+  | 'RACE'
+  | 'TEAM';
 
 export type AdminRacesQueryVariables = Exact<{
   season?: number | null | undefined;
@@ -71,6 +77,8 @@ export type UpdateRaceMetadataMutationVariables = Exact<{
   name?: string | null | undefined;
   country?: string | null | undefined;
   circuitName?: string | null | undefined;
+  status?: string | null | undefined;
+  release?: Array<string> | string | null | undefined;
 }>;
 
 
@@ -139,7 +147,7 @@ export type SeasonScheduleQueryVariables = Exact<{
 }>;
 
 
-export type SeasonScheduleQuery = { races: { edges: Array<{ node: { slug: string, date: string, type: RaceType, status: RaceStatus, meeting: { name: string, round: number } | null } }> } };
+export type SeasonScheduleQuery = { races: { edges: Array<{ node: { slug: string, date: string, type: RaceType, status: RaceStatus, meeting: { name: string, round: number | null } | null } }> } };
 
 export type ActiveSeasonQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -149,12 +157,12 @@ export type ActiveSeasonQuery = { activeSeason: number };
 export type HeroReplayQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type HeroReplayQuery = { featuredRace: { slug: string, laps: number, meeting: { name: string, round: number, season: number, circuitName: string | null } | null, replay: { summary: { maxLap: number, maxPosition: number }, drivers: Array<{ driver: { code: string } | null, team: { color: string | null } | null, positions: Array<{ lap: number, position: number }> }> } } | null };
+export type HeroReplayQuery = { featuredRace: { slug: string, laps: number, meeting: { name: string, season: number, circuitName: string | null, round: number | null } | null, replay: { summary: { maxLap: number, maxPosition: number }, drivers: Array<{ driver: { code: string } | null, team: { color: string | null } | null, positions: Array<{ lap: number, position: number }> }> } } | null };
 
 export type LatestResultQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type LatestResultQuery = { latestRace: { slug: string, date: string, type: RaceType, meeting: { name: string, round: number, season: number, circuitName: string | null, country: string } | null, results: Array<{ finalPosition: number | null, fastestLap: boolean, points: number, status: DriverStatus, driver: { code: string, name: string } | null, team: { name: string, color: string | null } | null }> } | null };
+export type LatestResultQuery = { latestRace: { slug: string, date: string, type: RaceType, meeting: { name: string, season: number, circuitName: string | null, country: string, round: number | null } | null, results: Array<{ finalPosition: number | null, fastestLap: boolean, points: number, status: DriverStatus, driver: { code: string, name: string } | null, team: { name: string, color: string | null } | null }> } | null };
 
 export type SeasonPulseQueryVariables = Exact<{
   season: number;
@@ -172,14 +180,14 @@ export type RaceLibraryQueryVariables = Exact<{
 }>;
 
 
-export type RaceLibraryQuery = { races: { edges: Array<{ cursor: string, node: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, isFeatured: boolean, meeting: { name: string, country: string, circuitName: string | null, round: number, season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }>, weekendSprint: { slug: string, status: RaceStatus, podium: Array<{ position: number, code: string, teamColor: string | null }> } | null } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } }, seasons: Array<{ year: number }>, latestRace: { slug: string } | null, nextRace: { slug: string } | null };
+export type RaceLibraryQuery = { races: { edges: Array<{ cursor: string, node: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, isFeatured: boolean, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null } | null, podium: Array<{ position: number, code: string, teamColor: string | null }>, weekendSprint: { slug: string, status: RaceStatus, podium: Array<{ position: number, code: string, teamColor: string | null }> } | null } }>, pageInfo: { hasNextPage: boolean, hasPreviousPage: boolean, startCursor: string | null, endCursor: string | null } }, seasons: Array<{ year: number }>, latestRace: { slug: string } | null, nextRace: { slug: string } | null };
 
 export type RaceHeaderQueryVariables = Exact<{
   slug: string;
 }>;
 
 
-export type RaceHeaderQuery = { race: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, meeting: { name: string, country: string, circuitName: string | null, round: number, season: number, circuit: { ergastId: string, name: string, locality: string | null, country: string | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null } | null, races: Array<{ slug: string, type: RaceType, status: RaceStatus }> } | null, results: Array<{ gridPosition: number | null, finalPosition: number | null, lapsCompleted: number, points: number, status: DriverStatus, fastestLap: boolean, driver: { code: string, name: string, number: number | null } | null, team: { name: string, color: string | null } | null }> } | null };
+export type RaceHeaderQuery = { race: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null, circuit: { ergastId: string, name: string, locality: string | null, country: string | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null } | null, races: Array<{ slug: string, type: RaceType, status: RaceStatus }> } | null, results: Array<{ gridPosition: number | null, finalPosition: number | null, lapsCompleted: number, points: number, status: DriverStatus, fastestLap: boolean, driver: { code: string, name: string, number: number | null } | null, team: { name: string, color: string | null } | null }> } | null };
 
 export type RaceSlugsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -200,7 +208,14 @@ export type RaceReplayQueryVariables = Exact<{
 }>;
 
 
-export type RaceReplayQuery = { race: { id: string, slug: string, laps: number, date: string, type: RaceType, dataTier: DataTier, meeting: { name: string, country: string, circuitName: string | null, round: number, season: number } | null, replay: { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> } } | null };
+export type RaceReplayQuery = { race: { id: string, slug: string, laps: number, date: string, type: RaceType, dataTier: DataTier, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null } | null, replay: { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> } } | null };
+
+export type CommandPaletteQueryVariables = Exact<{
+  query: string;
+}>;
+
+
+export type CommandPaletteQuery = { search: Array<{ kind: SearchKind, title: string, subtitle: string | null, href: string }> };
 
 export type SeasonStandingsQueryVariables = Exact<{
   season: number;
@@ -209,28 +224,761 @@ export type SeasonStandingsQueryVariables = Exact<{
 
 export type SeasonStandingsQuery = { driverStandings: Array<{ position: number, points: number, wins: number, podiums: number, driver: { code: string, name: string, number: number | null }, team: { name: string, color: string | null } }>, constructorStandings: Array<{ position: number, points: number, wins: number, team: { name: string, color: string | null } }>, seasons: Array<{ year: number }> };
 
-export const RaceReplayFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaceReplayFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"RaceReplay"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"summary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lapCount"}},{"kind":"Field","name":{"kind":"Name","value":"maxLap"}},{"kind":"Field","name":{"kind":"Name","value":"maxPosition"}},{"kind":"Field","name":{"kind":"Name","value":"driverCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"drivers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"positions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"lapTime"}},{"kind":"Field","name":{"kind":"Name","value":"sector1"}},{"kind":"Field","name":{"kind":"Name","value":"sector2"}},{"kind":"Field","name":{"kind":"Name","value":"sector3"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"events"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"details"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}}]}}]}}]} as unknown as DocumentNode<RaceReplayFieldsFragment, unknown>;
-export const AdminRacesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminRaces"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"first"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"after"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"races"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"Variable","name":{"kind":"Name","value":"first"}}},{"kind":"Argument","name":{"kind":"Name","value":"after"},"value":{"kind":"Variable","name":{"kind":"Name","value":"after"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"isFeatured"}},{"kind":"Field","name":{"kind":"Name","value":"openf1SessionKey"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"seasons"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"year"}}]}}]}}]} as unknown as DocumentNode<AdminRacesQuery, AdminRacesQueryVariables>;
-export const AdminRaceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminRace"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"race"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"isFeatured"}},{"kind":"Field","name":{"kind":"Name","value":"adminEdited"}},{"kind":"Field","name":{"kind":"Name","value":"openf1SessionKey"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}},{"kind":"Field","name":{"kind":"Name","value":"adminEdited"}}]}}]}}]}}]} as unknown as DocumentNode<AdminRaceQuery, AdminRaceQueryVariables>;
-export const AdminIngestRunsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminIngestRuns"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"first"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ingestRuns"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"Variable","name":{"kind":"Name","value":"first"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"target"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"rowsWritten"}},{"kind":"Field","name":{"kind":"Name","value":"error"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}}]}}]}}]} as unknown as DocumentNode<AdminIngestRunsQuery, AdminIngestRunsQueryVariables>;
-export const SetRaceFeaturedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetRaceFeatured"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"featured"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setRaceFeatured"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}},{"kind":"Argument","name":{"kind":"Name","value":"featured"},"value":{"kind":"Variable","name":{"kind":"Name","value":"featured"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"isFeatured"}}]}}]}}]} as unknown as DocumentNode<SetRaceFeaturedMutation, SetRaceFeaturedMutationVariables>;
-export const UpdateRaceMetadataDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateRaceMetadata"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"laps"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"country"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"circuitName"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateRaceMetadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}},{"kind":"Argument","name":{"kind":"Name","value":"laps"},"value":{"kind":"Variable","name":{"kind":"Name","value":"laps"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"country"},"value":{"kind":"Variable","name":{"kind":"Name","value":"country"}}},{"kind":"Argument","name":{"kind":"Name","value":"circuitName"},"value":{"kind":"Variable","name":{"kind":"Name","value":"circuitName"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateRaceMetadataMutation, UpdateRaceMetadataMutationVariables>;
-export const TriggerIngestDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"TriggerIngest"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"sessionKey"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"triggerIngest"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"sessionKey"},"value":{"kind":"Variable","name":{"kind":"Name","value":"sessionKey"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"rowsWritten"}},{"kind":"Field","name":{"kind":"Name","value":"warnings"}}]}}]}}]} as unknown as DocumentNode<TriggerIngestMutation, TriggerIngestMutationVariables>;
-export const RaceAnalysisDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"RaceAnalysis"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"race"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"dataTier"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"season"}}]}},{"kind":"Field","name":{"kind":"Name","value":"analysis"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lapTimes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"laps"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"time"}},{"kind":"Field","name":{"kind":"Name","value":"isOutlier"}}]}},{"kind":"Field","name":{"kind":"Name","value":"pace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"best"}},{"kind":"Field","name":{"kind":"Name","value":"median"}},{"kind":"Field","name":{"kind":"Name","value":"consistency"}},{"kind":"Field","name":{"kind":"Name","value":"lapsCounted"}},{"kind":"Field","name":{"kind":"Name","value":"lapsExcluded"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"stints"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"stintNumber"}},{"kind":"Field","name":{"kind":"Name","value":"lapStart"}},{"kind":"Field","name":{"kind":"Name","value":"lapEnd"}},{"kind":"Field","name":{"kind":"Name","value":"compound"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pitStops"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"durationSeconds"}},{"kind":"Field","name":{"kind":"Name","value":"underStoppage"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<RaceAnalysisQuery, RaceAnalysisQueryVariables>;
-export const HeadToHeadDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HeadToHead"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"driverA"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"driverB"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"race"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"season"}}]}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"finalPosition"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"analysis"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"headToHead"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"driverA"},"value":{"kind":"Variable","name":{"kind":"Name","value":"driverA"}}},{"kind":"Argument","name":{"kind":"Name","value":"driverB"},"value":{"kind":"Variable","name":{"kind":"Name","value":"driverB"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lapsAheadA"}},{"kind":"Field","name":{"kind":"Name","value":"lapsAheadB"}},{"kind":"Field","name":{"kind":"Name","value":"a"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"finalPosition"}},{"kind":"Field","name":{"kind":"Name","value":"pace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"best"}},{"kind":"Field","name":{"kind":"Name","value":"median"}},{"kind":"Field","name":{"kind":"Name","value":"consistency"}},{"kind":"Field","name":{"kind":"Name","value":"lapsCounted"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"b"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"finalPosition"}},{"kind":"Field","name":{"kind":"Name","value":"pace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"best"}},{"kind":"Field","name":{"kind":"Name","value":"median"}},{"kind":"Field","name":{"kind":"Name","value":"consistency"}},{"kind":"Field","name":{"kind":"Name","value":"lapsCounted"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"laps"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"positionDelta"}},{"kind":"Field","name":{"kind":"Name","value":"timeDelta"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<HeadToHeadQuery, HeadToHeadQueryVariables>;
-export const DriverProfileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DriverProfile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"code"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"code"},"value":{"kind":"Variable","name":{"kind":"Name","value":"code"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}},{"kind":"Field","name":{"kind":"Name","value":"career"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"seasonCount"}},{"kind":"Field","name":{"kind":"Name","value":"starts"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"podiums"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"bestFinish"}},{"kind":"Field","name":{"kind":"Name","value":"seasons"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"season"}},{"kind":"Field","name":{"kind":"Name","value":"starts"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"podiums"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"bestFinish"}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<DriverProfileQuery, DriverProfileQueryVariables>;
-export const TeamProfileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"TeamProfile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"team"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"drivers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"career"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"seasonCount"}},{"kind":"Field","name":{"kind":"Name","value":"starts"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"podiums"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"bestFinish"}},{"kind":"Field","name":{"kind":"Name","value":"seasons"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"season"}},{"kind":"Field","name":{"kind":"Name","value":"starts"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"podiums"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"bestFinish"}}]}}]}}]}}]}}]} as unknown as DocumentNode<TeamProfileQuery, TeamProfileQueryVariables>;
-export const ArchiveIndexDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ArchiveIndex"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"seasons"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"year"}}]}},{"kind":"Field","name":{"kind":"Name","value":"drivers"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}},{"kind":"Field","name":{"kind":"Name","value":"teams"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"circuits"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"ergastId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"locality"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}}]}}]} as unknown as DocumentNode<ArchiveIndexQuery, ArchiveIndexQueryVariables>;
-export const CircuitProfileDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"CircuitProfile"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"ergastId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"circuit"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"ergastId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"ergastId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"ergastId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"locality"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"latitude"}},{"kind":"Field","name":{"kind":"Name","value":"longitude"}},{"kind":"Field","name":{"kind":"Name","value":"lengthKm"}},{"kind":"Field","name":{"kind":"Name","value":"turns"}},{"kind":"Field","name":{"kind":"Name","value":"firstGrandPrix"}}]}}]}}]} as unknown as DocumentNode<CircuitProfileQuery, CircuitProfileQueryVariables>;
-export const HomeLineupDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HomeLineup"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driverStandings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}}]}}]} as unknown as DocumentNode<HomeLineupQuery, HomeLineupQueryVariables>;
-export const SeasonScheduleDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SeasonSchedule"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"races"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}},{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"IntValue","value":"100"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"round"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<SeasonScheduleQuery, SeasonScheduleQueryVariables>;
-export const ActiveSeasonDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ActiveSeason"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activeSeason"}}]}}]} as unknown as DocumentNode<ActiveSeasonQuery, ActiveSeasonQueryVariables>;
-export const HeroReplayDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HeroReplay"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"featuredRace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}}]}},{"kind":"Field","name":{"kind":"Name","value":"replay"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"summary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"maxLap"}},{"kind":"Field","name":{"kind":"Name","value":"maxPosition"}}]}},{"kind":"Field","name":{"kind":"Name","value":"drivers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"positions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"position"}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<HeroReplayQuery, HeroReplayQueryVariables>;
-export const LatestResultDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"LatestResult"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestRace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"finalPosition"}},{"kind":"Field","name":{"kind":"Name","value":"fastestLap"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}}]}}]}}]} as unknown as DocumentNode<LatestResultQuery, LatestResultQueryVariables>;
-export const SeasonPulseDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SeasonPulse"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"seasonPulse"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"winnerCode"}},{"kind":"Field","name":{"kind":"Name","value":"teamName"}},{"kind":"Field","name":{"kind":"Name","value":"teamColor"}}]}}]}}]} as unknown as DocumentNode<SeasonPulseQuery, SeasonPulseQueryVariables>;
-export const RaceLibraryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"RaceLibrary"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"first"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"after"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"before"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"races"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"type"},"value":{"kind":"EnumValue","value":"GRAND_PRIX"}},{"kind":"Argument","name":{"kind":"Name","value":"first"},"value":{"kind":"Variable","name":{"kind":"Name","value":"first"}}},{"kind":"Argument","name":{"kind":"Name","value":"after"},"value":{"kind":"Variable","name":{"kind":"Name","value":"after"}}},{"kind":"Argument","name":{"kind":"Name","value":"before"},"value":{"kind":"Variable","name":{"kind":"Name","value":"before"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"edges"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"cursor"}},{"kind":"Field","name":{"kind":"Name","value":"node"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"isFeatured"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}}]}},{"kind":"Field","name":{"kind":"Name","value":"podium"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"teamColor"}}]}},{"kind":"Field","name":{"kind":"Name","value":"weekendSprint"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"podium"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"teamColor"}}]}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"pageInfo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hasNextPage"}},{"kind":"Field","name":{"kind":"Name","value":"hasPreviousPage"}},{"kind":"Field","name":{"kind":"Name","value":"startCursor"}},{"kind":"Field","name":{"kind":"Name","value":"endCursor"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"seasons"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"year"}}]}},{"kind":"Field","name":{"kind":"Name","value":"latestRace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}}]}},{"kind":"Field","name":{"kind":"Name","value":"nextRace"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}}]}}]}}]} as unknown as DocumentNode<RaceLibraryQuery, RaceLibraryQueryVariables>;
-export const RaceHeaderDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"RaceHeader"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"race"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}},{"kind":"Field","name":{"kind":"Name","value":"circuit"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"ergastId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"locality"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"lengthKm"}},{"kind":"Field","name":{"kind":"Name","value":"turns"}},{"kind":"Field","name":{"kind":"Name","value":"firstGrandPrix"}}]}},{"kind":"Field","name":{"kind":"Name","value":"races"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"results"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"gridPosition"}},{"kind":"Field","name":{"kind":"Name","value":"finalPosition"}},{"kind":"Field","name":{"kind":"Name","value":"lapsCompleted"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"fastestLap"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}}]}}]}}]} as unknown as DocumentNode<RaceHeaderQuery, RaceHeaderQueryVariables>;
-export const RaceSlugsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"RaceSlugs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raceSlugs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<RaceSlugsQuery, RaceSlugsQueryVariables>;
-export const RacePredictionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"RacePredictions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"race"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"predictions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"winProbability"}},{"kind":"Field","name":{"kind":"Name","value":"modelVersion"}},{"kind":"Field","name":{"kind":"Name","value":"generatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"predictionDisplay"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"shown"}},{"kind":"Field","name":{"kind":"Name","value":"expanded"}}]}}]}}]} as unknown as DocumentNode<RacePredictionsQuery, RacePredictionsQueryVariables>;
-export const RaceReplayDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"RaceReplay"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"slug"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"race"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"slug"},"value":{"kind":"Variable","name":{"kind":"Name","value":"slug"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"dataTier"}},{"kind":"Field","name":{"kind":"Name","value":"meeting"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"circuitName"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"season"}}]}},{"kind":"Field","name":{"kind":"Name","value":"replay"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"RaceReplayFields"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"RaceReplayFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"RaceReplay"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"laps"}},{"kind":"Field","name":{"kind":"Name","value":"summary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lapCount"}},{"kind":"Field","name":{"kind":"Name","value":"maxLap"}},{"kind":"Field","name":{"kind":"Name","value":"maxPosition"}},{"kind":"Field","name":{"kind":"Name","value":"driverCount"}}]}},{"kind":"Field","name":{"kind":"Name","value":"drivers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}},{"kind":"Field","name":{"kind":"Name","value":"positions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"lapTime"}},{"kind":"Field","name":{"kind":"Name","value":"sector1"}},{"kind":"Field","name":{"kind":"Name","value":"sector2"}},{"kind":"Field","name":{"kind":"Name","value":"sector3"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"events"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"lap"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"details"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}}]}}]}}]} as unknown as DocumentNode<RaceReplayQuery, RaceReplayQueryVariables>;
-export const SeasonStandingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"SeasonStandings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"season"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"driverStandings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"podiums"}},{"kind":"Field","name":{"kind":"Name","value":"driver"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"number"}}]}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"constructorStandings"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"season"},"value":{"kind":"Variable","name":{"kind":"Name","value":"season"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"points"}},{"kind":"Field","name":{"kind":"Name","value":"wins"}},{"kind":"Field","name":{"kind":"Name","value":"team"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"color"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"seasons"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"year"}}]}}]}}]} as unknown as DocumentNode<SeasonStandingsQuery, SeasonStandingsQueryVariables>;
+export class TypedDocumentString<TResult, TVariables>
+  extends String
+  implements DocumentTypeDecoration<TResult, TVariables>
+{
+  __apiType?: NonNullable<DocumentTypeDecoration<TResult, TVariables>['__apiType']>;
+  private value: string;
+  public __meta__?: Record<string, any> | undefined;
+
+  constructor(value: string, __meta__?: Record<string, any> | undefined) {
+    super(value);
+    this.value = value;
+    this.__meta__ = __meta__;
+  }
+
+  override toString(): string & DocumentTypeDecoration<TResult, TVariables> {
+    return this.value;
+  }
+}
+export const RaceReplayFieldsFragmentDoc = new TypedDocumentString(`
+    fragment RaceReplayFields on RaceReplay {
+  laps
+  summary {
+    lapCount
+    maxLap
+    maxPosition
+    driverCount
+  }
+  drivers {
+    driver {
+      id
+      code
+      name
+      number
+    }
+    team {
+      id
+      name
+      color
+    }
+    positions {
+      lap
+      position
+      lapTime
+      sector1
+      sector2
+      sector3
+    }
+  }
+  events {
+    lap
+    type
+    details
+    driver {
+      id
+      code
+      name
+      number
+    }
+  }
+}
+    `, {"fragmentName":"RaceReplayFields"}) as unknown as TypedDocumentString<RaceReplayFieldsFragment, unknown>;
+export const AdminRacesDocument = new TypedDocumentString(`
+    query AdminRaces($season: Int, $search: String, $first: Int, $after: String) {
+  races(season: $season, search: $search, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        slug
+        laps
+        type
+        isFeatured
+        openf1SessionKey
+        meeting {
+          name
+          country
+          circuitName
+          round
+          season
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+  seasons {
+    year
+  }
+}
+    `) as unknown as TypedDocumentString<AdminRacesQuery, AdminRacesQueryVariables>;
+export const AdminRaceDocument = new TypedDocumentString(`
+    query AdminRace($slug: String!) {
+  race(slug: $slug) {
+    id
+    slug
+    laps
+    type
+    status
+    isFeatured
+    adminEdited
+    openf1SessionKey
+    meeting {
+      name
+      country
+      circuitName
+      round
+      season
+      adminEdited
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<AdminRaceQuery, AdminRaceQueryVariables>;
+export const AdminIngestRunsDocument = new TypedDocumentString(`
+    query AdminIngestRuns($first: Int) {
+  ingestRuns(first: $first) {
+    id
+    source
+    target
+    status
+    rowsWritten
+    error
+    startedAt
+    finishedAt
+  }
+}
+    `) as unknown as TypedDocumentString<AdminIngestRunsQuery, AdminIngestRunsQueryVariables>;
+export const SetRaceFeaturedDocument = new TypedDocumentString(`
+    mutation SetRaceFeatured($slug: String!, $featured: Boolean!) {
+  setRaceFeatured(slug: $slug, featured: $featured) {
+    slug
+    isFeatured
+  }
+}
+    `) as unknown as TypedDocumentString<SetRaceFeaturedMutation, SetRaceFeaturedMutationVariables>;
+export const UpdateRaceMetadataDocument = new TypedDocumentString(`
+    mutation UpdateRaceMetadata($slug: String!, $laps: Int, $name: String, $country: String, $circuitName: String, $status: String, $release: [String!]) {
+  updateRaceMetadata(
+    slug: $slug
+    laps: $laps
+    name: $name
+    country: $country
+    circuitName: $circuitName
+    status: $status
+    release: $release
+  ) {
+    slug
+    laps
+    meeting {
+      name
+      country
+      circuitName
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<UpdateRaceMetadataMutation, UpdateRaceMetadataMutationVariables>;
+export const TriggerIngestDocument = new TypedDocumentString(`
+    mutation TriggerIngest($sessionKey: Int!) {
+  triggerIngest(sessionKey: $sessionKey) {
+    slug
+    rowsWritten
+    warnings
+  }
+}
+    `) as unknown as TypedDocumentString<TriggerIngestMutation, TriggerIngestMutationVariables>;
+export const RaceAnalysisDocument = new TypedDocumentString(`
+    query RaceAnalysis($slug: String!) {
+  race(slug: $slug) {
+    id
+    slug
+    laps
+    dataTier
+    meeting {
+      name
+      season
+    }
+    analysis {
+      lapTimes {
+        driver {
+          id
+          code
+          name
+        }
+        team {
+          id
+          name
+          color
+        }
+        laps {
+          lap
+          time
+          isOutlier
+        }
+        pace {
+          best
+          median
+          consistency
+          lapsCounted
+          lapsExcluded
+        }
+      }
+      stints {
+        stintNumber
+        lapStart
+        lapEnd
+        compound
+        driver {
+          id
+          code
+        }
+        team {
+          color
+        }
+      }
+      pitStops {
+        lap
+        durationSeconds
+        underStoppage
+        driver {
+          id
+          code
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RaceAnalysisQuery, RaceAnalysisQueryVariables>;
+export const HeadToHeadDocument = new TypedDocumentString(`
+    query HeadToHead($slug: String!, $driverA: String!, $driverB: String!) {
+  race(slug: $slug) {
+    slug
+    laps
+    meeting {
+      name
+      season
+    }
+    results {
+      finalPosition
+      driver {
+        code
+        name
+      }
+    }
+    analysis {
+      headToHead(driverA: $driverA, driverB: $driverB) {
+        lapsAheadA
+        lapsAheadB
+        a {
+          driver {
+            code
+            name
+          }
+          team {
+            name
+            color
+          }
+          finalPosition
+          pace {
+            best
+            median
+            consistency
+            lapsCounted
+          }
+        }
+        b {
+          driver {
+            code
+            name
+          }
+          team {
+            name
+            color
+          }
+          finalPosition
+          pace {
+            best
+            median
+            consistency
+            lapsCounted
+          }
+        }
+        laps {
+          lap
+          positionDelta
+          timeDelta
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<HeadToHeadQuery, HeadToHeadQueryVariables>;
+export const DriverProfileDocument = new TypedDocumentString(`
+    query DriverProfile($code: String!) {
+  driver(code: $code) {
+    driver {
+      id
+      code
+      name
+      number
+      country
+    }
+    career {
+      seasonCount
+      starts
+      wins
+      podiums
+      points
+      bestFinish
+      seasons {
+        season
+        starts
+        wins
+        podiums
+        points
+        bestFinish
+        team {
+          name
+          color
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<DriverProfileQuery, DriverProfileQueryVariables>;
+export const TeamProfileDocument = new TypedDocumentString(`
+    query TeamProfile($name: String!) {
+  team(name: $name) {
+    team {
+      id
+      name
+      color
+    }
+    drivers {
+      code
+      name
+    }
+    career {
+      seasonCount
+      starts
+      wins
+      podiums
+      points
+      bestFinish
+      seasons {
+        season
+        starts
+        wins
+        podiums
+        points
+        bestFinish
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<TeamProfileQuery, TeamProfileQueryVariables>;
+export const ArchiveIndexDocument = new TypedDocumentString(`
+    query ArchiveIndex($season: Int) {
+  seasons {
+    year
+  }
+  drivers(season: $season) {
+    id
+    code
+    name
+    country
+  }
+  teams(season: $season) {
+    id
+    name
+    color
+  }
+  circuits {
+    id
+    ergastId
+    name
+    locality
+    country
+  }
+}
+    `) as unknown as TypedDocumentString<ArchiveIndexQuery, ArchiveIndexQueryVariables>;
+export const CircuitProfileDocument = new TypedDocumentString(`
+    query CircuitProfile($ergastId: String!) {
+  circuit(ergastId: $ergastId) {
+    id
+    ergastId
+    name
+    locality
+    country
+    latitude
+    longitude
+    lengthKm
+    turns
+    firstGrandPrix
+  }
+}
+    `) as unknown as TypedDocumentString<CircuitProfileQuery, CircuitProfileQueryVariables>;
+export const HomeLineupDocument = new TypedDocumentString(`
+    query HomeLineup($season: Int!) {
+  driverStandings(season: $season) {
+    position
+    points
+    driver {
+      code
+      name
+      number
+    }
+    team {
+      name
+      color
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<HomeLineupQuery, HomeLineupQueryVariables>;
+export const SeasonScheduleDocument = new TypedDocumentString(`
+    query SeasonSchedule($season: Int!) {
+  races(season: $season, first: 100) {
+    edges {
+      node {
+        slug
+        date
+        type
+        status
+        meeting {
+          name
+          round: officialRound
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<SeasonScheduleQuery, SeasonScheduleQueryVariables>;
+export const ActiveSeasonDocument = new TypedDocumentString(`
+    query ActiveSeason {
+  activeSeason
+}
+    `) as unknown as TypedDocumentString<ActiveSeasonQuery, ActiveSeasonQueryVariables>;
+export const HeroReplayDocument = new TypedDocumentString(`
+    query HeroReplay {
+  featuredRace {
+    slug
+    laps
+    meeting {
+      name
+      round: officialRound
+      season
+      circuitName
+    }
+    replay {
+      summary {
+        maxLap
+        maxPosition
+      }
+      drivers {
+        driver {
+          code
+        }
+        team {
+          color
+        }
+        positions {
+          lap
+          position
+        }
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<HeroReplayQuery, HeroReplayQueryVariables>;
+export const LatestResultDocument = new TypedDocumentString(`
+    query LatestResult {
+  latestRace {
+    slug
+    date
+    type
+    meeting {
+      name
+      round: officialRound
+      season
+      circuitName
+      country
+    }
+    results {
+      finalPosition
+      fastestLap
+      points
+      status
+      driver {
+        code
+        name
+      }
+      team {
+        name
+        color
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<LatestResultQuery, LatestResultQueryVariables>;
+export const SeasonPulseDocument = new TypedDocumentString(`
+    query SeasonPulse($season: Int!) {
+  seasonPulse(season: $season) {
+    round
+    name
+    slug
+    status
+    winnerCode
+    teamName
+    teamColor
+  }
+}
+    `) as unknown as TypedDocumentString<SeasonPulseQuery, SeasonPulseQueryVariables>;
+export const RaceLibraryDocument = new TypedDocumentString(`
+    query RaceLibrary($season: Int, $search: String, $first: Int, $after: String, $before: String) {
+  races(
+    season: $season
+    search: $search
+    type: GRAND_PRIX
+    first: $first
+    after: $after
+    before: $before
+  ) {
+    edges {
+      cursor
+      node {
+        id
+        slug
+        date
+        laps
+        status
+        type
+        isFeatured
+        meeting {
+          name
+          country
+          circuitName
+          round: officialRound
+          season
+        }
+        podium {
+          position
+          code
+          teamColor
+        }
+        weekendSprint {
+          slug
+          status
+          podium {
+            position
+            code
+            teamColor
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+  seasons {
+    year
+  }
+  latestRace {
+    slug
+  }
+  nextRace {
+    slug
+  }
+}
+    `) as unknown as TypedDocumentString<RaceLibraryQuery, RaceLibraryQueryVariables>;
+export const RaceHeaderDocument = new TypedDocumentString(`
+    query RaceHeader($slug: String!) {
+  race(slug: $slug) {
+    id
+    slug
+    date
+    laps
+    status
+    type
+    meeting {
+      name
+      country
+      circuitName
+      round: officialRound
+      season
+      circuit {
+        ergastId
+        name
+        locality
+        country
+        lengthKm
+        turns
+        firstGrandPrix
+      }
+      races {
+        slug
+        type
+        status
+      }
+    }
+    results {
+      gridPosition
+      finalPosition
+      lapsCompleted
+      points
+      status
+      fastestLap
+      driver {
+        code
+        name
+        number
+      }
+      team {
+        name
+        color
+      }
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<RaceHeaderQuery, RaceHeaderQueryVariables>;
+export const RaceSlugsDocument = new TypedDocumentString(`
+    query RaceSlugs {
+  raceSlugs {
+    slug
+    date
+    type
+    name
+  }
+}
+    `) as unknown as TypedDocumentString<RaceSlugsQuery, RaceSlugsQueryVariables>;
+export const RacePredictionsDocument = new TypedDocumentString(`
+    query RacePredictions($slug: String!) {
+  race(slug: $slug) {
+    predictions {
+      winProbability
+      modelVersion
+      generatedAt
+      driver {
+        code
+        name
+      }
+      team {
+        color
+      }
+    }
+  }
+  predictionDisplay {
+    shown
+    expanded
+  }
+}
+    `) as unknown as TypedDocumentString<RacePredictionsQuery, RacePredictionsQueryVariables>;
+export const RaceReplayDocument = new TypedDocumentString(`
+    query RaceReplay($slug: String!) {
+  race(slug: $slug) {
+    id
+    slug
+    laps
+    date
+    type
+    dataTier
+    meeting {
+      name
+      country
+      circuitName
+      round: officialRound
+      season
+    }
+    replay {
+      ...RaceReplayFields
+    }
+  }
+}
+    fragment RaceReplayFields on RaceReplay {
+  laps
+  summary {
+    lapCount
+    maxLap
+    maxPosition
+    driverCount
+  }
+  drivers {
+    driver {
+      id
+      code
+      name
+      number
+    }
+    team {
+      id
+      name
+      color
+    }
+    positions {
+      lap
+      position
+      lapTime
+      sector1
+      sector2
+      sector3
+    }
+  }
+  events {
+    lap
+    type
+    details
+    driver {
+      id
+      code
+      name
+      number
+    }
+  }
+}`) as unknown as TypedDocumentString<RaceReplayQuery, RaceReplayQueryVariables>;
+export const CommandPaletteDocument = new TypedDocumentString(`
+    query CommandPalette($query: String!) {
+  search(query: $query) {
+    kind
+    title
+    subtitle
+    href
+  }
+}
+    `) as unknown as TypedDocumentString<CommandPaletteQuery, CommandPaletteQueryVariables>;
+export const SeasonStandingsDocument = new TypedDocumentString(`
+    query SeasonStandings($season: Int!) {
+  driverStandings(season: $season) {
+    position
+    points
+    wins
+    podiums
+    driver {
+      code
+      name
+      number
+    }
+    team {
+      name
+      color
+    }
+  }
+  constructorStandings(season: $season) {
+    position
+    points
+    wins
+    team {
+      name
+      color
+    }
+  }
+  seasons {
+    year
+  }
+}
+    `) as unknown as TypedDocumentString<SeasonStandingsQuery, SeasonStandingsQueryVariables>;

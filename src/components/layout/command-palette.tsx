@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { CommandPaletteQuery } from '@/graphql/generated/graphql';
 
 /**
  * Press `/` to search races, drivers, teams and circuits.
@@ -17,13 +18,12 @@ import { useRouter } from 'next/navigation';
  * a round trip to the endpoint is for.
  */
 
-type Hit = {
-  kind: 'RACE' | 'DRIVER' | 'TEAM' | 'CIRCUIT';
-  title: string;
-  subtitle: string | null;
-  href: string;
-};
+type Hit = CommandPaletteQuery['search'][number];
 
+// Kept inline, unlike every server query: the generated documents module holds
+// every operation and is not tree-shaken, so importing it here would ship them
+// all to the browser. search.graphql is its twin, which codegen validates and
+// types; the two must match.
 const SEARCH = /* GraphQL */ `
   query CommandPalette($query: String!) {
     search(query: $query) {
@@ -97,7 +97,7 @@ export function CommandPalette() {
           body: JSON.stringify({ query: SEARCH, variables: { query: term } }),
           signal: controller.signal,
         });
-        const body = (await response.json()) as { data?: { search: Hit[] } };
+        const body = (await response.json()) as { data?: CommandPaletteQuery };
         setResult({ term, hits: body.data?.search ?? [] });
         setActive(0);
       } catch {

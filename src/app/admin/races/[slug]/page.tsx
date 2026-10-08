@@ -10,7 +10,7 @@ import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { executeAsAdmin } from '@/graphql/execute';
-import type { AdminRaceQuery } from '@/graphql/generated/graphql';
+import { AdminRaceDocument } from '@/graphql/generated/graphql';
 import { updateMetadataAction } from '../../actions';
 
 export const metadata = {
@@ -46,7 +46,7 @@ export default function EditRacePage({ params }: { params: Promise<{ slug: strin
 
 async function EditForm({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { race } = await executeAsAdmin<AdminRaceQuery, { slug: string }>(ADMIN_RACE, { slug });
+  const { race } = await executeAsAdmin(AdminRaceDocument, { slug });
 
   if (!race) notFound();
 
@@ -188,11 +188,3 @@ function PinNote({ column, pinned }: { column: string; pinned: string[] }) {
   );
 }
 
-const ADMIN_RACE = /* GraphQL */ `
-  query AdminRace($slug: String!) {
-    race(slug: $slug) {
-      id slug laps type status isFeatured adminEdited openf1SessionKey
-      meeting { name country circuitName round season adminEdited }
-    }
-  }
-`;
