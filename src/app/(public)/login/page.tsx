@@ -10,14 +10,13 @@ import { Input } from '@/components/ui/input';
 import { PageContainer } from '@/components/ui/page-container';
 import { isAdminPath } from '@/lib/admin-path';
 import { Skeleton } from '@/components/ui/skeleton';
+import { first, type SearchParams } from '@/lib/search-params';
 
 export const metadata = {
   title: 'Sign in',
   // The one page on the site that should never be indexed.
   robots: { index: false, follow: false },
 };
-
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 /**
  * The only unauthenticated form on the site.
@@ -85,9 +84,9 @@ async function LoginForm({ searchParams }: { searchParams: SearchParams }) {
   if (await auth()) redirect('/admin');
 
   const params = await searchParams;
-  const raw = Array.isArray(params.from) ? params.from[0] : params.from;
+  const raw = first(params.from);
   const from = raw && isAdminPath(raw) ? raw : '/admin';
-  const error = Array.isArray(params.error) ? params.error[0] : params.error;
+  const error = first(params.error);
   const failed = error !== undefined;
 
   return (

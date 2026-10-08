@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { connection } from 'next/server';
 import { AutoSubmit } from '@/components/ui/auto-submit';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
@@ -16,13 +16,12 @@ import { ActionForm } from '@/components/admin/action-form';
 import { getDb } from '@/db';
 import { readHealth } from '@/lib/health';
 import { catchUpAction, refreshRacesAction, setFeaturedAction, triggerIngestAction } from './actions';
+import { first, yearParam, type SearchParams } from '@/lib/search-params';
 
 export const metadata = {
   title: 'Races — Admin',
   robots: { index: false, follow: false },
 };
-
-type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 /**
  * The admin race list.
@@ -100,12 +99,7 @@ async function IngestStatus() {
 
 async function RaceList({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const first = (value: string | string[] | undefined) =>
-    Array.isArray(value) ? value[0] : value;
-
-  const seasonParam = first(params.season);
-  const parsedSeason = seasonParam ? Number(seasonParam) : NaN;
-  const season = Number.isInteger(parsedSeason) ? parsedSeason : null;
+  const season = yearParam(params.season) ?? null;
   const search = first(params.q)?.trim() || null;
   const after = first(params.after) ?? null;
 
@@ -228,10 +222,8 @@ async function RaceList({ searchParams }: { searchParams: SearchParams }) {
                     </ActionForm>
                   ) : null}
 
-                  <Link href={`/admin/races/${node.slug}`}>
-                    <Button variant="ghost" size="sm">
-                      Edit
-                    </Button>
+                  <Link href={`/admin/races/${node.slug}`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+                    Edit
                   </Link>
                 </div>
               </Card>
@@ -251,8 +243,9 @@ async function RaceList({ searchParams }: { searchParams: SearchParams }) {
                 after: races.pageInfo.endCursor,
               },
             }}
+            className={buttonClasses({ variant: 'secondary' })}
           >
-            <Button variant="secondary">Next page</Button>
+            Next page
           </Link>
         </div>
       ) : null}

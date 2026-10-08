@@ -1,3 +1,4 @@
+import type { driverStatus } from '@/db/schema';
 import type {
   Driver, Lap, Meeting, Pit, PositionSample, RaceControl, Session, SessionResult, Stint, Weather,
 } from './openf1';
@@ -89,7 +90,7 @@ export type ResultRow = {
    */
   gridPosition?: number | null;
   finalPosition: number | null;
-  status: 'FINISHED' | 'DNF' | 'DNS' | 'DSQ';
+  status: (typeof driverStatus.enumValues)[number];
   lapsCompleted: number;
   points: number;
   fastestLap: boolean;

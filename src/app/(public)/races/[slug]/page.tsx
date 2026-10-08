@@ -1,6 +1,4 @@
-import { getRaceHeader } from '@/lib/queries';
-import { sessionTitle } from '@/lib/session-title';
-import { RacePageShell, ReplayPanel, raceStaticParams } from './race-view';
+import { RacePageShell, ReplayPanel, raceStaticParams, raceMetadata } from './race-view';
 
 /**
  * The race detail page, on its Replay tab. Analysis is its own route beside
@@ -17,18 +15,11 @@ export const generateStaticParams = raceStaticParams;
 // shell. Without this, next dev flags the awaited params as non-instant.
 export const instant = false;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const { race } = await getRaceHeader(slug);
-
-  if (!race) return { title: 'Race not found' };
-
-  const name = race.meeting ? sessionTitle(race.meeting.name, race.type) : race.slug;
-  return {
-    title: `${name}`,
-    description: `Lap-by-lap replay of the ${race.meeting?.season ?? ''} ${name}.`.trim(),
-  };
-}
+export const generateMetadata = ({ params }: { params: Promise<{ slug: string }> }) =>
+  raceMetadata(params, (name, season) => ({
+    title: name,
+    description: `Lap-by-lap replay of the ${season} ${name}.`,
+  }));
 
 export default async function RacePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

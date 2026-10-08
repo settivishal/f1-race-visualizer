@@ -170,6 +170,9 @@ export function isHollowMarker(kind: ReplayEventKind) {
   return kind === "virtual-safety-car";
 }
 
+/** The race's state when nothing has been flagged. */
+export const GREEN_FLAG: ReplayRaceControl = { status: "green", label: "Green Flag", details: null };
+
 export function buildRaceControlByLap(
   laps: number[],
   events: ReplayEvent[],
@@ -177,11 +180,7 @@ export function buildRaceControlByLap(
   const sortedEvents = [...events].sort((left, right) => left.lap - right.lap);
   const result = new Map<number, ReplayRaceControl>();
   let eventIndex = 0;
-  let current: ReplayRaceControl = {
-    status: "green",
-    label: "Green Flag",
-    details: null,
-  };
+  let current: ReplayRaceControl = GREEN_FLAG;
   let clearsAfter: ReplayRaceControl | null = null;
 
   for (const lap of laps) {

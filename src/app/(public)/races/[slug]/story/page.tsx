@@ -1,6 +1,4 @@
-import { getRaceHeader } from '@/lib/queries';
-import { sessionTitle } from '@/lib/session-title';
-import { RacePageShell, StoryPanel, raceStaticParams } from '../race-view';
+import { RacePageShell, StoryPanel, raceStaticParams, raceMetadata } from '../race-view';
 
 /**
  * The race detail page, on its Story tab: the replay's chart held in place
@@ -13,18 +11,11 @@ export const generateStaticParams = raceStaticParams;
 // existence check and its notFound() sit above Suspense in RacePageShell.
 export const instant = false;
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const { race } = await getRaceHeader(slug);
-
-  if (!race) return { title: 'Race not found' };
-
-  const name = race.meeting ? sessionTitle(race.meeting.name, race.type) : race.slug;
-  return {
+export const generateMetadata = ({ params }: { params: Promise<{ slug: string }> }) =>
+  raceMetadata(params, (name, season) => ({
     title: `${name} story`,
-    description: `The ${race.meeting?.season ?? ''} ${name}, told lap by lap.`.trim(),
-  };
-}
+    description: `The ${season} ${name}, told lap by lap.`,
+  }));
 
 export default async function RaceStoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

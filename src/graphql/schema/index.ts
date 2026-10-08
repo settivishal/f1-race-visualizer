@@ -8,6 +8,7 @@ import './entity';
 import './meeting';
 import './mutation';
 import './race';
+import './race-list';
 import './search';
 import './standings';
 

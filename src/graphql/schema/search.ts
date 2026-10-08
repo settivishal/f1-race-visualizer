@@ -1,5 +1,6 @@
 import { asc, desc, eq, ilike, or } from 'drizzle-orm';
 import { circuits, drivers, meetings, races, teams } from '@/db/schema';
+import { sessionLabel } from '@/lib/session-title';
 import { builder } from '../builder';
 
 /**
@@ -93,7 +94,7 @@ builder.queryField('search', (t) =>
         ...raceRows.map((r): Hit => ({
           kind: 'RACE',
           title: `${r.season} ${r.name}`,
-          subtitle: r.type === 'SPRINT' ? 'Sprint' : 'Grand Prix',
+          subtitle: sessionLabel(r.type),
           href: `/races/${r.slug}`,
         })),
         ...driverRows.map((d): Hit => ({

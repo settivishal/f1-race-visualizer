@@ -1,8 +1,8 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
+import { useNow } from '@/lib/use-now';
 import { untilLabel } from '@/lib/schedule';
 
 /**
@@ -19,23 +19,6 @@ import { untilLabel } from '@/lib/schedule';
  * "no time yet". Hydration matches, and the value arrives on subscribe.
  */
 
-// The clock, as an external store. A minute is the resolution the display
-// shows; a per-second tick would re-render sixty times to change nothing. The
-// snapshot has to be a cached value rather than a fresh `Date.now()`, because
-// `useSyncExternalStore` compares snapshots and a value that changes on every
-// read never settles.
-let clock = 0;
-
-function subscribeToClock(onChange: () => void) {
-  clock = Date.now();
-  onChange();
-  const timer = setInterval(() => {
-    clock = Date.now();
-    onChange();
-  }, 60_000);
-  return () => clearInterval(timer);
-}
-
 export type ScheduledRace = {
   slug: string;
   date: string;
@@ -46,7 +29,7 @@ export type ScheduledRace = {
 export function SeasonStatus({ season, races }: { season: number; races: ScheduledRace[] }) {
   // Zero on the server and on the first client render: the season is described
   // without a clock until there is one.
-  const now = useSyncExternalStore(subscribeToClock, () => clock, () => 0);
+  const now = useNow();
 
   const total = races.length;
   if (total === 0) return null;

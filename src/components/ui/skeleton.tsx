@@ -19,3 +19,27 @@ export function Skeleton({ className }: { className?: string }) {
     />
   );
 }
+
+/** An archive index's card grid, while it loads. */
+export function GridSkeleton({ count, itemClassName }: { count: number; itemClassName: string }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: count }, (_, i) => (
+        <Skeleton key={i} className={cn("w-full rounded-xl", itemClassName)} />
+      ))}
+    </div>
+  );
+}
+
+/** A driver or team profile, while it loads. */
+export function ProfileSkeleton({ subtitleClassName = "w-56" }: { subtitleClassName?: string }) {
+  return (
+    <div className="mt-5">
+      <Skeleton className="h-4 w-24" />
+      <Skeleton className="mt-3 h-12 w-80 max-w-full" />
+      <Skeleton className={cn("mt-3 h-5", subtitleClassName)} />
+      <Skeleton className="mt-8 h-24 w-full rounded-xl" />
+      <Skeleton className="mt-10 h-72 w-full rounded-xl" />
+    </div>
+  );
+}
