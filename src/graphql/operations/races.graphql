@@ -83,6 +83,20 @@ query RaceHeader($slug: String!) {
         lengthKm
         turns
         firstGrandPrix
+        # Earlier winners here, for the circuit card.
+        races {
+          slug
+          date
+          status
+          meeting {
+            season
+          }
+          podium {
+            position
+            code
+            teamColor
+          }
+        }
       }
       # The weekend's other sessions, so a race page can point at its sibling —
       # the library shows one card per weekend, and without this the sprint is

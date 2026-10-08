@@ -100,5 +100,19 @@ query CircuitProfile($ergastId: String!) {
     lengthKm
     turns
     firstGrandPrix
+    races {
+      slug
+      date
+      status
+      meeting {
+        season
+        name
+      }
+      podium {
+        position
+        code
+        teamColor
+      }
+    }
   }
 }

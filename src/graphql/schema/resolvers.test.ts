@@ -608,3 +608,25 @@ describe('a weekend, not its sessions', () => {
     expect(data.races.edges.map((e) => e.node.slug)).toEqual(['2025-test']);
   });
 });
+
+// Last in the file: it adds races that the paging and counting tests above
+// would otherwise see.
+describe('Circuit.races', () => {
+  it('lists the grands prix held there, newest first, without sprints or cancelled rounds', async () => {
+    const circuit = await db.query.circuits.findFirst({ where: eq(dbSchema.circuits.ergastCircuitId, 'test_circuit') });
+    await db.insert(dbSchema.seasons).values([{ year: 2023 }, { year: 2024 }]).onConflictDoNothing();
+    const [older, cancelled] = await db.insert(dbSchema.meetings).values([
+      { seasonYear: 2023, round: 1, name: 'Test GP 2023', country: 'Testland', startDate: new Date('2023-03-01T00:00:00Z'), circuitId: circuit!.id },
+      { seasonYear: 2024, round: 1, name: 'Test GP 2024', country: 'Testland', startDate: new Date('2024-03-01T00:00:00Z'), circuitId: circuit!.id },
+    ]).returning();
+    await db.insert(dbSchema.races).values([
+      { meetingId: older.id, type: 'GRAND_PRIX', slug: '2023-test', date: new Date('2023-03-02T14:00:00Z'), laps: 50, status: 'COMPLETED' },
+      { meetingId: cancelled.id, type: 'GRAND_PRIX', slug: '2024-test', date: new Date('2024-03-02T14:00:00Z'), laps: 0, status: 'CANCELLED' },
+    ]);
+
+    const data = await run<{ circuit: { races: { slug: string }[] } }>(
+      'query { circuit(ergastId: "test_circuit") { races { slug } } }',
+    );
+    expect(data.circuit.races.map((race) => race.slug)).toEqual(['2025-test', '2023-test']);
+  });
+});
