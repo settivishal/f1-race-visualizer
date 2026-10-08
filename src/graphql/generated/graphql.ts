@@ -201,14 +201,14 @@ export type RacePredictionsQueryVariables = Exact<{
 
 export type RacePredictionsQuery = { race: { predictions: Array<{ winProbability: number, modelVersion: string, generatedAt: string, driver: { code: string, name: string } | null, team: { color: string | null } | null }> } | null, predictionDisplay: { shown: number, expanded: number } };
 
-export type RaceReplayFieldsFragment = { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> };
+export type RaceReplayFieldsFragment = { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ grid: number | null, driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> };
 
 export type RaceReplayQueryVariables = Exact<{
   slug: string;
 }>;
 
 
-export type RaceReplayQuery = { race: { id: string, slug: string, laps: number, date: string, type: RaceType, dataTier: DataTier, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null } | null, replay: { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> } } | null };
+export type RaceReplayQuery = { race: { id: string, slug: string, laps: number, date: string, type: RaceType, dataTier: DataTier, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null } | null, replay: { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ grid: number | null, driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> } } | null };
 
 export type CommandPaletteQueryVariables = Exact<{
   query: string;
@@ -271,6 +271,7 @@ export const RaceReplayFieldsFragmentDoc = new TypedDocumentString(`
       sector2
       sector3
     }
+    grid
   }
   events {
     lap
@@ -928,6 +929,7 @@ export const RaceReplayDocument = new TypedDocumentString(`
       sector2
       sector3
     }
+    grid
   }
   events {
     lap

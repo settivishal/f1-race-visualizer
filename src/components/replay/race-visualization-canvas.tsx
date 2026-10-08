@@ -26,6 +26,7 @@ import {
   makePositionY,
   minFrameHeight,
   trailPositions,
+  withGrid,
   type ChartSize,
 } from "./chart-layout";
 import { AnimatedCar } from "./car-layers";
@@ -86,9 +87,12 @@ export function RaceVisualizationCanvas({
   const { margin } = layout;
   const frameWidth = size.width;
 
+  // A grid column before lap 1 when the race has a starting order, so a line
+  // begins where the car started.
+  const firstLap = drivers.some((entry) => entry.grid) ? 0 : 1;
   const lapWindow = useMemo(
-    () => lapWindowFor(frameWidth, currentLap, summary.maxLap || race.laps),
-    [frameWidth, currentLap, summary.maxLap, race.laps],
+    () => lapWindowFor(frameWidth, currentLap, summary.maxLap || race.laps, firstLap),
+    [frameWidth, currentLap, summary.maxLap, race.laps, firstLap],
   );
   const lapX = useMemo(() => makeLapX(lapWindow, layout), [lapWindow, layout]);
   const positionY = useMemo(
@@ -101,7 +105,9 @@ export function RaceVisualizationCanvas({
   // A label is "Lap 40" on a desktop and a bare "40" on a phone, so they need
   // different room; either way the axis holds as many as fit and no more.
   const lapTicks = getVisibleLapTicks(
-    laps.filter((lap) => lap >= lapWindow.from && lap <= lapWindow.to),
+    [...(firstLap === 0 ? [0] : []), ...laps].filter(
+      (lap) => lap >= lapWindow.from && lap <= lapWindow.to,
+    ),
     Math.max(3, Math.floor((layout.width - margin.left - margin.right) / (layout.compact ? 44 : 110))),
   );
   // Same split as the cars: the lap's own position is a render value, and the
@@ -116,9 +122,9 @@ export function RaceVisualizationCanvas({
     const span = lapWindow.to - lapWindow.from;
     if (span <= 0) return 0;
     const lapWidth = (layout.width - margin.left - margin.right) / span;
-    const nextWindow = lapWindowFor(frameWidth, nextLap, summary.maxLap || race.laps);
+    const nextWindow = lapWindowFor(frameWidth, nextLap, summary.maxLap || race.laps, firstLap);
     return (nextWindow.from - lapWindow.from) * lapWidth;
-  }, [frameWidth, layout, margin, lapWindow, nextLap, race.laps, summary.maxLap]);
+  }, [frameWidth, layout, margin, lapWindow, nextLap, race.laps, summary.maxLap, firstLap]);
   const panX = useTransform(lapProgress, (p) => -panDistance * p);
   // Scoped to this chart: the landing page renders a second player, and a
   // duplicate clipPath id would have both of them clipped by whichever mounted
@@ -144,7 +150,7 @@ export function RaceVisualizationCanvas({
         const retirementLap = retirementEvent?.lap ?? null;
         const isRetiredAtCurrentLap = retirementLap !== null && currentLap >= retirementLap;
         const isCarActive = retirementLap === null || currentLap < retirementLap;
-        const visiblePositions = entry.positions.filter(
+        const visiblePositions = withGrid(entry.positions, entry.grid).filter(
           (position) => retirementLap === null || position.lap <= retirementLap,
         );
         const currentPoint = getDriverPointForLap(entry.positions, currentLap);
@@ -432,7 +438,7 @@ export function RaceVisualizationCanvas({
                     fill="rgba(255,255,255,0.68)"
                     style={{ fontFamily: "monospace" }}
                   >
-                    {layout.compact ? lap : `Lap ${lap}`}
+                    {lap === 0 ? "Grid" : layout.compact ? lap : `Lap ${lap}`}
                   </text>
                 </g>
               );
