@@ -6,7 +6,10 @@ import { Input } from '@/components/ui/input';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAppConfig, updateConfigAction } from '../actions';
+import { connection } from 'next/server';
+import { getDb } from '@/db';
+import { readAppConfig } from '@/lib/app-config';
+import { updateConfigAction } from './actions';
 
 export const metadata = {
   title: 'Settings — Admin',
@@ -40,7 +43,10 @@ export default function SettingsPage() {
 }
 
 async function SettingsForm() {
-  const config = await getAppConfig();
+  // A request-time read, not a prerendered one: the proxy has already turned
+  // away anyone without a session, and the form must show the row as it is now.
+  await connection();
+  const config = await readAppConfig(getDb());
   const runDays: string[] = config?.runDays ?? ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   return (
