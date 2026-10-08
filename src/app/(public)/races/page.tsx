@@ -1,7 +1,6 @@
 import { Suspense, ViewTransition } from 'react';
 import Link from 'next/link';
-import { Badge } from '@/components/ui/badge';
-import { RaceStartTime, UpcomingBadge } from '@/components/schedule/upcoming-race';
+import { RaceStartTime, RaceWeekFrame, WeekendBadge } from '@/components/schedule/upcoming-race';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { SeasonFilter } from '@/components/ui/season-filter';
 import { Card } from '@/components/ui/card';
@@ -65,7 +64,7 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
   const after = first(params.after) ?? null;
   const before = first(params.before) ?? null;
 
-  const { races, seasons, latestRace, nextRace } = await getRaceLibrary(
+  const { races, seasons } = await getRaceLibrary(
     season,
     search,
     after,
@@ -75,7 +74,9 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
   // Grands prix only: a sprint is part of its weekend's card, not a card.
   const scheduled = races.edges
     .filter(({ node }) => node.status === 'SCHEDULED')
-    .map(({ node }) => ({ slug: node.slug, date: node.date }));
+    .flatMap(({ node }) =>
+      node.meeting ? [{ slug: node.slug, date: node.date, weekendStart: node.meeting.weekendStart }] : [],
+    );
 
   // Carried on every link so a filter survives paging and vice versa.
   const context = {
@@ -147,18 +148,8 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                   carries `shadow-sm`, and cn() is a join rather than a
                   tailwind-merge, so a second shadow utility there loses to
                   whichever the stylesheet happens to order last. */}
-              <div
-                className={`group h-full rounded-xl ${
-                  // The one race just run. A glow rather than a badge: it says
-                  // "here" without taking a word away from the tile.
-                  node.slug === latestRace?.slug ? 'shadow-glow' : ''
-                }`}
-              >
-                <Card
-                  className={`relative flex h-full gap-4 transition-[background-color,border-color] group-hover:border-line-strong group-hover:bg-panel-strong ${
-                    node.slug === latestRace?.slug ? 'border-accent/40' : ''
-                  }`}
-                >
+              <RaceWeekFrame slug={node.slug} scheduled={scheduled} className="group h-full rounded-xl">
+                <Card className="relative flex h-full gap-4 transition-[background-color,border-color] group-hover:border-line-strong group-hover:bg-panel-strong group-data-race-week:border-accent/40">
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center gap-2">
                       <span className="text-eyebrow font-semibold uppercase text-muted">
@@ -170,13 +161,8 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                           badge made it mean "not yet run", which the date below
                           already says. */}
                       {node.status === 'SCHEDULED' ? (
-                        <UpcomingBadge
-                          slug={node.slug}
-                          serverNext={nextRace?.slug ?? null}
-                          scheduled={scheduled}
-                        />
+                        <WeekendBadge slug={node.slug} scheduled={scheduled} />
                       ) : null}
-                      {node.status === 'CANCELLED' ? <Badge>Cancelled</Badge> : null}
                     </div>
                     {/* The same name on the race page's <h1>, so the title is
                         one object that moves rather than two that swap. */}
@@ -197,7 +183,7 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                     <p className="mt-1.5 text-sm text-muted">
                       {node.meeting?.circuitName ?? node.meeting?.country ?? '—'} ·{' '}
                       {node.status === 'CANCELLED' ? (
-                        <span className="line-through">Not held</span>
+                        <span className="text-flag-red">Cancelled</span>
                       ) : node.status === 'SCHEDULED' ? (
                         <RaceStartTime date={node.date} />
                       ) : (
@@ -239,9 +225,11 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                             </span>
                           </>
                         ) : (
-                          <span>
-                            {node.weekendSprint.status === 'CANCELLED' ? 'Not held' : 'Not yet run'}
-                          </span>
+                          node.weekendSprint.status === 'CANCELLED' ? (
+                            <span className="text-flag-red">Cancelled</span>
+                          ) : (
+                            <span>Not yet run</span>
+                          )
                         )}
                         {/* Only on hover, and only as a word: the row already
                             says which session it is, and this says what
@@ -279,7 +267,7 @@ async function RaceLibrary({ searchParams }: { searchParams: SearchParams }) {
                     </ol>
                   ) : null}
                 </Card>
-              </div>
+              </RaceWeekFrame>
             </li>
           ))}
         </ul>

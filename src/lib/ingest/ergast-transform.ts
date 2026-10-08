@@ -312,6 +312,7 @@ export function transformArchiveRace(
       country: race.Circuit.Location.country ?? 'Unknown',
       circuitName: race.Circuit.circuitName,
       startDate: new Date(`${race.date}T${race.time ?? '00:00:00Z'}`),
+      utcOffset: null,
       weather: null,
       openf1MeetingKey: null,
       circuit: {

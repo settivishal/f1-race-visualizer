@@ -104,6 +104,8 @@ export type TransformedRace = {
     country: string;
     circuitName: string | null;
     startDate: Date;
+    /** The track's offset from UTC, from OpenF1. Null for an archive meeting. */
+    utcOffset: string | null;
     weather: unknown;
     /** Null for an archive meeting: OpenF1 never saw it. */
     openf1MeetingKey: number | null;

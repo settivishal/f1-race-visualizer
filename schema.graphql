@@ -126,6 +126,7 @@ type Meeting {
   races: [Race!]!
   round: Int!
   season: Int!
+  weekendStart: DateTime!
 }
 
 type Mutation {

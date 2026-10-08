@@ -70,6 +70,7 @@ export async function writeRace(
           // Each of these is only known to one source. Coalescing keeps what
           // the other source wrote instead of blanking it on every re-import.
           weather: sqlCoalesce('weather', meetings.weather),
+          utcOffset: sqlCoalesce('utc_offset', meetings.utcOffset),
           openf1MeetingKey: sqlCoalesce('openf1_meeting_key', meetings.openf1MeetingKey),
           circuitId: sqlCoalesce('circuit_id', meetings.circuitId),
           updatedAt: new Date(),

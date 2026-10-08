@@ -1,7 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { nextByClock, untilLabel } from '@/lib/schedule';
+import { untilLabel, weekendPhase } from '@/lib/schedule';
 import { useNow } from '@/lib/use-now';
 
 /**
@@ -50,29 +51,48 @@ export function RaceStartTime({ date }: { date: string }) {
   );
 }
 
+type Scheduled = { slug: string; date: string; weekendStart: string };
+
 /**
- * The "Upcoming" badge on the race list, placed by the reader's clock.
- *
- * The server's `nextRace` follows `status`, which only an import changes — so
- * while an import lags, the badge sat on a race weeks gone. The server's pick
- * is still what renders first (no clock yet, and hydration must match); the
- * clock takes over the moment it arrives.
+ * The race list's marker for where the season is, by the reader's clock: the
+ * next race reads "Upcoming", or "Race Week" once its weekend has begun at the
+ * track. Nothing before the clock arrives, because a cached page cannot know
+ * which of the two it is.
  *
  * ponytail: picks among the races on screen, so a search that hides the true
  * next race badges a later one. Pass the full season list if that matters.
  */
-export function UpcomingBadge({
+export function WeekendBadge({ slug, scheduled }: { slug: string; scheduled: Scheduled[] }) {
+  const now = useNow();
+  const phase = now === 0 ? null : weekendPhase(scheduled, now);
+  if (phase?.race.slug !== slug) return null;
+  return <Badge tone="accent">{phase.raceWeek ? 'Race Week' : 'Upcoming'}</Badge>;
+}
+
+/**
+ * The card's frame, which glows during race week and only then: in the gap
+ * between weekends nothing on the list is happening, so nothing is lit.
+ * `data-race-week` lets the card inside pick up the accent border.
+ */
+export function RaceWeekFrame({
   slug,
-  serverNext,
   scheduled,
+  className,
+  children,
 }: {
   slug: string;
-  serverNext: string | null;
-  scheduled: { slug: string; date: string }[];
+  scheduled: Scheduled[];
+  className: string;
+  children: ReactNode;
 }) {
   const now = useNow();
-  const next = now === 0 ? serverNext : (nextByClock(scheduled, now)?.slug ?? null);
-  return next === slug ? <Badge tone="accent">Upcoming</Badge> : null;
+  const phase = now === 0 ? null : weekendPhase(scheduled, now);
+  const lit = phase?.raceWeek === true && phase.race.slug === slug;
+  return (
+    <div data-race-week={lit || undefined} className={`${className} ${lit ? 'shadow-glow' : ''}`}>
+      {children}
+    </div>
+  );
 }
 
 /**
