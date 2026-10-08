@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createJsonClient } from './http';
 import { createThrottle } from './throttle';
 
 /**
@@ -28,28 +29,7 @@ const throttle = createThrottle({ perSecond: 4, perMinute: 8 });
 /** The hard cap on Ergast's page size. Asking for more silently returns 100. */
 const PAGE_SIZE = 100;
 
-const MAX_ATTEMPTS = 4;
-const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function get(path: string, params: Record<string, string | number>): Promise<unknown> {
-  const url = new URL(`${BASE_URL}${path}`);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, String(value));
-  }
-
-  let lastError: Error | undefined;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const response = await throttle(() => fetch(url, { headers: { accept: 'application/json' } }));
-    if (response.ok) return response.json();
-
-    lastError = new Error(`Ergast ${path} returned ${response.status}`);
-    if (!RETRYABLE.has(response.status)) throw lastError;
-    if (attempt < MAX_ATTEMPTS) await sleep(2 ** attempt * 1000);
-  }
-  throw lastError;
-}
+const get = createJsonClient({ name: 'Ergast', baseUrl: BASE_URL, throttle });
 
 // ── Schemas ───────────────────────────────────────────────────────────
 // Ergast answers everything with numbers as strings, including positions and

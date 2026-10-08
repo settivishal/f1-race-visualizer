@@ -1,6 +1,15 @@
 import { Pool } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 import * as schema from './schema';
+
+/**
+ * Any Postgres drizzle instance over our schema: the Neon pool in production,
+ * PGlite in a test. Typed structurally rather than as `ReturnType<typeof
+ * getDb>`, so everything that takes a `Db` can run against a real database in
+ * CI without a network.
+ */
+export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 let instance: ReturnType<typeof connect> | undefined;
 

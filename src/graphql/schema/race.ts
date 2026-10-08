@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, ilike, or, sql } from 'drizzle-orm';
-import { appConfig, meetings, raceEvents, racePositions, raceResults, races } from '@/db/schema';
+import { meetings, raceEvents, racePositions, raceResults, races } from '@/db/schema';
+import { readAppConfig } from '@/lib/app-config';
 import { builder } from '../builder';
 import type { Db } from '../context';
 import type { PodiumSlot, PredictionRow } from '../loaders';
@@ -87,13 +88,11 @@ builder.queryField('predictionDisplay', (t) =>
   t.field({
     type: PredictionDisplay,
     resolve: async (_root, _args, ctx) => {
-      const [config] = await ctx.db
-        .select({ shown: appConfig.predictionsShown, expanded: appConfig.predictionsExpanded })
-        .from(appConfig)
-        .where(eq(appConfig.id, 1))
-        .limit(1);
+      const config = await readAppConfig(ctx.db);
       // The column defaults, for a database with no settings row yet.
-      return config ?? { shown: 5, expanded: 10 };
+      return config
+        ? { shown: config.predictionsShown, expanded: config.predictionsExpanded }
+        : { shown: 5, expanded: 10 };
     },
   }),
 );

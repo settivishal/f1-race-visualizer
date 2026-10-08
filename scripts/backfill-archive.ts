@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { eq } from 'drizzle-orm';
+import { and, eq, exists, sql } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
 import { fetchSeasonResults } from '@/lib/ingest/ergast';
 import { ingestArchiveRace } from '@/lib/ingest/run';
@@ -89,21 +89,16 @@ async function roundsAlreadyStored(season: number): Promise<Set<number>> {
   const db = getDb();
 
   const rows = await db
-    .select({
-      round: schema.meetings.round,
-      raceId: schema.races.id,
-      positionId: schema.racePositions.id,
-    })
+    .select({ round: schema.meetings.round })
     .from(schema.races)
     .innerJoin(schema.meetings, eq(schema.meetings.id, schema.races.meetingId))
-    .leftJoin(schema.racePositions, eq(schema.racePositions.raceId, schema.races.id))
-    .where(eq(schema.meetings.seasonYear, season));
+    .where(and(
+      eq(schema.meetings.seasonYear, season),
+      exists(db.select({ one: sql`1` }).from(schema.racePositions)
+        .where(eq(schema.racePositions.raceId, schema.races.id))),
+    ));
 
-  const withPositions = new Set<number>();
-  for (const row of rows) {
-    if (row.positionId !== null) withPositions.add(row.round);
-  }
-  return withPositions;
+  return new Set(rows.map((row) => row.round));
 }
 
 main().then(() => process.exit(0), (err) => { console.error(err); process.exit(1); });

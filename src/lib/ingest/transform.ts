@@ -1,6 +1,7 @@
 import { formatDriverName } from '@/lib/format-name';
 import { isRacingStop } from '@/lib/pit-stops';
 import type { Lap, Meeting, Pit, PositionSample, Session, Stint } from './openf1';
+import { buildOvertakes, byLapThenType, pitStopEvents, pitStopRows, slugify, type Stop } from './events';
 import type {
   EventRow, LineupRow, PitStopRow, PositionRow, RaceBundle, ResultRow, StintRow,
   TransformedRace,
@@ -34,10 +35,6 @@ export function deriveRounds(meetings: Meeting[], sessions: Session[]): Map<numb
 
   return new Map(ordered.map((m, i) => [m.meeting_key, i + 1]));
 }
-
-const slugify = (value: string) =>
-  value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export function raceSlug(session: Session, meeting: Meeting): string {
   const place = slugify(meeting.circuit_short_name ?? meeting.meeting_name);
@@ -402,26 +399,11 @@ export function buildStints(stints: Stint[], lapCount: number): StintRow[] {
   return rows.sort((a, b) => a.driverNumber - b.driverNumber || a.stintNumber - b.stintNumber);
 }
 
-/**
- * Pit stops as rows. The duration is stored in milliseconds because upstream's
- * seconds are a float and a stop is compared at the hundredth — an integer of
- * milliseconds compares exactly, which a float does not.
- *
- * Two stops by the same driver on the same lap cannot both be stored (the
- * unique key is race + driver + lap) and do not happen in a green-flag race;
- * the later one wins, which is the one that finished the sequence.
- */
-export function buildPitStops(pits: Pit[]): PitStopRow[] {
-  const byKey = new Map<string, PitStopRow>();
-  for (const pit of pits) {
-    byKey.set(`${pit.driver_number}:${pit.lap_number}`, {
-      driverNumber: pit.driver_number,
-      lap: pit.lap_number,
-      durationMs: pit.pit_duration == null ? null : Math.round(pit.pit_duration * 1000),
-    });
-  }
-  return [...byKey.values()].sort((a, b) => a.lap - b.lap || a.driverNumber - b.driverNumber);
-}
+/** OpenF1's stops, in the shape both upstreams share. */
+const stopsOf = (pits: Pit[]): Stop[] =>
+  pits.map((pit) => ({ driverNumber: pit.driver_number, lap: pit.lap_number, seconds: pit.pit_duration ?? null }));
+
+export const buildPitStops = (pits: Pit[]): PitStopRow[] => pitStopRows(stopsOf(pits));
 
 // ── Events ────────────────────────────────────────────────────────────
 
@@ -442,17 +424,7 @@ export function buildEvents(bundle: RaceBundle, positions: PositionRow[]): Event
     if (seen >= 2) stoppageLaps.add(pit.lap_number);
   }
 
-  for (const pit of bundle.pits) {
-    // The stop rows themselves are still written verbatim; it is only the
-    // narration that would be wrong. See lib/pit-stops.ts.
-    if (pit.pit_duration != null && !isRacingStop(pit.pit_duration * 1000)) continue;
-    events.push({
-      lap: pit.lap_number,
-      driverNumber: pit.driver_number,
-      type: 'PIT_STOP',
-      details: pit.pit_duration != null ? `${pit.pit_duration.toFixed(1)}s in the pit lane` : 'Pit stop',
-    });
-  }
+  events.push(...pitStopEvents(stopsOf(bundle.pits)));
 
   // Race-wide events carry no driver. The absence of one is the encoding of
   // "this applies to everyone", rather than inventing a driver to hang it on.
@@ -508,37 +480,7 @@ export function buildEvents(bundle: RaceBundle, positions: PositionRow[]): Event
 
   events.push(...buildOvertakes(positions));
 
-  return events.sort((a, b) => a.lap - b.lap || a.type.localeCompare(b.type));
-}
-
-/**
- * A place gained between one lap and the next. Derived from the position rows
- * rather than from the sample stream, so an overtake means what the replay
- * shows — the running order changed between two laps a viewer can scrub to.
- */
-export function buildOvertakes(positions: PositionRow[]): EventRow[] {
-  const byDriver = new Map<number, PositionRow[]>();
-  for (const row of positions) {
-    const list = byDriver.get(row.driverNumber);
-    if (list) list.push(row);
-    else byDriver.set(row.driverNumber, [row]);
-  }
-
-  const events: EventRow[] = [];
-  for (const [driverNumber, rows] of byDriver) {
-    rows.sort((a, b) => a.lap - b.lap);
-    for (let i = 1; i < rows.length; i++) {
-      const gained = rows[i - 1].position - rows[i].position;
-      if (gained <= 0) continue;
-      events.push({
-        lap: rows[i].lap,
-        driverNumber,
-        type: 'OVERTAKE',
-        details: `P${rows[i - 1].position} to P${rows[i].position}`,
-      });
-    }
-  }
-  return events;
+  return events.sort(byLapThenType);
 }
 
 // ── Assembly ──────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createJsonClient } from './http';
 import { createThrottle } from './throttle';
 
 /**
@@ -18,35 +19,9 @@ const BASE_URL = 'https://api.openf1.org/v1';
 // Free tier: 3 requests/second, 30 requests/minute. Both hold at once.
 const throttle = createThrottle({ perSecond: 3, perMinute: 30 });
 
-const MAX_ATTEMPTS = 4;
-const RETRYABLE = new Set([408, 429, 500, 502, 503, 504]);
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function get(path: string, params: Record<string, string | number>): Promise<unknown> {
-  const url = new URL(`${BASE_URL}${path}`);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, String(value));
-  }
-
-  let lastError: Error | undefined;
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const response = await throttle(() => fetch(url, { headers: { accept: 'application/json' } }));
-    if (response.ok) return response.json();
-
-    // OpenF1 answers a query that matches nothing with 404, not an empty list.
-    // A sprint with no pit stops is a fact about the race, not a failure.
-    if (response.status === 404) return [];
-
-    lastError = new Error(`OpenF1 ${path} returned ${response.status}`);
-    if (!RETRYABLE.has(response.status)) throw lastError;
-
-    // Exponential backoff. A 429 means the throttle's view of the window and
-    // the server's have drifted, so waiting longer than the gap is the point.
-    if (attempt < MAX_ATTEMPTS) await sleep(2 ** attempt * 1000);
-  }
-  throw lastError;
-}
+// OpenF1 answers a query that matches nothing with 404, not an empty list.
+// A sprint with no pit stops is a fact about the race, not a failure.
+const get = createJsonClient({ name: 'OpenF1', baseUrl: BASE_URL, throttle, emptyOn404: true });
 
 // ── Schemas ───────────────────────────────────────────────────────────
 // Every field the transform reads is required; fields we ignore are omitted.
