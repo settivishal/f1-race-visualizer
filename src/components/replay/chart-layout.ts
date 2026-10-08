@@ -188,6 +188,25 @@ export function buildPath(
     .join(" ");
 }
 
+/**
+ * The laps a car's solid line runs through, up to the lap being shown.
+ *
+ * A car with no row for that lap — a lapped car, or the hole the source leaves
+ * on a race's final lap, where only the leader is recorded — is still drawn at
+ * the playhead, at its last known position. Without the extra point its line
+ * stopped a lap short of its own dot.
+ */
+export function trailPositions(
+  positions: ReplayPosition[],
+  currentLap: number,
+  carriedTo: boolean,
+): ReplayPosition[] {
+  const trail = positions.filter((position) => position.lap <= currentLap);
+  const last = trail[trail.length - 1];
+  if (carriedTo && last && last.lap < currentLap) trail.push({ ...last, lap: currentLap });
+  return trail;
+}
+
 export function getVisibleLapTicks(laps: number[], maxTicks: number) {
   if (laps.length <= maxTicks) {
     return laps;
