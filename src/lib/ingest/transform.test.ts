@@ -26,6 +26,7 @@ const meeting: Meeting = {
   country_name: 'Australia',
   circuit_short_name: 'Melbourne',
   date_start: '2025-03-14T01:30:00+00:00',
+  gmt_offset: '11:00:00',
   year: 2025,
 };
 

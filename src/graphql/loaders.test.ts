@@ -113,10 +113,11 @@ describe('query count', () => {
     }).race.replay;
     expect(entries.reduce((total, entry) => total + entry.positions.length, 0)).toBe(200);
 
-    // One for the race, one for its positions, then one per entity type:
-    // assignments, drivers, team_seasons, teams. Without the loaders this same
-    // query costs one per entity per driver instead of one per entity.
-    expect(count).toBe(6);
+    // One for the race, one for its positions, one for its grid, then one per
+    // entity type: assignments, drivers, team_seasons, teams. Without the
+    // loaders this same query costs one per entity per driver instead of one
+    // per entity.
+    expect(count).toBe(7);
   });
 });
 
@@ -140,5 +141,27 @@ describe('officialRoundByMeetingId', () => {
     const loaders = createLoaders(db);
     const rounds = await Promise.all(meetingRows.map((m) => loaders.officialRoundByMeetingId.load(m.id)));
     expect(rounds).toEqual([1, null, 2]);
+  });
+});
+
+describe('weekendStartByMeetingId', () => {
+  it("is midnight at the track on first practice's day, or first practice with no offset", async () => {
+    await db.insert(dbSchema.seasons).values({ year: 2027 });
+    const fp1 = new Date('2026-09-04T10:30:00Z');
+    const later = new Date('2026-10-10T01:30:00Z');
+    const [italy, vegas, archive] = await db.insert(dbSchema.meetings).values([
+      { seasonYear: 2027, round: 1, name: 'Italian GP', country: 'Italy', startDate: fp1, utcOffset: '02:00:00' },
+      // 18:30 on Friday in Nevada is already Saturday in UTC; the weekend is Friday's.
+      { seasonYear: 2027, round: 2, name: 'Vegas GP', country: 'USA', startDate: later, utcOffset: '-07:00:00' },
+      { seasonYear: 2027, round: 3, name: 'Archive GP', country: 'Testland', startDate: fp1 },
+    ]).returning();
+
+    const loaders = createLoaders(db);
+    const starts = await Promise.all([italy, vegas, archive].map((m) => loaders.weekendStartByMeetingId.load(m.id)));
+    expect(starts.map((d) => d.toISOString())).toEqual([
+      '2026-09-03T22:00:00.000Z',
+      '2026-10-09T07:00:00.000Z',
+      fp1.toISOString(),
+    ]);
   });
 });

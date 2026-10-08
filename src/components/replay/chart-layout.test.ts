@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lapWindowFor, minFrameHeight, trailPositions } from './chart-layout';
+import { lapWindowFor, minFrameHeight, trailPositions, withGrid } from './chart-layout';
 
 describe('lapWindowFor', () => {
   it('shows the whole race on a desktop, however narrow the chart', () => {
@@ -38,5 +38,24 @@ describe('trailPositions', () => {
 
   it('leaves a retired car where it stopped', () => {
     expect(trailPositions([at(10, 5)], 12, false)).toHaveLength(1);
+  });
+});
+
+describe('withGrid', () => {
+  const at = (lap: number, position: number) => ({ lap, position, lapTime: 90, sector1: null, sector2: null, sector3: null });
+
+  it('starts the line from the grid slot, as lap 0', () => {
+    // Monza 2026: ANT from 19th, 14th after a lap.
+    expect(withGrid([at(1, 14)], 19).map((p) => [p.lap, p.position])).toEqual([[0, 19], [1, 14]]);
+  });
+
+  it('adds nothing for a pit-lane start or no result', () => {
+    expect(withGrid([at(1, 14)], null)).toHaveLength(1);
+    expect(withGrid([at(1, 14)], 0)).toHaveLength(1);
+  });
+
+  it('opens the window on the grid column', () => {
+    expect(lapWindowFor(800, 1, 53, 0)).toEqual({ from: 0, to: 53 });
+    expect(lapWindowFor(390, 1, 53, 0).from).toBe(0);
   });
 });

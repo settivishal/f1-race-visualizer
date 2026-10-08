@@ -126,6 +126,7 @@ type Meeting {
   races: [Race!]!
   round: Int!
   season: Int!
+  weekendStart: DateTime!
 }
 
 type Mutation {
@@ -307,6 +308,7 @@ enum RaceType {
 
 type ReplayDriver {
   driver: Driver
+  grid: Int
   positions: [RacePosition!]!
   team: Team
 }

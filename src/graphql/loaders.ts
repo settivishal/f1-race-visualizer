@@ -172,6 +172,24 @@ export function createLoaders(db: Db) {
       return meetingIds.map((id) => byMeeting.get(id) ?? null);
     }),
     /**
+     * When a race weekend starts: midnight at the track on the day of first
+     * practice, so it turns over at one moment for every reader. A meeting
+     * with no offset (an archive one) falls back to first practice itself.
+     */
+    weekendStartByMeetingId: new DataLoader<string, Date>(async (meetingIds) => {
+      const local = sql`(${meetings.startDate} at time zone 'UTC') + ${meetings.utcOffset}`;
+      const rows = await db
+        .select({
+          meetingId: meetings.id,
+          start: sql<Date>`coalesce((date_trunc('day', ${local}) - ${meetings.utcOffset}) at time zone 'UTC', ${meetings.startDate})`
+            .mapWith(meetings.startDate),
+        })
+        .from(meetings)
+        .where(inArray(meetings.id, [...meetingIds]));
+      const byMeeting = new Map(rows.map((row) => [row.meetingId, row.start]));
+      return meetingIds.map((id) => byMeeting.get(id) ?? new Error(`no meeting ${id}`));
+    }),
+    /**
      * The sprint of a weekend, if it had one. Keyed by meeting rather than by
      * race, because that is the question the library asks: this grand prix's
      * card wants the other session of its own weekend.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adjacentGrandsPrix, nextByClock, raceHeaderFact, untilLabel } from '@/lib/schedule';
+import { adjacentGrandsPrix, nextByClock, raceHeaderFact, untilLabel, weekendPhase } from '@/lib/schedule';
 
 const at = (minutesFromNow: number) => new Date(NOW + minutesFromNow * 60_000).toISOString();
 const NOW = Date.parse('2026-03-01T12:00:00Z');
@@ -85,5 +85,23 @@ describe('adjacentGrandsPrix', () => {
 
   it('links nothing from a slug it does not list', () => {
     expect(adjacentGrandsPrix(rows, 'c-sprint')).toEqual({ previous: null, next: null });
+  });
+});
+
+describe('weekendPhase', () => {
+  const spain = { slug: 'spain', date: at(9 * 1440), weekendStart: at(7 * 1440) };
+  const italy = { slug: 'italy', date: at(2 * 1440), weekendStart: at(-60) };
+
+  it('is race week from the weekend start until the race window closes', () => {
+    expect(weekendPhase([spain, italy], NOW)).toEqual({ race: italy, raceWeek: true });
+  });
+
+  it('calls the next race upcoming in the gap before its weekend', () => {
+    const done = { ...italy, date: at(-4 * 60) };
+    expect(weekendPhase([spain, done], NOW)).toEqual({ race: spain, raceWeek: false });
+  });
+
+  it('is nothing once the season has run', () => {
+    expect(weekendPhase([], NOW)).toBeNull();
   });
 });

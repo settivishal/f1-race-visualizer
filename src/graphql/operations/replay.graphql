@@ -33,6 +33,7 @@ fragment RaceReplayFields on RaceReplay {
       sector2
       sector3
     }
+    grid
   }
   events {
     lap

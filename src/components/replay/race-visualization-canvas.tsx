@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import type { ReplayView } from "./types";
 import { TIMING_TOWER_ID } from "./live-timing-tower";
@@ -26,6 +26,7 @@ import {
   makePositionY,
   minFrameHeight,
   trailPositions,
+  withGrid,
   type ChartSize,
 } from "./chart-layout";
 import { AnimatedCar } from "./car-layers";
@@ -36,7 +37,6 @@ export function RaceVisualizationCanvas({
   nextLap,
   lapProgress,
   raceControl,
-  controls,
   className,
   focusedDriverId,
   highlightedDriverId,
@@ -50,7 +50,6 @@ export function RaceVisualizationCanvas({
   nextLap: number;
   lapProgress: MotionValue<number>;
   raceControl: ReplayRaceControl;
-  controls?: ReactNode;
   className?: string;
   /** The driver held by a click — what `aria-pressed` and the label report. */
   focusedDriverId: string | null;
@@ -88,14 +87,21 @@ export function RaceVisualizationCanvas({
   const { margin } = layout;
   const frameWidth = size.width;
 
+  // A grid column before lap 1 when the race has a starting order, so a line
+  // begins where the car started.
+  const firstLap = drivers.some((entry) => entry.grid) ? 0 : 1;
+  // Rows for every grid slot too: a field of 22 can start 22 cars while the lap
+  // data never shows a P22 (a car out on lap 1), and that slot plotted under
+  // the axis.
+  const maxPosition = Math.max(summary.maxPosition, ...drivers.map((entry) => entry.grid ?? 0));
   const lapWindow = useMemo(
-    () => lapWindowFor(frameWidth, currentLap, summary.maxLap || race.laps),
-    [frameWidth, currentLap, summary.maxLap, race.laps],
+    () => lapWindowFor(frameWidth, currentLap, summary.maxLap || race.laps, firstLap),
+    [frameWidth, currentLap, summary.maxLap, race.laps, firstLap],
   );
   const lapX = useMemo(() => makeLapX(lapWindow, layout), [lapWindow, layout]);
   const positionY = useMemo(
-    () => makePositionY(summary.maxPosition, layout),
-    [summary.maxPosition, layout],
+    () => makePositionY(maxPosition, layout),
+    [maxPosition, layout],
   );
 
   // Only the ticks inside the window, or a windowed chart labels laps it is not
@@ -103,7 +109,9 @@ export function RaceVisualizationCanvas({
   // A label is "Lap 40" on a desktop and a bare "40" on a phone, so they need
   // different room; either way the axis holds as many as fit and no more.
   const lapTicks = getVisibleLapTicks(
-    laps.filter((lap) => lap >= lapWindow.from && lap <= lapWindow.to),
+    [...(firstLap === 0 ? [0] : []), ...laps].filter(
+      (lap) => lap >= lapWindow.from && lap <= lapWindow.to,
+    ),
     Math.max(3, Math.floor((layout.width - margin.left - margin.right) / (layout.compact ? 44 : 110))),
   );
   // Same split as the cars: the lap's own position is a render value, and the
@@ -118,9 +126,9 @@ export function RaceVisualizationCanvas({
     const span = lapWindow.to - lapWindow.from;
     if (span <= 0) return 0;
     const lapWidth = (layout.width - margin.left - margin.right) / span;
-    const nextWindow = lapWindowFor(frameWidth, nextLap, summary.maxLap || race.laps);
+    const nextWindow = lapWindowFor(frameWidth, nextLap, summary.maxLap || race.laps, firstLap);
     return (nextWindow.from - lapWindow.from) * lapWidth;
-  }, [frameWidth, layout, margin, lapWindow, nextLap, race.laps, summary.maxLap]);
+  }, [frameWidth, layout, margin, lapWindow, nextLap, race.laps, summary.maxLap, firstLap]);
   const panX = useTransform(lapProgress, (p) => -panDistance * p);
   // Scoped to this chart: the landing page renders a second player, and a
   // duplicate clipPath id would have both of them clipped by whichever mounted
@@ -146,7 +154,7 @@ export function RaceVisualizationCanvas({
         const retirementLap = retirementEvent?.lap ?? null;
         const isRetiredAtCurrentLap = retirementLap !== null && currentLap >= retirementLap;
         const isCarActive = retirementLap === null || currentLap < retirementLap;
-        const visiblePositions = entry.positions.filter(
+        const visiblePositions = withGrid(entry.positions, entry.grid).filter(
           (position) => retirementLap === null || position.lap <= retirementLap,
         );
         const currentPoint = getDriverPointForLap(entry.positions, currentLap);
@@ -194,48 +202,35 @@ export function RaceVisualizationCanvas({
     // instrument on a light page, the way a video player does. It is the one
     // surface here that does not follow the theme.
     <div className={cn("flex min-w-0 flex-col overflow-hidden rounded-xl border border-line-strong bg-track p-5 text-white shadow-lg", className)}>
-      {minimal ? null : <div className="border-b border-white/10 px-4 pb-5">
-        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-          {/* min-w-0 so a long race name wraps instead of pushing the controls
-              off; the chips used to live in here and inherited the squeeze. */}
-          <div className="min-w-0 max-w-xl flex-1">
-            <h3 className="font-heading break-words text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-              {race.season} R{race.round} • {race.name}
-            </h3>
-          </div>
-          <div className="flex flex-col items-start gap-3 md:flex-shrink-0 md:items-end">
-            {controls ? <div>{controls}</div> : null}
-          </div>
-        </div>
-
-        {/* Their own row, full width. In the title's column they were sharing
-            space with a flex-shrink-0 sibling and wrapped one-then-two. */}
-        <div className="mt-3.5 flex flex-wrap gap-2 text-xs">
-          <span className="tabular rounded-md border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-white/90">
-            {summary.driverCount} Drivers
-          </span>
-          <span className="tabular rounded-md border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-white/90">
-            {summary.maxLap || race.laps} Laps
-          </span>
-          <span className="tabular rounded-md border border-white/10 bg-white/5 px-2.5 py-1 font-semibold text-white/90">
-            {/* What the chart draws, not what the race recorded — a "186
-                Events" chip above five visible markers reads as a bug. The
-                full count is the timeline's business. */}
-            {chartEvents.length} Flags
-          </span>
-        </div>
+      {minimal ? null : <div className="border-b border-white/10 px-1 pb-4">
+        {/* Compact on purpose: the header used to take a third of the screen
+            (a three-line title beside a boxed control card), which is what
+            pushed the chart below the fold. The controls are the dock now. */}
+        {/* One eyebrow line carries the round and the facts, so the title has
+            nothing beside it: stats pushed to the far right left a wide gap
+            between the two that read as empty space. Plain text, not chips,
+            because none of it is pressable. The flag count is what the chart
+            draws, not what the race recorded. */}
+        <p className="tabular text-eyebrow font-semibold uppercase text-white/55">
+          {race.season} · Round {race.round}
+          <span className="font-medium"> · {summary.driverCount} drivers · {summary.maxLap || race.laps} laps · {chartEvents.length} flags</span>
+        </p>
+        <h3 className="font-heading mt-1 break-words text-2xl font-bold leading-tight tracking-tight text-white">
+          {race.name}
+        </h3>
 
         {/* The second way in to the same state — the timing tower's rows are
-            the first. Same chip shape as the row above so the dark panel keeps
-            one vocabulary, rather than importing the analysis tab's chips,
-            which live on a light surface and hold a different kind of state. */}
-        <ul data-testid="driver-chips" className="mt-2.5 flex flex-wrap gap-1.5">
+            the first. One row that scrolls sideways rather than two that wrap:
+            the tower beside it already lists every driver, so this earns one
+            line and no more. The scrollbar is hidden (wheel, trackpad and touch
+            still scroll it) and the right edge fades out to say there is more. */}
+        <ul data-testid="driver-chips" className="-mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [mask-image:linear-gradient(to_right,black_calc(100%-3rem),transparent)] [&::-webkit-scrollbar]:hidden">
           {drivers.map((entry) => {
             const isFocused = entry.driver.id === focusedDriverId;
             const isHighlighted = entry.driver.id === highlightedDriverId;
 
             return (
-              <li key={entry.driver.id}>
+              <li key={entry.driver.id} className="shrink-0">
                 <button
                   type="button"
                   aria-pressed={isFocused}
@@ -283,7 +278,7 @@ export function RaceVisualizationCanvas({
       <div
         ref={frame}
         className={cn("min-h-0 flex-1", !minimal && "mt-4 min-h-[32rem] sm:min-h-[var(--frame-min)]")}
-        style={{ "--frame-min": `${minFrameHeight(summary.maxPosition)}px` } as React.CSSProperties}
+        style={{ "--frame-min": `${minFrameHeight(maxPosition)}px` } as React.CSSProperties}
       >
         <div className="h-full">
           <svg
@@ -364,7 +359,7 @@ export function RaceVisualizationCanvas({
             {/* Horizontal position grid lines. Outside the panning group: they
                 are horizontal, so panning them would only shorten them at the
                 right edge, and the P labels belong to the fixed axis. */}
-            {Array.from({ length: summary.maxPosition }, (_, index) => {
+            {Array.from({ length: maxPosition }, (_, index) => {
               const position = index + 1;
               const y = positionY(position);
 
@@ -447,7 +442,7 @@ export function RaceVisualizationCanvas({
                     fill="rgba(255,255,255,0.68)"
                     style={{ fontFamily: "monospace" }}
                   >
-                    {layout.compact ? lap : `Lap ${lap}`}
+                    {lap === 0 ? "Grid" : layout.compact ? lap : `Lap ${lap}`}
                   </text>
                 </g>
               );

@@ -501,6 +501,7 @@ export function transformRace(bundle: RaceBundle): TransformedRace {
       country: bundle.meeting.country_name,
       circuitName: bundle.meeting.circuit_short_name,
       startDate: new Date(bundle.meeting.date_start),
+      utcOffset: bundle.meeting.gmt_offset,
       weather: bundle.weather,
       openf1MeetingKey: bundle.meeting.meeting_key,
     },
