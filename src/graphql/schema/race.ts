@@ -106,7 +106,7 @@ const PodiumSlotRef = builder.objectRef<PodiumSlot>('PodiumSlot').implement({
 
 // ── The replay payload, pivoted by driver ─────────────────────────────
 
-type ReplayDriverShape = { assignmentId: string; positions: PositionRow[] };
+type ReplayDriverShape = { assignmentId: string; positions: PositionRow[]; grid: number | null };
 
 const ReplaySummary = builder
   .objectRef<{ lapCount: number; maxLap: number; maxPosition: number; driverCount: number }>('ReplaySummary')
@@ -125,10 +125,12 @@ const ReplayDriver = builder.objectRef<ReplayDriverShape>('ReplayDriver').implem
   fields: (t) => ({
     ...assignmentFields(t),
     positions: t.field({ type: [RacePosition], resolve: (row) => row.positions }),
+    /** Where the car started. Null for a pit-lane start (0 upstream) or no result yet. */
+    grid: t.int({ nullable: true, resolve: (row) => row.grid }),
   }),
 });
 
-type ReplayShape = { raceId: string; rows: PositionRow[] };
+type ReplayShape = { raceId: string; rows: PositionRow[]; grid: Map<string, number> };
 
 const RaceReplay = builder.objectRef<ReplayShape>('RaceReplay').implement({
   fields: (t) => ({
@@ -156,7 +158,7 @@ const RaceReplay = builder.objectRef<ReplayShape>('RaceReplay').implement({
     }),
     drivers: t.field({
       type: [ReplayDriver],
-      resolve: ({ rows }) => {
+      resolve: ({ rows, grid }) => {
         const byAssignment = new Map<string, PositionRow[]>();
         for (const row of rows) {
           const list = byAssignment.get(row.assignmentId);
@@ -166,6 +168,7 @@ const RaceReplay = builder.objectRef<ReplayShape>('RaceReplay').implement({
         return [...byAssignment].map(([assignmentId, positions]) => ({
           assignmentId,
           positions: positions.sort((a, b) => a.lap - b.lap),
+          grid: grid.get(assignmentId) ?? null,
         }));
       },
     }),
@@ -246,12 +249,19 @@ Race.implement({
      */
     replay: t.field({
       type: RaceReplay,
-      resolve: async (race, _args, ctx) => ({
-        raceId: race.id,
-        rows: await ctx.db.select(positionColumns).from(racePositions)
-          .where(eq(racePositions.raceId, race.id))
-          .orderBy(asc(racePositions.lap), asc(racePositions.position)),
-      }),
+      resolve: async (race, _args, ctx) => {
+        const [rows, starts] = await Promise.all([
+          ctx.db.select(positionColumns).from(racePositions)
+            .where(eq(racePositions.raceId, race.id))
+            .orderBy(asc(racePositions.lap), asc(racePositions.position)),
+          ctx.db.select({ assignmentId: raceResults.assignmentId, grid: raceResults.gridPosition })
+            .from(raceResults)
+            .where(eq(raceResults.raceId, race.id)),
+        ]);
+        // Grid 0 is a pit-lane start: no slot on the grid to draw it from.
+        const grid = new Map(starts.flatMap((s) => (s.grid ? [[s.assignmentId, s.grid] as const] : [])));
+        return { raceId: race.id, rows, grid };
+      },
     }),
 
     /**
