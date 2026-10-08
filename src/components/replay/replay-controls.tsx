@@ -33,50 +33,6 @@ const RestartIcon = () => (
   </svg>
 );
 
-const RING_RADIUS = 16;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-
-/**
- * The lap inside a ring that fills as the race runs. It reads the same motion
- * value as the scrubber, so it sweeps smoothly between laps without a React
- * render per frame. The number is HTML, not SVG text: the e2e specs read every
- * bare number in an SVG as an axis tick.
- */
-function LapRing({
-  currentLap,
-  maxLap,
-  percent,
-}: {
-  currentLap: number;
-  maxLap: number;
-  percent: MotionValue<number>;
-}) {
-  const offset = useTransform(percent, (p) => RING_LENGTH * (1 - p / 100));
-  return (
-    <div className="relative h-10 w-10 shrink-0">
-      <svg viewBox="0 0 40 40" className="h-full w-full -rotate-90" aria-hidden>
-        <circle cx="20" cy="20" r={RING_RADIUS} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3" />
-        <motion.circle
-          cx="20"
-          cy="20"
-          r={RING_RADIUS}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={RING_LENGTH}
-          style={{ strokeDashoffset: offset }}
-        />
-      </svg>
-      <span className="tabular absolute inset-0 flex items-center justify-center font-heading text-xs font-bold text-white">
-        <span className="sr-only">Lap </span>
-        {currentLap}
-        <span className="sr-only"> of {maxLap}</span>
-      </span>
-    </div>
-  );
-}
-
 /**
  * One speed option. Hoisted out of the component: defined inside it, this would
  * be a new component type on every render, and React would unmount and remount
@@ -113,6 +69,7 @@ export function ReplayControls({
   maxLap,
   isPlaying,
   speed,
+  progressPercent,
   lapProgress,
   canStepBackward,
   canStepForward,
@@ -127,6 +84,7 @@ export function ReplayControls({
   maxLap: number;
   isPlaying: boolean;
   speed: number;
+  progressPercent: number;
   lapProgress: MotionValue<number>;
   canStepBackward: boolean;
   canStepForward: boolean;
@@ -195,8 +153,6 @@ export function ReplayControls({
           <RestartIcon />
         </button>
 
-        <LapRing currentLap={currentLap} maxLap={maxLap} percent={percent} />
-
         {/* A segmented control on its own line: five options that share the
             width rather than five pills that wrap. */}
         <div className="ml-auto hidden gap-1 sm:flex">
@@ -223,7 +179,12 @@ export function ReplayControls({
         ))}
       </div>
 
-      <div className="mt-3.5">
+      <div className="mt-3.5 grid gap-2">
+        <div className="flex items-center justify-between text-eyebrow font-bold uppercase text-white/60">
+          <span>Lap {currentLap}</span>
+          <span>{Math.round(progressPercent)}%</span>
+        </div>
+        
         <div className="relative w-full h-1.5 mt-1">
           {/* The visual progress track */}
           <div className="absolute inset-0 h-full overflow-hidden rounded-full bg-line">
