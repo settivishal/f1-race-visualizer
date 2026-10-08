@@ -47,12 +47,15 @@ export async function executeAsAdmin<TData, TVariables>(
   document: TypedDocumentString<TData, TVariables>,
   variables?: TVariables,
 ): Promise<TData> {
+  return run<TData, TVariables>(document, variables, await sessionFromAuth());
+}
+
+/** The signed-in admin from the request's cookies, or null. */
+export async function sessionFromAuth(): Promise<Session> {
   const authSession = await auth();
   const userId = authSession?.user?.id;
   const email = authSession?.user?.email;
-  const session: Session = userId && email ? { userId, email } : null;
-
-  return run<TData, TVariables>(document, variables, session);
+  return userId && email ? { userId, email } : null;
 }
 
 async function run<TData, TVariables>(

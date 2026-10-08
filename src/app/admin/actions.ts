@@ -1,9 +1,7 @@
 'use server';
 
 import { updateTag } from 'next/cache';
-import { auth } from '@/auth';
 import { getDb } from '@/db';
-import { appConfig } from '@/db/schema';
 import { readAppConfig } from '@/lib/app-config';
 import { executeAsAdmin } from '@/graphql/execute';
 import { drainPending } from '@/lib/ingest/pending';
@@ -13,31 +11,15 @@ import {
   UpdateRaceMetadataDocument,
   type TriggerIngestMutation,
 } from '@/graphql/generated/graphql';
+import { messageOf, numberField, requireAdmin, type ActionResult } from './action-helpers';
+
+export type { ActionResult };
 
 /**
- * Every write the admin can perform.
- *
- * **Each function calls `requireAdmin` as its first statement, and that is not
- * decoration.** An exported Server Action is reachable by direct POST whether
- * or not anything imports it, and a page-level check does not extend to the
- * actions defined beneath it — Next's own data-security guide says so in those
- * words. The proxy guards navigation to `/admin`; it does not guard this.
- *
- * The failure mode is what makes it worth stating: an action missing its check
- * behaves correctly through the UI forever, because the UI only ever reaches it
- * from a page the proxy already guarded. Nothing surfaces the gap.
- *
- * See docs/decisions.md, "Three guard layers, not two".
+ * Every write the admin can perform. Each one calls `requireAdmin` as its first
+ * statement; action-helpers.ts says why that is not decoration.
  */
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error('Unauthorized');
-}
 
-export type ActionResult =
-  | { ok: true; message: string }
-  | { ok: false; message: string }
-  | null;
 
 /**
  * Each action takes the previous result as its first argument because that is
@@ -143,8 +125,7 @@ export async function triggerIngestAction(
 ): Promise<ActionResult> {
   await requireAdmin();
 
-  const raw = String(formData.get('sessionKey') ?? '').trim();
-  const sessionKey = Number(raw);
+  const sessionKey = numberField(formData, 'sessionKey');
   if (!Number.isInteger(sessionKey) || sessionKey <= 0) {
     return { ok: false, message: 'A numeric OpenF1 session key is required.' };
   }
@@ -208,94 +189,4 @@ export async function catchUpAction(): Promise<ActionResult> {
       : '',
   ];
   return { ok: failed.length === 0, message: parts.filter(Boolean).join(' ') };
-}
-
-/**
- * A resolver error reaches here as a GraphQLError whose message is safe to
- * show — they are written by this codebase, not by a driver. Anything else is
- * reported generically rather than leaking an internal string into the UI.
- */
-function messageOf(error: unknown): string {
-  if (error instanceof Error && error.message) return error.message;
-  return 'Something went wrong.';
-}
-
-const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-
-/**
- * The cron's schedule, which is why it is editable at all.
- *
- * `vercel.json` fires the handler daily and cannot be changed without a deploy;
- * everything about *whether* it does anything lives in this row. So the cadence
- * moves without shipping code, and the static schedule never becomes the place
- * a decision hides.
- *
- * Written straight through Drizzle rather than a GraphQL mutation. The schema
- * exposes race data; a single settings row read and written by one page is not
- * a data-layer concern, and a mutation for it would be a public field guarding
- * something no client should ever ask about.
- */
-export async function updateConfigAction(
-  _previous: ActionResult,
-  formData: FormData,
-): Promise<ActionResult> {
-  await requireAdmin();
-
-  const activeSeason = Number(String(formData.get('activeSeason') ?? '').trim());
-  if (!Number.isInteger(activeSeason) || activeSeason < 1950 || activeSeason > 2100) {
-    return { ok: false, message: 'Active season must be a four-digit year.' };
-  }
-
-  const hoursAfterRace = Number(String(formData.get('hoursAfterRace') ?? '').trim());
-  if (!Number.isInteger(hoursAfterRace) || hoursAfterRace < 0 || hoursAfterRace > 336) {
-    return { ok: false, message: 'Hours after race must be between 0 and 336.' };
-  }
-
-  const predictionsShown = Number(String(formData.get('predictionsShown') ?? '').trim());
-  const predictionsExpanded = Number(String(formData.get('predictionsExpanded') ?? '').trim());
-  if (
-    !Number.isInteger(predictionsShown) || !Number.isInteger(predictionsExpanded)
-    || predictionsShown < 1 || predictionsExpanded < predictionsShown || predictionsExpanded > 30
-  ) {
-    return { ok: false, message: 'Predictions shown must be at least 1, and expanded between that and 30.' };
-  }
-
-  const runDays = WEEKDAYS.filter((day) => formData.get(`day-${day}`) === 'on');
-  if (runDays.length === 0) {
-    // Rejected rather than accepted silently: an empty list means the cron
-    // skips every day, which looks identical to it having stopped working.
-    return { ok: false, message: 'Pick at least one run day, or turn ingest off.' };
-  }
-
-  const ingestEnabled = formData.get('ingestEnabled') === 'on';
-  const db = getDb();
-
-  // The row is pinned to id 1 by a CHECK constraint, so this is an upsert on a
-  // table that can only ever hold one row.
-  await db
-    .insert(appConfig)
-    .values({
-      id: 1, ingestEnabled, runDays: [...runDays], activeSeason, hoursAfterRace,
-      predictionsShown, predictionsExpanded,
-    })
-    .onConflictDoUpdate({
-      target: appConfig.id,
-      set: {
-        ingestEnabled, runDays: [...runDays], activeSeason, hoursAfterRace,
-        predictionsShown, predictionsExpanded,
-      },
-    });
-
-  // The active season is now read by the home page and the standings default
-  // (Query.activeSeason), so this does change what a page renders. `updateTag`
-  // rather than `revalidateTag` for the reason above: an admin who just changed
-  // the season should see it, not last season served stale while it refreshes.
-  updateTag('settings');
-
-  return { ok: true, message: 'Settings saved.' };
-}
-
-export async function getAppConfig() {
-  await requireAdmin();
-  return readAppConfig(getDb());
 }
