@@ -102,6 +102,7 @@ query RaceHeader($slug: String!) {
       }
     }
     results {
+      gridPosition
       finalPosition
       lapsCompleted
       points
