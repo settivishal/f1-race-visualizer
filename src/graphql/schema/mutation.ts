@@ -1,11 +1,12 @@
 import { desc, eq } from 'drizzle-orm';
 import { ingestRace } from '@/lib/ingest/run';
-import { ingestRuns, meetings, races } from '@/db/schema';
+import { ingestRuns, meetings, races, raceStatus } from '@/db/schema';
 
-const RACE_STATUSES = ['SCHEDULED', 'COMPLETED', 'CANCELLED'] as const;
+const RACE_STATUSES = raceStatus.enumValues;
 type RaceStatusValue = (typeof RACE_STATUSES)[number];
 import { builder } from '../builder';
 import { requireSession } from '../context';
+import { IngestRunStatus } from './enums';
 import { Race } from './race';
 
 /**
@@ -21,9 +22,6 @@ import { Race } from './race';
  */
 type IngestRunRow = typeof ingestRuns.$inferSelect;
 
-const IngestRunStatus = builder.enumType('IngestRunStatus', {
-  values: ['RUNNING', 'SUCCESS', 'FAILED'] as const,
-});
 
 const IngestRun = builder.objectRef<IngestRunRow>('IngestRun').implement({
   fields: (t) => ({

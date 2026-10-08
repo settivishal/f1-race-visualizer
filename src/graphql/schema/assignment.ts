@@ -1,5 +1,8 @@
+import type { builder } from '../builder';
 import type { Context } from '../context';
-import { withSeasonColor } from './entity';
+import { Driver, Team, withSeasonColor } from './entity';
+
+type Types = typeof builder extends PothosSchemaTypes.SchemaBuilder<infer T> ? T : never;
 
 /**
  * The assignment is how storage links a driver to a team for a season
@@ -27,4 +30,25 @@ export async function teamOfAssignment(ctx: Context, assignmentId: string) {
   const team = await ctx.loaders.teamById.load(teamSeason.teamId);
   if (!team) return null;
   return withSeasonColor(team, teamSeason.color);
+}
+
+/**
+ * `driver` and `team` for any row that carries an assignment: the same two
+ * fields on positions, results, stints, lap traces and head-to-head sides.
+ */
+export function assignmentFields<Parent extends { assignmentId: string }>(
+  t: PothosSchemaTypes.ObjectFieldBuilder<Types, Parent>,
+) {
+  return {
+    driver: t.field({
+      type: Driver,
+      nullable: true,
+      resolve: (row, _args, ctx) => driverOfAssignment(ctx, row.assignmentId),
+    }),
+    team: t.field({
+      type: Team,
+      nullable: true,
+      resolve: (row, _args, ctx) => teamOfAssignment(ctx, row.assignmentId),
+    }),
+  };
 }

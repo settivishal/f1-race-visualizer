@@ -1,8 +1,9 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import {
-  driverTeamAssignments, drivers, meetings, raceResults, races, teamSeasons, teams,
+  driverTeamAssignments, drivers, meetings, raceResults, races, raceStatus, teamSeasons, teams,
 } from '@/db/schema';
 import { builder } from '../builder';
+import { resultTotals } from './aggregates';
 import { Driver, Team, withSeasonColor, seasonColorSql } from './entity';
 import type { DriverRow, TeamRow } from './entity';
 
@@ -99,10 +100,7 @@ builder.queryField('driverStandings', (t) =>
           driver: drivers,
           team: teams,
           teamColor: teamSeasons.color,
-          points: sql<number>`sum(${raceResults.points})`.mapWith(Number),
-          wins: sql<number>`count(*) filter (where ${raceResults.finalPosition} = 1 and ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-          podiums: sql<number>`count(*) filter (where ${raceResults.finalPosition} <= 3 and ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-          finishes: sql<number[]>`coalesce(array_remove(array_agg(${raceResults.finalPosition}) filter (where ${races.type} = 'GRAND_PRIX'), null), '{}')`,
+          ...resultTotals,
         })
         .from(raceResults)
         .innerJoin(races, eq(races.id, raceResults.raceId))
@@ -152,9 +150,9 @@ builder.queryField('constructorStandings', (t) =>
         .select({
           team: teams,
           teamColor: teamSeasons.color,
-          points: sql<number>`sum(${raceResults.points})`.mapWith(Number),
-          wins: sql<number>`count(*) filter (where ${raceResults.finalPosition} = 1 and ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-          finishes: sql<number[]>`coalesce(array_remove(array_agg(${raceResults.finalPosition}) filter (where ${races.type} = 'GRAND_PRIX'), null), '{}')`,
+          points: resultTotals.points,
+          wins: resultTotals.wins,
+          finishes: resultTotals.finishes,
         })
         .from(raceResults)
         .innerJoin(races, eq(races.id, raceResults.raceId))
@@ -200,9 +198,7 @@ type PulseRoundShape = {
   teamColor: string | null;
 };
 
-const PulseStatus = builder.enumType('PulseRoundStatus', {
-  values: ['SCHEDULED', 'COMPLETED', 'CANCELLED'] as const,
-});
+const PulseStatus = builder.enumType('PulseRoundStatus', { values: raceStatus.enumValues });
 
 const PulseRound = builder.objectRef<PulseRoundShape>('PulseRound').implement({
   fields: (t) => ({
