@@ -15,6 +15,8 @@ type RaceCarProps = {
 
 const CAR_WIDTH = 46;
 const CAR_HEIGHT = 18;
+/** Space between the car's dot on its line and the badge's left edge. */
+const BADGE_GAP = 6;
 
 export function RaceCar({
   color,
@@ -43,6 +45,10 @@ export function RaceCar({
         opacity: muted ? 0.45 : 1,
       }}
     >
+      {/* Drawn beside the car's position, not on it: `x`/`y` are the head
+          of the line, and centring the badge there covered the line's last
+          laps along with everyone else's. */}
+      <g transform={`translate(${BADGE_GAP + CAR_WIDTH / 2} 0)`}>
       {/* Glow shadow behind badge on hover or caution */}
       <rect
         x={-CAR_WIDTH / 2}
@@ -141,6 +147,7 @@ export function RaceCar({
           </text>
         </g>
       ) : null}
+      </g>
     </motion.g>
   );
 }
