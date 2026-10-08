@@ -5,6 +5,8 @@ import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatRow } from '@/components/archive/record-table';
+import { TeamCode } from '@/components/race/circuit-info-panel';
+import { Card } from '@/components/ui/card';
 import { getArchiveIndex, getCircuitProfile } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
 import { BackLink } from '@/components/ui/back-link';
@@ -104,13 +106,46 @@ async function CircuitDetail({ params }: { params: Promise<{ id: string }> }) {
         </p>
       )}
 
-      <p className="mt-8 text-sm text-muted">
-        Looking for the races held here?{' '}
-        <Link href={`/races?q=${encodeURIComponent(circuit.locality ?? circuit.name)}`} className="text-accent hover:underline">
-          Search the race library
-        </Link>
-        .
-      </p>
+      {circuit.races.length > 0 ? (
+        <section className="mt-10">
+          <h2 className="type-section-title">Races here</h2>
+          <Card className="mt-4 p-0">
+            <ul>
+              {circuit.races.map((race) => (
+                <li key={race.slug} className="border-b border-line/60 last:border-0">
+                  <Link
+                    href={`/races/${race.slug}`}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 transition-colors hover:bg-panel-strong"
+                  >
+                    <span className="tabular w-10 text-sm font-semibold">{race.meeting?.season}</span>
+                    <span className="min-w-40 flex-1 text-sm">{race.meeting?.name ?? race.slug}</span>
+                    {race.podium.length > 0 ? (
+                      <span className="flex gap-4">
+                        {race.podium.map((slot) => (
+                          <TeamCode key={slot.position} code={slot.code} teamColor={slot.teamColor} />
+                        ))}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted">
+                        <span className="tabular">{race.date.slice(0, 10)}</span> · Not yet run
+                      </span>
+                    )}
+                    <span aria-hidden className="text-accent">→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        </section>
+      ) : (
+        <p className="mt-8 text-sm text-muted">
+          Looking for the races held here?{' '}
+          <Link href={`/races?q=${encodeURIComponent(circuit.locality ?? circuit.name)}`} className="text-accent hover:underline">
+            Search the race library
+          </Link>
+          .
+        </p>
+      )}
     </>
   );
 }

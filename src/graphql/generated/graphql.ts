@@ -133,7 +133,7 @@ export type CircuitProfileQueryVariables = Exact<{
 }>;
 
 
-export type CircuitProfileQuery = { circuit: { id: string, ergastId: string, name: string, locality: string | null, country: string | null, latitude: number | null, longitude: number | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null } | null };
+export type CircuitProfileQuery = { circuit: { id: string, ergastId: string, name: string, locality: string | null, country: string | null, latitude: number | null, longitude: number | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number, name: string } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> } | null };
 
 export type HomeLineupQueryVariables = Exact<{
   season: number;
@@ -187,7 +187,7 @@ export type RaceHeaderQueryVariables = Exact<{
 }>;
 
 
-export type RaceHeaderQuery = { race: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null, circuit: { ergastId: string, name: string, locality: string | null, country: string | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null } | null, races: Array<{ slug: string, type: RaceType, status: RaceStatus }> } | null, results: Array<{ gridPosition: number | null, finalPosition: number | null, lapsCompleted: number, points: number, status: DriverStatus, fastestLap: boolean, driver: { code: string, name: string, number: number | null } | null, team: { name: string, color: string | null } | null }> } | null };
+export type RaceHeaderQuery = { race: { id: string, slug: string, date: string, laps: number, status: RaceStatus, type: RaceType, meeting: { name: string, country: string, circuitName: string | null, season: number, round: number | null, circuit: { ergastId: string, name: string, locality: string | null, country: string | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> } | null, races: Array<{ slug: string, type: RaceType, status: RaceStatus }> } | null, results: Array<{ gridPosition: number | null, finalPosition: number | null, lapsCompleted: number, points: number, status: DriverStatus, fastestLap: boolean, driver: { code: string, name: string, number: number | null } | null, team: { name: string, color: string | null } | null }> } | null };
 
 export type RaceSlugsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -619,6 +619,20 @@ export const CircuitProfileDocument = new TypedDocumentString(`
     lengthKm
     turns
     firstGrandPrix
+    races {
+      slug
+      date
+      status
+      meeting {
+        season
+        name
+      }
+      podium {
+        position
+        code
+        teamColor
+      }
+    }
   }
 }
     `) as unknown as TypedDocumentString<CircuitProfileQuery, CircuitProfileQueryVariables>;
@@ -816,6 +830,19 @@ export const RaceHeaderDocument = new TypedDocumentString(`
         lengthKm
         turns
         firstGrandPrix
+        races {
+          slug
+          date
+          status
+          meeting {
+            season
+          }
+          podium {
+            position
+            code
+            teamColor
+          }
+        }
       }
       races {
         slug
