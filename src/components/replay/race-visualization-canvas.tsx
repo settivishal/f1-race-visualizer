@@ -25,6 +25,7 @@ import {
   makeLapX,
   makePositionY,
   minFrameHeight,
+  trailPositions,
   type ChartSize,
 } from "./chart-layout";
 import { AnimatedCar } from "./car-layers";
@@ -152,7 +153,7 @@ export function RaceVisualizationCanvas({
           retirementLap !== null ? getDriverPointForLap(entry.positions, retirementLap) : null;
         const fullPath = buildPath(visiblePositions, lapX, positionY);
         const trail = buildPath(
-          visiblePositions.filter((position) => position.lap <= currentLap),
+          trailPositions(visiblePositions, currentLap, isCarActive),
           lapX,
           positionY,
         );

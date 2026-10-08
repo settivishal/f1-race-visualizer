@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lapWindowFor, minFrameHeight } from './chart-layout';
+import { lapWindowFor, minFrameHeight, trailPositions } from './chart-layout';
 
 describe('lapWindowFor', () => {
   it('shows the whole race on a desktop, however narrow the chart', () => {
@@ -21,5 +21,22 @@ describe('minFrameHeight', () => {
     expect(minFrameHeight(22)).toBeGreaterThan(minFrameHeight(18));
     // 21 gaps of 20px between P1 and P22, plus the margins.
     expect(minFrameHeight(22)).toBe(80 + 48 + 21 * 20);
+  });
+});
+
+describe('trailPositions', () => {
+  const at = (lap: number, position: number) => ({ lap, position }) as Parameters<typeof trailPositions>[0][number];
+
+  it('carries a car with no row for the lap to the playhead at its last position', () => {
+    // Spa 2026: lap 45 holds only the leader's row.
+    expect(trailPositions([at(43, 3), at(44, 2)], 45, true).map((p) => [p.lap, p.position])).toEqual([
+      [43, 3],
+      [44, 2],
+      [45, 2],
+    ]);
+  });
+
+  it('leaves a retired car where it stopped', () => {
+    expect(trailPositions([at(10, 5)], 12, false)).toHaveLength(1);
   });
 });
