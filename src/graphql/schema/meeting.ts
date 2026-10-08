@@ -40,6 +40,11 @@ Meeting.implement({
       nullable: true,
       resolve: (meeting, _args, ctx) => ctx.loaders.officialRoundByMeetingId.load(meeting.id),
     }),
+    // Midnight at the track on the day of first practice. See the loader.
+    weekendStart: t.field({
+      type: 'DateTime',
+      resolve: (meeting, _args, ctx) => ctx.loaders.weekendStartByMeetingId.load(meeting.id),
+    }),
     name: t.exposeString('name'),
     country: t.exposeString('country'),
     circuitName: t.exposeString('circuitName', { nullable: true }),

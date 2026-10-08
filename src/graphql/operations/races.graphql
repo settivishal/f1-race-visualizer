@@ -28,6 +28,7 @@ query RaceLibrary($season: Int, $search: String, $first: Int, $after: String, $b
           circuitName
           round: officialRound
           season
+          weekendStart
         }
         podium {
           position
@@ -54,15 +55,6 @@ query RaceLibrary($season: Int, $search: String, $first: Int, $after: String, $b
   }
   seasons {
     year
-  }
-  # Which tile is "upcoming" and which one glows. Asked globally rather than
-  # derived from the page's own edges, so both stay right on page two of "all
-  # seasons" and on a past season, where neither should match anything.
-  latestRace {
-    slug
-  }
-  nextRace {
-    slug
   }
 }
 

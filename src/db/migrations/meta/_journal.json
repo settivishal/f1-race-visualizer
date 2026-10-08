@@ -64,6 +64,13 @@
       "when": 1791129969320,
       "tag": "0008_prediction_display",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791499665384,
+      "tag": "0009_meeting_utc_offset",
+      "breakpoints": true
     }
   ]
 }
