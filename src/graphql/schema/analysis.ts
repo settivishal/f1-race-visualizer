@@ -4,8 +4,8 @@ import { summarizePace, markOutliers, type LapTime } from '@/lib/pace';
 import { isRacingStop } from '@/lib/pit-stops';
 import { builder } from '../builder';
 import type { Context } from '../context';
-import { Driver, Team } from './entity';
-import { driverOfAssignment, teamOfAssignment } from './assignment';
+import { Driver } from './entity';
+import { assignmentFields, driverOfAssignment } from './assignment';
 
 /**
  * Everything the Analysis tab needs, behind one field.
@@ -64,16 +64,7 @@ const Stint = builder.objectRef<StintRow>('Stint').implement({
     lapStart: t.exposeInt('lapStart'),
     lapEnd: t.exposeInt('lapEnd'),
     compound: t.exposeString('compound', { nullable: true }),
-    driver: t.field({
-      type: Driver,
-      nullable: true,
-      resolve: (row, _args, ctx) => driverOfAssignment(ctx, row.assignmentId),
-    }),
-    team: t.field({
-      type: Team,
-      nullable: true,
-      resolve: (row, _args, ctx) => teamOfAssignment(ctx, row.assignmentId),
-    }),
+    ...assignmentFields(t),
   }),
 });
 
@@ -133,16 +124,7 @@ type DriverLapsShape = { assignmentId: string; laps: LapTime[]; pitLaps: number[
 
 const DriverLapTimes = builder.objectRef<DriverLapsShape>('DriverLapTimes').implement({
   fields: (t) => ({
-    driver: t.field({
-      type: Driver,
-      nullable: true,
-      resolve: (row, _args, ctx) => driverOfAssignment(ctx, row.assignmentId),
-    }),
-    team: t.field({
-      type: Team,
-      nullable: true,
-      resolve: (row, _args, ctx) => teamOfAssignment(ctx, row.assignmentId),
-    }),
+    ...assignmentFields(t),
     laps: t.field({
       type: [Lap],
       resolve: (row) => markOutliers(row.laps, row.pitLaps),
@@ -165,16 +147,7 @@ type SideShape = {
 
 const HeadToHeadSide = builder.objectRef<SideShape>('HeadToHeadSide').implement({
   fields: (t) => ({
-    driver: t.field({
-      type: Driver,
-      nullable: true,
-      resolve: (row, _args, ctx) => driverOfAssignment(ctx, row.assignmentId),
-    }),
-    team: t.field({
-      type: Team,
-      nullable: true,
-      resolve: (row, _args, ctx) => teamOfAssignment(ctx, row.assignmentId),
-    }),
+    ...assignmentFields(t),
     finalPosition: t.exposeInt('finalPosition', { nullable: true }),
     pace: t.field({ type: Pace, resolve: (row) => summarizePace(row.laps, row.pitLaps) }),
   }),

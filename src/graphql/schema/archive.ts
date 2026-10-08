@@ -4,6 +4,7 @@ import {
   teamSeasons, teams,
 } from '@/db/schema';
 import { builder } from '../builder';
+import { resultTotals } from './aggregates';
 import { Circuit } from './meeting';
 import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow, withSeasonColor } from './entity';
 
@@ -80,9 +81,9 @@ const sum = <T>(rows: T[], of: (row: T) => number) =>
 const careerColumns = {
   season: meetings.seasonYear,
   starts: sql<number>`count(*) filter (where ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-  wins: sql<number>`count(*) filter (where ${raceResults.finalPosition} = 1 and ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-  podiums: sql<number>`count(*) filter (where ${raceResults.finalPosition} <= 3 and ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-  points: sql<number>`sum(${raceResults.points})`.mapWith(Number),
+  wins: resultTotals.wins,
+  podiums: resultTotals.podiums,
+  points: resultTotals.points,
   bestFinish: sql<number | null>`min(${raceResults.finalPosition}) filter (where ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
 };
 
