@@ -9,7 +9,29 @@ export type CircuitFacts = {
   lengthKm: number | null;
   turns: number | null;
   firstGrandPrix: number | null;
+  /** Its grands prix, newest first. */
+  races: {
+    slug: string;
+    date: string;
+    status: string;
+    meeting: { season: number } | null;
+    podium: { position: number; code: string; teamColor: string | null }[];
+  }[];
 };
+
+/** A driver's code behind their team's colour bar, as on the race list. */
+export function TeamCode({ code, teamColor }: { code: string; teamColor: string | null }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span
+        aria-hidden
+        className="h-3.5 w-[3px] rounded-full"
+        style={{ backgroundColor: teamColor ?? "var(--muted)" }}
+      />
+      <span className="font-mono text-sm font-semibold text-foreground">{code}</span>
+    </span>
+  );
+}
 
 /**
  * The circuit, from the database.
@@ -30,12 +52,15 @@ export function CircuitInfoPanel({
   circuitName,
   country,
   laps,
+  date,
 }: {
   circuit: CircuitFacts | null;
   /** The name on the meeting, used when no circuit row is linked yet. */
   circuitName: string | null;
   country: string | null;
   laps: number;
+  /** This race's start, so the winners shown are the ones before it. */
+  date: string;
 }) {
   const name = circuit?.name ?? circuitName ?? "Circuit";
   const place = [circuit?.locality, circuit?.country ?? country].filter(Boolean).join(", ");
@@ -57,6 +82,12 @@ export function CircuitInfoPanel({
   if (circuit?.firstGrandPrix != null) {
     facts.push({ label: "First grand prix", value: String(circuit.firstGrandPrix) });
   }
+
+  // The last three run here before this race — on an old race page, history
+  // up to then rather than results from years it had not reached yet.
+  const winners = (circuit?.races ?? [])
+    .filter((race) => race.status === "COMPLETED" && race.date < date && race.podium[0])
+    .slice(0, 3);
 
   return (
     <Card>
@@ -85,6 +116,25 @@ export function CircuitInfoPanel({
             </div>
           ))}
         </dl>
+      ) : null}
+
+      {winners.length > 0 ? (
+        <div className="mt-6 border-t border-line pt-4">
+          <p className="text-[11px] uppercase tracking-wider text-muted">Recent winners here</p>
+          <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+            {winners.map((race) => (
+              <li key={race.slug}>
+                <Link
+                  href={`/races/${race.slug}`}
+                  className="inline-flex items-center gap-2 rounded-sm text-muted transition-colors hover:text-foreground"
+                >
+                  <span className="tabular text-sm">{race.meeting?.season}</span>
+                  <TeamCode code={race.podium[0].code} teamColor={race.podium[0].teamColor} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {/* Only on a race that has run, where the missing figures are a gap in
