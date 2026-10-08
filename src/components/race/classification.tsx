@@ -5,12 +5,17 @@ import { gridDelta, lapsDown } from './classification-math';
 type Result = NonNullable<RaceHeaderQuery['race']>['results'][number];
 
 /**
- * The final classification, told as the race rather than listed: the podium on
- * its steps, then every other car as a bar of how far it got, with what it
- * gained or lost from the grid.
+ * The final classification: the podium as one quiet strip, then everyone else
+ * as a list that says in words how their race ended.
+ *
+ * Colour is kept for meaning. The team is a dot beside the name, the grid
+ * change is green or red, and nothing else is coloured — so the eye lands on
+ * the few things that differ rather than on twenty liveries. Only cars that
+ * did not finish get a distance line, so a retirement stands out from a list
+ * of finishers instead of hiding among twenty full bars.
  *
  * Only what both upstreams record. There is no gap or race time — `gap` is
- * null on every row — so a bar of distance stands in for a column of times.
+ * null on every row — so the words carry what a time column would.
  */
 export function Classification({ results, caption }: { results: Result[]; caption: string }) {
   const sorted = [...results].sort((a, b) => {
@@ -33,26 +38,35 @@ export function Classification({ results, caption }: { results: Result[]; captio
     <section className="mt-10">
       <h2 className="type-section-title">Classification</h2>
 
-      {hasPodium ? (
-        <ol aria-label="Podium" className="mt-4 grid items-end gap-3 sm:grid-cols-3">
-          {podium.map((result) => (
-            <PodiumStep key={result.driver?.code ?? result.finalPosition} result={result} showGrid={showGrid} />
-          ))}
-        </ol>
-      ) : null}
+      <Card className="mt-4 overflow-hidden p-0">
+        {hasPodium ? (
+          <ol
+            aria-label="Podium"
+            className="grid divide-y divide-line border-b border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0"
+          >
+            {podium.map((result) => (
+              <PodiumPlace
+                key={result.driver?.code ?? result.finalPosition}
+                result={result}
+                showGrid={showGrid}
+              />
+            ))}
+          </ol>
+        ) : null}
 
-      <Card className="mt-4 overflow-x-auto p-0">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr className="border-b border-line text-eyebrow uppercase text-muted">
-              <th scope="col" className="w-12 py-3 pl-4 pr-2 font-semibold sm:w-14 sm:pl-5 sm:pr-3">Pos</th>
+              <th scope="col" className="w-12 py-3 pl-4 pr-2 font-semibold sm:w-16 sm:pl-6">Pos</th>
               <th scope="col" className="py-3 pr-3 font-semibold">Driver</th>
-              <th scope="col" className="w-[24%] py-3 pr-3 font-semibold sm:w-[38%]">Race</th>
+              <th scope="col" className="w-20 py-3 pr-3 font-semibold sm:w-[34%]">Result</th>
               {showGrid ? (
-                <th scope="col" className="hidden py-3 pr-3 text-right font-semibold sm:table-cell">Grid</th>
+                <th scope="col" className="hidden w-16 py-3 pr-3 text-right font-semibold sm:table-cell">
+                  Grid
+                </th>
               ) : null}
-              <th scope="col" className="py-3 pr-5 text-right font-semibold">Pts</th>
+              <th scope="col" className="w-14 py-3 pr-4 text-right font-semibold sm:pr-6">Pts</th>
             </tr>
           </thead>
           <tbody>
@@ -61,14 +75,23 @@ export function Classification({ results, caption }: { results: Result[]; captio
                 key={result.driver?.code ?? `row-${index}`}
                 className="border-b border-line/60 last:border-0"
               >
-                <td className="tabular py-3 pl-4 pr-2 font-semibold text-muted sm:pl-5 sm:pr-3">
+                <td className="tabular py-3 pl-4 pr-2 text-muted sm:pl-6">
                   <PositionLabel result={result} />
                 </td>
                 <td className="py-3 pr-3">
-                  <DriverCell result={result} gridOnPhone={showGrid} />
+                  <DriverName result={result} />
+                  <span className="mt-0.5 flex items-center gap-2 pl-4 text-xs text-muted">
+                    {result.team?.name ?? '—'}
+                    {/* A phone has no Grid column; the change rides here. */}
+                    {showGrid ? (
+                      <span className="sm:hidden">
+                        <GridChange result={result} />
+                      </span>
+                    ) : null}
+                  </span>
                 </td>
                 <td className="py-3 pr-3">
-                  <DistanceBar result={result} raceLaps={raceLaps} />
+                  <RaceEnd result={result} raceLaps={raceLaps} />
                 </td>
                 {showGrid ? (
                   <td className="hidden py-3 pr-3 text-right sm:table-cell">
@@ -76,8 +99,8 @@ export function Classification({ results, caption }: { results: Result[]; captio
                   </td>
                 ) : null}
                 <td
-                  className={`tabular py-3 pr-5 text-right ${
-                    result.points > 0 ? 'font-bold' : 'text-subtle'
+                  className={`tabular py-3 pr-4 text-right sm:pr-6 ${
+                    result.points > 0 ? 'font-semibold' : 'text-subtle'
                   }`}
                 >
                   {result.points}
@@ -92,88 +115,77 @@ export function Classification({ results, caption }: { results: Result[]; captio
 }
 
 /** P2, P1, P3 left to right on a desktop, the way a podium stands. */
-const STEP: Record<number, string> = {
-  1: 'sm:order-2 sm:pt-10 podium-lead border-accent/40 bg-accent-soft',
-  2: 'sm:order-1 sm:pt-6 border-line bg-panel',
-  3: 'sm:order-3 sm:pt-3 border-line bg-panel',
-};
+const ORDER: Record<number, string> = { 1: 'sm:order-2', 2: 'sm:order-1', 3: 'sm:order-3' };
 
-function PodiumStep({ result, showGrid }: { result: Result; showGrid: boolean }) {
+function PodiumPlace({ result, showGrid }: { result: Result; showGrid: boolean }) {
   const position = result.finalPosition ?? 0;
-  // On the podium only a move is worth a mark; "=" beside the points read as
-  // part of them.
-  const moved = showGrid && (gridDelta(result) ?? 0) !== 0;
+  const delta = showGrid ? gridDelta(result) : null;
+  const winner = position === 1;
+
   return (
+    // A row on a phone, number beside the name; a column on a desktop.
     <li
-      className={`relative overflow-hidden rounded-xl border px-5 pb-5 pt-4 ${STEP[position] ?? ''}`}
+      className={`grid grid-cols-[3rem_1fr] items-center gap-x-3 px-5 py-4 sm:flex sm:flex-col sm:items-stretch sm:px-6 sm:py-6 ${
+        ORDER[position] ?? ''
+      }`}
     >
-      {/* The team's colour across the top of the step, like a livery stripe. */}
+      <span className="col-start-2 flex h-4 items-center gap-1.5 text-eyebrow font-semibold uppercase text-muted empty:hidden sm:empty:flex">
+        {winner ? (
+          <>
+            <ChequeredFlag />
+            Winner
+          </>
+        ) : null}
+      </span>
       <span
-        className="absolute inset-x-0 top-0 h-1"
-        style={{ backgroundColor: result.team?.color ?? 'var(--muted)' }}
-        aria-hidden
-      />
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={`font-heading text-5xl font-extrabold leading-none tabular ${
-            position === 1 ? 'text-accent' : 'text-subtle'
-          }`}
-        >
-          {position}
-        </span>
-        <span className="flex items-center gap-2">
-          {moved ? <GridChange result={result} /> : null}
-          <span className="tabular rounded-md bg-panel-strong px-2 py-0.5 text-xs font-bold">
-            {result.points} pts
+        className={`tabular row-span-4 row-start-1 font-heading text-5xl font-light leading-none sm:mt-1 sm:text-6xl ${
+          winner ? 'text-foreground' : 'text-subtle'
+        }`}
+      >
+        {position}
+      </span>
+      <span className="col-start-2 sm:mt-5">
+        <DriverName result={result} large />
+      </span>
+      <span className="col-start-2 mt-0.5 pl-4 text-sm text-muted">{result.team?.name ?? '—'}</span>
+      <span className="col-start-2 mt-2 flex items-baseline gap-3 pl-4 text-sm sm:mt-4">
+        <span className="tabular font-semibold">{result.points} pts</span>
+        {delta !== null && delta !== 0 ? (
+          <span className="text-muted">
+            <GridChange result={result} /> from P{result.gridPosition}
           </span>
-        </span>
-      </div>
-      <div className="mt-4">
-        <DriverCell result={result} large />
-      </div>
+        ) : null}
+      </span>
     </li>
   );
 }
 
-function DriverCell({
-  result,
-  large = false,
-  gridOnPhone = false,
-}: {
-  result: Result;
-  large?: boolean;
-  /** A phone has no Grid column; the change rides on the team line instead. */
-  gridOnPhone?: boolean;
-}) {
+/** The team as a dot, the name, and the fastest-lap mark if it is theirs. */
+function DriverName({ result, large = false }: { result: Result; large?: boolean }) {
   return (
-    <span className="flex items-center gap-2.5">
-      {large ? null : (
-        <span
-          className="h-8 w-1 shrink-0 rounded-full"
-          style={{ backgroundColor: result.team?.color ?? 'var(--muted)' }}
-          aria-hidden
-        />
-      )}
-      <span className="min-w-0">
-        <span className="flex items-center gap-2">
-          <span className="hidden font-mono text-xs font-medium text-muted sm:inline">
-            {result.driver?.code ?? '—'}
-          </span>
-          <span className={`truncate font-semibold ${large ? 'text-lg' : ''}`}>
-            {result.driver?.name ?? 'Unknown driver'}
-          </span>
-          {result.fastestLap ? <FastestLap /> : null}
-        </span>
-        <span className="flex items-center gap-2 truncate text-xs text-muted">
-          {result.team?.name ?? '—'}
-          {gridOnPhone && gridDelta(result) !== null ? (
-            <span className="sm:hidden">
-              <GridChange result={result} />
-            </span>
-          ) : null}
-        </span>
+    <span className="flex items-center gap-2">
+      <span
+        className="size-2 shrink-0 rounded-full"
+        style={{ backgroundColor: result.team?.color ?? 'var(--muted)' }}
+        aria-hidden
+      />
+      <span className={`truncate font-medium ${large ? 'text-lg' : ''}`}>
+        {result.driver?.name ?? 'Unknown driver'}
       </span>
+      {result.fastestLap ? <FastestLap /> : null}
     </span>
+  );
+}
+
+function ChequeredFlag() {
+  return (
+    <svg viewBox="0 0 12 12" className="size-3" aria-hidden>
+      <rect width="12" height="12" rx="1.5" className="fill-current opacity-25" />
+      <path
+        d="M0 0h3v3H0zM6 0h3v3H6zM3 3h3v3H3zM9 3h3v3H9zM0 6h3v3H0zM6 6h3v3H6zM3 9h3v3H3zM9 9h3v3H9z"
+        className="fill-current"
+      />
+    </svg>
   );
 }
 
@@ -200,77 +212,75 @@ function PositionLabel({ result }: { result: Result }) {
   return <>{result.status}</>;
 }
 
-/** How far the car got, as a share of the winner's distance. */
-function DistanceBar({ result, raceLaps }: { result: Result; raceLaps: number }) {
-  const share = raceLaps > 0 ? Math.min(1, result.lapsCompleted / raceLaps) : 0;
+/**
+ * How the race ended, in words. A car that stopped short of the flag also gets
+ * a hairline of how far it got, so the few who did are the only marks in the
+ * column.
+ */
+function RaceEnd({ result, raceLaps }: { result: Result; raceLaps: number }) {
   const down = lapsDown(result, raceLaps);
-  const stopped = result.status === 'DNF';
-  const label =
+  const classified = result.finalPosition !== null;
+  const text =
     result.status === 'DNS'
       ? 'Did not start'
       : result.status === 'DSQ'
         ? 'Disqualified'
-        : stopped
-        ? `Out lap ${result.lapsCompleted}`
-        : result.finalPosition === null
-          ? `NC · ${result.lapsCompleted} laps`
-          : down > 0
-            ? `+${down} lap${down === 1 ? '' : 's'}`
-            : null;
+        : result.status === 'DNF'
+          ? `Retired · lap ${result.lapsCompleted}`
+          : !classified
+            ? `Not classified · ${result.lapsCompleted} laps`
+            : down > 0
+              ? `+${down} lap${down === 1 ? '' : 's'}`
+              : 'Finished';
+  // The Pos column already says DNF, NC, DNS or DSQ, so a phone's narrow
+  // column keeps only the number that goes with it.
+  const brief =
+    result.status === 'DNF'
+      ? `Out lap ${result.lapsCompleted}`
+      : !classified && result.status === 'FINISHED'
+        ? `${result.lapsCompleted} laps`
+        : down > 0
+          ? text
+          : '—';
+  const stoppedShort = !classified && result.status !== 'DNS' && result.status !== 'DSQ';
+  const share = raceLaps > 0 ? Math.min(1, result.lapsCompleted / raceLaps) : 0;
 
   return (
-    <span className="flex items-center gap-3">
-      <span className="relative h-1.5 min-w-12 flex-1 rounded-full bg-line" aria-hidden>
-        <span
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{
-            width: `${share * 100}%`,
-            backgroundColor: result.team?.color ?? 'var(--muted)',
-            opacity: result.finalPosition === null ? 0.55 : 1,
-          }}
-        />
-        {stopped && share > 0 ? (
-          // Where the car stopped, as the replay marks a retirement.
-          <span
-            className="absolute top-1/2 grid size-3.5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 bg-track text-[8px] font-bold leading-none text-white"
-            style={{ left: `${share * 100}%`, borderColor: result.team?.color ?? 'var(--muted)' }}
-          >
-            ×
-          </span>
-        ) : null}
+    <span className="block">
+      <span className={classified && down === 0 ? 'text-muted' : ''}>
+        <span className="sr-only sm:not-sr-only">{text}</span>
+        <span className="sm:hidden" aria-hidden>
+          {brief}
+        </span>
       </span>
-      <span className="sr-only">
-        {result.lapsCompleted} of {raceLaps} laps
-      </span>
-      {/* Off on a phone: the Pos column already says DNF or NC, and the bar
-          needs the width more than the words do. */}
-      <span className="tabular hidden w-24 shrink-0 text-xs text-muted sm:block" aria-hidden={label === null}>
-        {label}
-      </span>
+      {stoppedShort ? (
+        <span className="mt-1.5 block h-px w-full max-w-40 bg-line" aria-hidden>
+          <span className="block h-px bg-muted" style={{ width: `${share * 100}%` }} />
+        </span>
+      ) : null}
     </span>
   );
 }
 
+/** Places from the grid: green gained, red lost, a dash for held. */
 function GridChange({ result }: { result: Result }) {
   const delta = gridDelta(result);
-  if (delta === null) return <span className="text-subtle">—</span>;
+  if (delta === null) return null;
   const title = `Started P${result.gridPosition}`;
   if (delta === 0) {
     return (
-      <span className="tabular text-xs font-semibold text-muted" title={title}>
-        =<span className="sr-only">, held position from P{result.gridPosition}</span>
+      <span className="tabular text-subtle" title={title}>
+        —<span className="sr-only">held position from P{result.gridPosition}</span>
       </span>
     );
   }
   const gained = delta > 0;
   return (
     <span
-      className={`tabular inline-flex items-center gap-0.5 text-xs font-bold ${
-        gained ? 'text-flag-green' : 'text-flag-red'
-      }`}
+      className={`tabular font-semibold ${gained ? 'text-flag-green' : 'text-flag-red'}`}
       title={title}
     >
-      <span aria-hidden>{gained ? '▲' : '▼'}</span>
+      {gained ? '+' : '−'}
       {Math.abs(delta)}
       <span className="sr-only">
         {gained ? ' places gained' : ' places lost'} from P{result.gridPosition}
