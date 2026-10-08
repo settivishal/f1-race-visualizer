@@ -1,7 +1,6 @@
 import { revalidateTag } from 'next/cache';
-import { eq } from 'drizzle-orm';
 import { getDb } from '@/db';
-import { appConfig } from '@/db/schema';
+import { readAppConfig } from '@/lib/app-config';
 import { isAuthorized } from '@/lib/cron-auth';
 import { fillGrids } from '@/lib/ingest/grid';
 import { drainPending } from '@/lib/ingest/pending';
@@ -50,7 +49,7 @@ async function handle(request: Request) {
   }
 
   const db = getDb();
-  const [config] = await db.select().from(appConfig).where(eq(appConfig.id, 1)).limit(1);
+  const config = await readAppConfig(db);
 
   // A skip is a 200 with a reason, not an error: nothing is wrong, and a 500
   // would make Vercel report a healthy cron as failing. The reason lands in the

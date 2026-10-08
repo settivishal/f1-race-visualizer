@@ -1,24 +1,24 @@
 import { cacheLife, cacheTag } from 'next/cache';
 import { executeQuery } from '@/graphql/execute';
-import type {
-  ArchiveIndexQuery,
-  CircuitProfileQuery,
-  DriverProfileQuery,
-  HeadToHeadQuery,
-  HeroReplayQuery,
-  LatestResultQuery,
-  SeasonPulseQuery,
-  RaceAnalysisQuery,
-  TeamProfileQuery,
-  HomeLineupQuery,
-  RaceReplayQuery,
-  RaceHeaderQuery,
-  RacePredictionsQuery,
-  RaceLibraryQuery,
-  RaceSlugsQuery,
-  ActiveSeasonQuery,
-  SeasonScheduleQuery,
-  SeasonStandingsQuery,
+import {
+  ActiveSeasonDocument,
+  ArchiveIndexDocument,
+  CircuitProfileDocument,
+  DriverProfileDocument,
+  HeadToHeadDocument,
+  HeroReplayDocument,
+  HomeLineupDocument,
+  LatestResultDocument,
+  RaceAnalysisDocument,
+  RaceHeaderDocument,
+  RaceLibraryDocument,
+  RacePredictionsDocument,
+  RaceReplayDocument,
+  RaceSlugsDocument,
+  SeasonPulseDocument,
+  SeasonScheduleDocument,
+  SeasonStandingsDocument,
+  TeamProfileDocument,
 } from '@/graphql/generated/graphql';
 
 /**
@@ -48,87 +48,6 @@ import type {
  * enough that ordinary traffic never wakes the database.
  */
 
-const HOME_LINEUP = /* GraphQL */ `
-  query HomeLineup($season: Int!) {
-    driverStandings(season: $season) {
-      position
-      points
-      driver { code name number }
-      team { name color }
-    }
-  }
-`;
-
-const RACE_LIBRARY = /* GraphQL */ `
-  query RaceLibrary($season: Int, $search: String, $first: Int, $after: String, $before: String) {
-    # Grands prix only: a sprint is a session inside the weekend, and it arrives
-    # on its grand prix as \`weekendSprint\` rather than as a second card.
-    races(
-      season: $season
-      search: $search
-      type: GRAND_PRIX
-      first: $first
-      after: $after
-      before: $before
-    ) {
-      edges {
-        cursor
-        node {
-          id slug date laps status type isFeatured
-          meeting { name country circuitName round: officialRound season }
-          podium { position code teamColor }
-          weekendSprint {
-            slug
-            status
-            podium { position code teamColor }
-          }
-        }
-      }
-      pageInfo { hasNextPage hasPreviousPage startCursor endCursor }
-    }
-    seasons { year }
-    # Which tile is "upcoming" and which one glows. Asked globally rather than
-    # derived from the page's own edges, so both stay right on page two of "all
-    # seasons" and on a past season, where neither should match anything.
-    latestRace { slug }
-    nextRace { slug }
-  }
-`;
-
-const RACE_HEADER = /* GraphQL */ `
-  query RaceHeader($slug: String!) {
-    race(slug: $slug) {
-      id slug date laps status type
-      meeting {
-        name country circuitName round: officialRound season
-        circuit { ergastId name locality country lengthKm turns firstGrandPrix }
-        # The weekend's other sessions, so a race page can point at its sibling
-        # — the library shows one card per weekend, and without this the sprint
-        # is reachable from the card and from nowhere else.
-        races { slug type status }
-      }
-      results {
-        gridPosition finalPosition lapsCompleted points status fastestLap
-        driver { code name number }
-        team { name color }
-      }
-    }
-  }
-`;
-
-const RACE_PREDICTIONS = /* GraphQL */ `
-  query RacePredictions($slug: String!) {
-    race(slug: $slug) {
-      predictions {
-        winProbability modelVersion generatedAt
-        driver { code name }
-        team { color }
-      }
-    }
-    predictionDisplay { shown expanded }
-  }
-`;
-
 /**
  * The win prediction panel's data, asked for only by a race that has not run.
  * Tagged `race` so an import's /api/revalidate refreshes it, and `settings` so
@@ -139,96 +58,16 @@ export async function getRacePredictions(slug: string) {
   cacheTag('race', 'settings');
   cacheLife('days');
 
-  return executeQuery<RacePredictionsQuery, { slug: string }>(RACE_PREDICTIONS, { slug });
+  return executeQuery(RacePredictionsDocument, { slug });
 }
-
-/**
- * The race the landing page leads with.
- *
- * `Query.races` orders by date ascending and takes no `featured` argument, so
- * the pick happens here rather than in SQL: the first race flagged featured if
- * there is one, otherwise the most recent. Nothing is flagged yet — the
- * mutation that sets it is M3 — so today this resolves to the latest race and
- * starts honouring the flag the moment one exists, with no change here.
- *
- * Asking for 100 rows of four fields to choose one is cheap next to adding a
- * resolver argument, and the whole thing is one cached entry for a day.
- */
-const HERO_REPLAY = /* GraphQL */ `
-  query HeroReplay {
-    featuredRace {
-      slug
-      laps
-      meeting { name round: officialRound season circuitName }
-      replay {
-        summary { maxLap maxPosition }
-        drivers {
-          driver { code }
-          team { color }
-          positions { lap position }
-        }
-      }
-    }
-  }
-`;
-
-const LATEST_RESULT = /* GraphQL */ `
-  query LatestResult {
-    latestRace {
-      slug
-      date
-      type
-      meeting { name round: officialRound season circuitName country }
-      results {
-        finalPosition fastestLap points status
-        driver { code name }
-        team { name color }
-      }
-    }
-  }
-`;
-
-const SEASON_PULSE = /* GraphQL */ `
-  query SeasonPulse($season: Int!) {
-    seasonPulse(season: $season) {
-      round name slug status winnerCode teamName teamColor
-    }
-  }
-`;
-
-const RACE_SLUGS = /* GraphQL */ `
-  query RaceSlugs {
-    raceSlugs { slug date type name }
-  }
-`;
 
 export async function getDriverStandings(season: number) {
   'use cache';
   cacheTag('standings');
   cacheLife('days');
 
-  return executeQuery<HomeLineupQuery, { season: number }>(HOME_LINEUP, { season });
+  return executeQuery(HomeLineupDocument, { season });
 }
-
-const SEASON_STANDINGS = /* GraphQL */ `
-  query SeasonStandings($season: Int!) {
-    driverStandings(season: $season) {
-      position
-      points
-      wins
-      podiums
-      driver { code name number }
-      team { name color }
-    }
-    constructorStandings(season: $season) {
-      position
-      points
-      wins
-      team { name color }
-    }
-    seasons { year }
-  }
-`;
 
 /**
  * Both championship tables for one season, plus the seasons the selector needs.
@@ -240,7 +79,7 @@ export async function getSeasonStandings(season: number) {
   cacheTag('standings');
   cacheLife('days');
 
-  return executeQuery<SeasonStandingsQuery, { season: number }>(SEASON_STANDINGS, { season });
+  return executeQuery(SeasonStandingsDocument, { season });
 }
 
 export async function getRaceLibrary(
@@ -253,7 +92,7 @@ export async function getRaceLibrary(
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceLibraryQuery, Record<string, unknown>>(RACE_LIBRARY, {
+  return executeQuery(RaceLibraryDocument, {
     season,
     search,
     // A season is at most 31 scored sessions, so asking for 40 puts a whole one
@@ -270,30 +109,8 @@ export async function getRaceHeader(slug: string) {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceHeaderQuery, { slug: string }>(RACE_HEADER, { slug });
+  return executeQuery(RaceHeaderDocument, { slug });
 }
-
-const RACE_REPLAY = /* GraphQL */ `
-  query RaceReplay($slug: String!) {
-    race(slug: $slug) {
-      id slug laps date type dataTier
-      meeting { name country circuitName round: officialRound season }
-      replay {
-        laps
-        summary { lapCount maxLap maxPosition driverCount }
-        drivers {
-          driver { id code name number }
-          team { id name color }
-          positions { lap position lapTime sector1 sector2 sector3 }
-        }
-        events {
-          lap type details
-          driver { id code name number }
-        }
-      }
-    }
-  }
-`;
 
 /**
  * The replay payload: every lap of every driver, which is the one query in the
@@ -306,34 +123,8 @@ export async function getRaceReplay(slug: string) {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceReplayQuery, { slug: string }>(RACE_REPLAY, { slug });
+  return executeQuery(RaceReplayDocument, { slug });
 }
-
-const RACE_ANALYSIS = /* GraphQL */ `
-  query RaceAnalysis($slug: String!) {
-    race(slug: $slug) {
-      id slug laps dataTier
-      meeting { name season }
-      analysis {
-        lapTimes {
-          driver { id code name }
-          team { id name color }
-          laps { lap time isOutlier }
-          pace { best median consistency lapsCounted lapsExcluded }
-        }
-        stints {
-          stintNumber lapStart lapEnd compound
-          driver { id code }
-          team { color }
-        }
-        pitStops {
-          lap durationSeconds underStoppage
-          driver { id code }
-        }
-      }
-    }
-  }
-`;
 
 /**
  * The Analysis tab. A third scope beside the header and the replay, for the same
@@ -345,7 +136,7 @@ export async function getRaceAnalysis(slug: string) {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceAnalysisQuery, { slug: string }>(RACE_ANALYSIS, { slug });
+  return executeQuery(RaceAnalysisDocument, { slug });
 }
 
 // ── The archive ───────────────────────────────────────────────────────
@@ -354,55 +145,21 @@ export async function getRaceAnalysis(slug: string) {
 // results, so the thing that invalidates it is an ingest, and there is no
 // second tag that would be more precise.
 
-const DRIVER_PROFILE = /* GraphQL */ `
-  query DriverProfile($code: String!) {
-    driver(code: $code) {
-      driver { id code name number country }
-      career {
-        seasonCount starts wins podiums points bestFinish
-        seasons {
-          season starts wins podiums points bestFinish
-          team { name color }
-        }
-      }
-    }
-  }
-`;
-
 export async function getDriverProfile(code: string) {
   'use cache';
   cacheTag('race', 'standings');
   cacheLife('days');
 
-  return executeQuery<DriverProfileQuery, { code: string }>(DRIVER_PROFILE, { code });
+  return executeQuery(DriverProfileDocument, { code });
 }
-
-const TEAM_PROFILE = /* GraphQL */ `
-  query TeamProfile($name: String!) {
-    team(name: $name) {
-      team { id name color }
-      drivers { code name }
-      career {
-        seasonCount starts wins podiums points bestFinish
-        seasons { season starts wins podiums points bestFinish }
-      }
-    }
-  }
-`;
 
 export async function getTeamProfile(name: string) {
   'use cache';
   cacheTag('race', 'standings');
   cacheLife('days');
 
-  return executeQuery<TeamProfileQuery, { name: string }>(TEAM_PROFILE, { name });
+  return executeQuery(TeamProfileDocument, { name });
 }
-
-const ACTIVE_SEASON = /* GraphQL */ `
-  query ActiveSeason {
-    activeSeason
-  }
-`;
 
 /**
  * Which season the site is about, from `app_config` rather than a constant.
@@ -416,28 +173,9 @@ export async function getActiveSeason(): Promise<number> {
   cacheTag('race', 'settings');
   cacheLife('days');
 
-  const { activeSeason } = await executeQuery<ActiveSeasonQuery, Record<string, unknown>>(
-    ACTIVE_SEASON,
-    {},
-  );
+  const { activeSeason } = await executeQuery(ActiveSeasonDocument);
   return activeSeason;
 }
-
-const SEASON_SCHEDULE = /* GraphQL */ `
-  query SeasonSchedule($season: Int!) {
-    races(season: $season, first: 100) {
-      edges {
-        node {
-          slug
-          date
-          type
-          status
-          meeting { name round: officialRound }
-        }
-      }
-    }
-  }
-`;
 
 /**
  * Every race of a season, for the home page's progress and countdown.
@@ -451,28 +189,8 @@ export async function getSeasonSchedule(season: number) {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<SeasonScheduleQuery, { season: number }>(SEASON_SCHEDULE, { season });
+  return executeQuery(SeasonScheduleDocument, { season });
 }
-
-const HEAD_TO_HEAD = /* GraphQL */ `
-  query HeadToHead($slug: String!, $driverA: String!, $driverB: String!) {
-    race(slug: $slug) {
-      slug
-      laps
-      meeting { name season }
-      results { finalPosition driver { code name } }
-      analysis {
-        headToHead(driverA: $driverA, driverB: $driverB) {
-          lapsAheadA
-          lapsAheadB
-          a { driver { code name } team { name color } finalPosition pace { best median consistency lapsCounted } }
-          b { driver { code name } team { name color } finalPosition pace { best median consistency lapsCounted } }
-          laps { lap positionDelta timeDelta }
-        }
-      }
-    }
-  }
-`;
 
 /**
  * Two drivers inside one race.
@@ -487,20 +205,8 @@ export async function getHeadToHead(slug: string, driverA: string, driverB: stri
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<HeadToHeadQuery, { slug: string; driverA: string; driverB: string }>(
-    HEAD_TO_HEAD,
-    { slug, driverA, driverB },
-  );
+  return executeQuery(HeadToHeadDocument, { slug, driverA, driverB });
 }
-
-const ARCHIVE_INDEX = /* GraphQL */ `
-  query ArchiveIndex($season: Int) {
-    seasons { year }
-    drivers(season: $season) { id code name country }
-    teams(season: $season) { id name color }
-    circuits { id ergastId name locality country }
-  }
-`;
 
 /**
  * Everyone and everything in the archive, optionally narrowed to one season.
@@ -515,24 +221,15 @@ export async function getArchiveIndex(season: number | null = null) {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<ArchiveIndexQuery, { season: number | null }>(ARCHIVE_INDEX, { season });
+  return executeQuery(ArchiveIndexDocument, { season });
 }
-
-const CIRCUIT_PROFILE = /* GraphQL */ `
-  query CircuitProfile($ergastId: String!) {
-    circuit(ergastId: $ergastId) {
-      id ergastId name locality country
-      latitude longitude lengthKm turns firstGrandPrix
-    }
-  }
-`;
 
 export async function getCircuitProfile(ergastId: string) {
   'use cache';
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<CircuitProfileQuery, { ergastId: string }>(CIRCUIT_PROFILE, { ergastId });
+  return executeQuery(CircuitProfileDocument, { ergastId });
 }
 
 /**
@@ -548,10 +245,7 @@ export async function getFeaturedRace() {
   cacheTag('race');
   cacheLife('days');
 
-  const { featuredRace } = await executeQuery<HeroReplayQuery, Record<string, unknown>>(
-    HERO_REPLAY,
-    {},
-  );
+  const { featuredRace } = await executeQuery(HeroReplayDocument);
   return featuredRace;
 }
 
@@ -560,10 +254,7 @@ export async function getLatestResult() {
   cacheTag('race');
   cacheLife('days');
 
-  const { latestRace } = await executeQuery<LatestResultQuery, Record<string, unknown>>(
-    LATEST_RESULT,
-    {},
-  );
+  const { latestRace } = await executeQuery(LatestResultDocument);
   return latestRace;
 }
 
@@ -572,10 +263,7 @@ export async function getSeasonPulse(season: number) {
   cacheTag('race', 'standings');
   cacheLife('days');
 
-  const { seasonPulse } = await executeQuery<SeasonPulseQuery, { season: number }>(
-    SEASON_PULSE,
-    { season },
-  );
+  const { seasonPulse } = await executeQuery(SeasonPulseDocument, { season });
   return seasonPulse;
 }
 
@@ -584,5 +272,5 @@ export async function getRaceSlugs() {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery<RaceSlugsQuery, Record<string, unknown>>(RACE_SLUGS, {});
+  return executeQuery(RaceSlugsDocument);
 }

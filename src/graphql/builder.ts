@@ -1,5 +1,4 @@
 import SchemaBuilder from '@pothos/core';
-import RelayPlugin from '@pothos/plugin-relay';
 import type { Context } from './context';
 
 /**
@@ -8,10 +7,9 @@ import type { Context } from './context';
  * field that silently returns null. Nothing between the Drizzle schema and a
  * component retypes a shape by hand.
  *
- * Only the Relay plugin is registered. Pothos also ships a dataloader plugin
- * that would wire batching automatically — it is deliberately not used. Doing
- * the batching by hand is the milestone (document 04, Part 5); a plugin would
- * produce working code and teach nothing.
+ * No plugins. The race connection is hand-rolled (schema/race.ts), and the
+ * dataloader plugin, which would wire batching automatically, is deliberately
+ * not used: the batching is done by hand in loaders.ts, where it can be read.
  */
 export const builder = new SchemaBuilder<{
   Context: Context;
@@ -24,7 +22,6 @@ export const builder = new SchemaBuilder<{
     Float: { Input: number; Output: number };
   };
 }>({
-  plugins: [RelayPlugin],
   // Non-null unless a field says otherwise. The nullable fields here are
   // nullable for a reason — a DNF has no finishing position, a safety car has
   // no driver — and that distinction is worth carrying into the schema instead

@@ -5,7 +5,7 @@ import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { executeAsAdmin } from '@/graphql/execute';
-import type { AdminIngestRunsQuery } from '@/graphql/generated/graphql';
+import { AdminIngestRunsDocument } from '@/graphql/generated/graphql';
 
 export const metadata = {
   title: 'Ingest runs — Admin',
@@ -47,10 +47,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 async function Runs() {
-  const { ingestRuns } = await executeAsAdmin<AdminIngestRunsQuery, { first: number }>(
-    ADMIN_RUNS,
-    { first: 100 },
-  );
+  const { ingestRuns } = await executeAsAdmin(AdminIngestRunsDocument, { first: 100 });
 
   if (ingestRuns.length === 0) {
     return (
@@ -108,10 +105,3 @@ async function Runs() {
   );
 }
 
-const ADMIN_RUNS = /* GraphQL */ `
-  query AdminIngestRuns($first: Int) {
-    ingestRuns(first: $first) {
-      id source target status rowsWritten error startedAt finishedAt
-    }
-  }
-`;

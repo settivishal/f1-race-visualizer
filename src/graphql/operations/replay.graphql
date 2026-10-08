@@ -59,7 +59,7 @@ query RaceReplay($slug: String!) {
       name
       country
       circuitName
-      round
+      round: officialRound
       season
     }
     replay {

@@ -1,16 +1,17 @@
 'use server';
 
 import { updateTag } from 'next/cache';
-import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { getDb } from '@/db';
 import { appConfig } from '@/db/schema';
+import { readAppConfig } from '@/lib/app-config';
 import { executeAsAdmin } from '@/graphql/execute';
 import { drainPending } from '@/lib/ingest/pending';
-import type {
-  SetRaceFeaturedMutation,
-  TriggerIngestMutation,
-  UpdateRaceMetadataMutation,
+import {
+  SetRaceFeaturedDocument,
+  TriggerIngestDocument,
+  UpdateRaceMetadataDocument,
+  type TriggerIngestMutation,
 } from '@/graphql/generated/graphql';
 
 /**
@@ -84,10 +85,7 @@ export async function setFeaturedAction(
   if (!slug) return { ok: false, message: 'No race given.' };
 
   try {
-    await executeAsAdmin<SetRaceFeaturedMutation, { slug: string; featured: boolean }>(
-      SET_FEATURED,
-      { slug, featured },
-    );
+    await executeAsAdmin(SetRaceFeaturedDocument, { slug, featured });
   } catch (error) {
     return { ok: false, message: messageOf(error) };
   }
@@ -119,7 +117,7 @@ export async function updateMetadataAction(
   }
 
   try {
-    await executeAsAdmin<UpdateRaceMetadataMutation, Record<string, unknown>>(UPDATE_METADATA, {
+    await executeAsAdmin(UpdateRaceMetadataDocument, {
       slug,
       laps,
       name: String(formData.get('name') ?? '') || null,
@@ -153,10 +151,7 @@ export async function triggerIngestAction(
 
   let result: TriggerIngestMutation;
   try {
-    result = await executeAsAdmin<TriggerIngestMutation, { sessionKey: number }>(
-      TRIGGER_INGEST,
-      { sessionKey },
-    );
+    result = await executeAsAdmin(TriggerIngestDocument, { sessionKey });
   } catch (error) {
     // The failure is already recorded in ingest_runs by run.ts, so this only
     // has to surface it. The runs page is where the detail lives.
@@ -195,7 +190,7 @@ export async function catchUpAction(): Promise<ActionResult> {
   await requireAdmin();
 
   const db = getDb();
-  const [config] = await db.select().from(appConfig).where(eq(appConfig.id, 1)).limit(1);
+  const config = await readAppConfig(db);
   if (!config) return { ok: false, message: 'No active season is set — see Settings.' };
 
   const { imported, failed, abandoned, remaining } = await drainPending(db, config);
@@ -224,55 +219,6 @@ function messageOf(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return 'Something went wrong.';
 }
-
-const SET_FEATURED = /* GraphQL */ `
-  mutation SetRaceFeatured($slug: String!, $featured: Boolean!) {
-    setRaceFeatured(slug: $slug, featured: $featured) {
-      slug
-      isFeatured
-    }
-  }
-`;
-
-const UPDATE_METADATA = /* GraphQL */ `
-  mutation UpdateRaceMetadata(
-    $slug: String!
-    $laps: Int
-    $name: String
-    $country: String
-    $circuitName: String
-    $status: String
-    $release: [String!]
-  ) {
-    updateRaceMetadata(
-      slug: $slug
-      laps: $laps
-      name: $name
-      country: $country
-      circuitName: $circuitName
-      status: $status
-      release: $release
-    ) {
-      slug
-      laps
-      meeting {
-        name
-        country
-        circuitName
-      }
-    }
-  }
-`;
-
-const TRIGGER_INGEST = /* GraphQL */ `
-  mutation TriggerIngest($sessionKey: Int!) {
-    triggerIngest(sessionKey: $sessionKey) {
-      slug
-      rowsWritten
-      warnings
-    }
-  }
-`;
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
@@ -351,7 +297,5 @@ export async function updateConfigAction(
 
 export async function getAppConfig() {
   await requireAdmin();
-  const db = getDb();
-  const [row] = await db.select().from(appConfig).where(eq(appConfig.id, 1)).limit(1);
-  return row ?? null;
+  return readAppConfig(getDb());
 }

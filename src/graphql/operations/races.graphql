@@ -26,7 +26,7 @@ query RaceLibrary($season: Int, $search: String, $first: Int, $after: String, $b
           name
           country
           circuitName
-          round
+          round: officialRound
           season
         }
         podium {
@@ -81,7 +81,7 @@ query RaceHeader($slug: String!) {
       name
       country
       circuitName
-      round
+      round: officialRound
       season
       circuit {
         ergastId

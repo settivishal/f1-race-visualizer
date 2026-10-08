@@ -17,33 +17,6 @@ query HomeLineup($season: Int!) {
   }
 }
 
-# The race the landing page leads with. `Query.races` orders by date ascending
-# and takes no `featured` argument, so the pick happens in getFeaturedRace():
-# the first race flagged featured if there is one, otherwise the most recent.
-# Nothing is flagged yet — the mutation that sets it is M3 — so today this
-# resolves to the latest race and starts honouring the flag the moment one
-# exists, with no change to the query.
-query HomeFeature {
-  races(first: 100) {
-    edges {
-      node {
-        id
-        slug
-        laps
-        type
-        isFeatured
-        meeting {
-          name
-          country
-          circuitName
-          round
-          season
-        }
-      }
-    }
-  }
-}
-
 # Every race of a season, for the home page's progress bar and countdown.
 # `first: 100` rather than the library's 24 — a season is at most 24 grands
 # prix plus its sprints, and a page boundary here would under-count the season
@@ -58,7 +31,7 @@ query SeasonSchedule($season: Int!) {
         status
         meeting {
           name
-          round
+          round: officialRound
         }
       }
     }
@@ -80,7 +53,7 @@ query HeroReplay {
     laps
     meeting {
       name
-      round
+      round: officialRound
       season
       circuitName
     }
@@ -114,7 +87,7 @@ query LatestResult {
     type
     meeting {
       name
-      round
+      round: officialRound
       season
       circuitName
       country

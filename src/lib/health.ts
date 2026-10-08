@@ -1,6 +1,7 @@
 import { desc, eq } from 'drizzle-orm';
-import type { getDb } from '@/db';
-import { appConfig, ingestRuns, meetings, races } from '@/db/schema';
+import type { Db } from '@/db';
+import { readAppConfig } from './app-config';
+import { ingestRuns, meetings, races } from '@/db/schema';
 /**
  * Is the ingest actually working?
  *
@@ -84,12 +85,8 @@ export function checkHealth(input: HealthInput): HealthReport {
  * The report from the database — what `/api/health` serves and what the admin
  * page shows above its race list, so the two cannot disagree.
  */
-export async function readHealth(db: ReturnType<typeof getDb>): Promise<HealthReport> {
-  const [config] = await db
-    .select({ activeSeason: appConfig.activeSeason })
-    .from(appConfig)
-    .where(eq(appConfig.id, 1))
-    .limit(1);
+export async function readHealth(db: Db): Promise<HealthReport> {
+  const config = await readAppConfig(db);
 
   // No config row is the state of a fresh database, which the cron treats as
   // "not configured" and skips. Saying so is more useful than guessing a year.

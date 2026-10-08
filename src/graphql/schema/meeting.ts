@@ -1,5 +1,6 @@
 import { asc, desc, eq } from 'drizzle-orm';
-import { appConfig, circuits, meetings, races, seasons } from '@/db/schema';
+import { circuits, meetings, races, seasons } from '@/db/schema';
+import { readAppConfig } from '@/lib/app-config';
 import { builder } from '../builder';
 import { Race } from './race';
 
@@ -57,7 +58,6 @@ Meeting.implement({
     }),
     season: t.exposeInt('seasonYear'),
     adminEdited: t.exposeStringList('adminEdited'),
-    startDate: t.field({ type: 'DateTime', resolve: (m) => m.startDate }),
     // A weekend's sessions: the grand prix, and a sprint where there was one.
     // This is the other half of the Race -> Meeting -> races cycle, which is
     // why the endpoint carries a depth limit.
@@ -101,12 +101,8 @@ builder.queryField('seasons', (t) =>
 builder.queryField('activeSeason', (t) =>
   t.int({
     resolve: async (_root, _args, ctx) => {
-      const [config] = await ctx.db
-        .select({ season: appConfig.activeSeason })
-        .from(appConfig)
-        .where(eq(appConfig.id, 1))
-        .limit(1);
-      if (config) return config.season;
+      const config = await readAppConfig(ctx.db);
+      if (config) return config.activeSeason;
 
       const [newest] = await ctx.db
         .selectDistinct({ year: meetings.seasonYear })

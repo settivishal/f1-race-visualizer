@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as dbSchema from '@/db/schema';
 import type { ErgastRace } from './ergast';
 import { fillGrids } from './grid';
-import { writeRace } from './run';
+import { writeRace } from './write';
 import type { TransformedRace } from './types';
 
 const archive = vi.hoisted(() => ({ races: [] as unknown[] }));

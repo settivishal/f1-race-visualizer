@@ -1,13 +1,8 @@
 import { GraphQLError } from 'graphql';
-import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
-import { getDb } from '@/db';
-import type * as dbSchema from '@/db/schema';
+import { getDb, type Db } from '@/db';
 import { createLoaders, type Loaders } from './loaders';
 
-// Driver-agnostic on purpose: Neon in production, PGlite under test. The
-// resolvers use no driver-specific API, and typing this to Neon would have
-// meant the test suite exercising a cast rather than the real signature.
-export type Db = PgDatabase<PgQueryResultHKT, typeof dbSchema>;
+export type { Db };
 
 /**
  * Who is asking. Null for every public request, which is almost all of them.

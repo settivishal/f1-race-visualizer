@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import type { getDb } from '@/db';
+import type { Db } from '@/db';
 import { ingestRuns, races } from '@/db/schema';
 import { fetchSessions, type Session } from './openf1';
 import { ingestRace } from './run';
@@ -87,7 +87,7 @@ export function selectPending(
 
 /** The impure half: fetch upstream's list and the stored state, then select. */
 export async function pendingSessions(
-  db: ReturnType<typeof getDb>,
+  db: Db,
   { season, hoursAfterRace }: { season: number; hoursAfterRace: number },
 ) {
   const sessions = await fetchSessions(season);
@@ -147,7 +147,7 @@ const BUDGET_MS = 45_000;
  * hold the rest of the season behind it.
  */
 export async function drainPending(
-  db: ReturnType<typeof getDb>,
+  db: Db,
   config: { activeSeason: number; hoursAfterRace: number },
 ) {
   const started = Date.now();
@@ -162,7 +162,7 @@ export async function drainPending(
   for (const sessionKey of pending) {
     if (Date.now() - started > BUDGET_MS) break;
     try {
-      const { slug, rowsWritten, warnings } = await ingestRace(sessionKey);
+      const { slug, rowsWritten, warnings } = await ingestRace(sessionKey, db);
       imported.push({ slug, rowsWritten, warnings });
     } catch (error) {
       failed.push({ sessionKey, error: String(error) });

@@ -98,11 +98,6 @@ const PitStop = builder.objectRef<PitStopRow>('PitStop').implement({
       nullable: true,
       resolve: (row, _args, ctx) => driverOfAssignment(ctx, row.assignmentId),
     }),
-    team: t.field({
-      type: Team,
-      nullable: true,
-      resolve: (row, _args, ctx) => teamOfAssignment(ctx, row.assignmentId),
-    }),
   }),
 });
 
@@ -128,7 +123,6 @@ const Pace = builder
     fields: (t) => ({
       best: t.exposeFloat('best', { nullable: true }),
       median: t.exposeFloat('median', { nullable: true }),
-      mean: t.exposeFloat('mean', { nullable: true }),
       consistency: t.exposeFloat('consistency', { nullable: true }),
       lapsCounted: t.exposeInt('lapsCounted'),
       lapsExcluded: t.exposeInt('lapsExcluded'),

@@ -11,7 +11,7 @@ import { SectionHeader } from '@/components/ui/section-header';
 import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { executeAsAdmin } from '@/graphql/execute';
-import type { AdminRacesQuery } from '@/graphql/generated/graphql';
+import { AdminRacesDocument } from '@/graphql/generated/graphql';
 import { ActionForm } from '@/components/admin/action-form';
 import { getDb } from '@/db';
 import { readHealth } from '@/lib/health';
@@ -112,10 +112,7 @@ async function RaceList({ searchParams }: { searchParams: SearchParams }) {
   // executeAsAdmin, not executeQuery: this reads no admin-only field today, but
   // it must never be cached — the featured flag has to reflect the toggle that
   // was just pressed, and a `use cache` scope could not read the session anyway.
-  const { races, seasons } = await executeAsAdmin<AdminRacesQuery, Record<string, unknown>>(
-    ADMIN_RACES,
-    { season, search, first: 24, after },
-  );
+  const { races, seasons } = await executeAsAdmin(AdminRacesDocument, { season, search, first: 24, after });
 
   const fieldClasses =
     'h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-foreground transition-[border-color] hover:border-line-strong';
@@ -274,18 +271,3 @@ function ListSkeleton() {
   );
 }
 
-const ADMIN_RACES = /* GraphQL */ `
-  query AdminRaces($season: Int, $search: String, $first: Int, $after: String) {
-    races(season: $season, search: $search, first: $first, after: $after) {
-      edges {
-        cursor
-        node {
-          id slug laps type isFeatured openf1SessionKey
-          meeting { name country circuitName round season }
-        }
-      }
-      pageInfo { hasNextPage endCursor }
-    }
-    seasons { year }
-  }
-`;

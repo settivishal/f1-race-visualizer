@@ -26,7 +26,7 @@ const config: CodegenConfig = {
       // the client it is a string. Without this it generates as `unknown` and
       // every caller has to cast — which is a cast that could be wrong, in the
       // one place the pipeline is supposed to stop guessing.
-      config: { scalars: { DateTime: 'string' } },
+      config: { scalars: { DateTime: 'string' }, documentMode: 'string' },
     },
   },
   ignoreNoDocuments: false,
