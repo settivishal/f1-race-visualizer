@@ -20,6 +20,7 @@ function entry(id: string, positions: ReplayPosition[]): ReplayEntry {
     driver: { id, code: id.toUpperCase(), name: `Driver ${id}`, number: 1 },
     team: { id: `team-${id}`, name: 'Team', color: '#ff0000' },
     positions,
+    grid: null,
   };
 }
 

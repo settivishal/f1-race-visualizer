@@ -113,10 +113,11 @@ describe('query count', () => {
     }).race.replay;
     expect(entries.reduce((total, entry) => total + entry.positions.length, 0)).toBe(200);
 
-    // One for the race, one for its positions, then one per entity type:
-    // assignments, drivers, team_seasons, teams. Without the loaders this same
-    // query costs one per entity per driver instead of one per entity.
-    expect(count).toBe(6);
+    // One for the race, one for its positions, one for its grid, then one per
+    // entity type: assignments, drivers, team_seasons, teams. Without the
+    // loaders this same query costs one per entity per driver instead of one
+    // per entity.
+    expect(count).toBe(7);
   });
 });
 

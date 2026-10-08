@@ -140,8 +140,14 @@ export function makeLapX({ from, to }: LapWindow, { width, margin }: ChartLayout
 /** Laps per screen at a spacing a finger and an eye can both deal with. */
 export const MIN_LAP_SPACING = 16;
 
-export function lapWindowFor(containerWidth: number, currentLap: number, maxLap: number): LapWindow {
-  if (containerWidth <= 0) return { from: 1, to: Math.max(2, maxLap) };
+/** `firstLap` is 0 when the chart opens on a grid column, else 1. */
+export function lapWindowFor(
+  containerWidth: number,
+  currentLap: number,
+  maxLap: number,
+  firstLap = 1,
+): LapWindow {
+  if (containerWidth <= 0) return { from: firstLap, to: Math.max(2, maxLap) };
 
   // One viewBox unit is one pixel now, so the plot's width on screen is the
   // container less its own margins — no scale factor in between.
@@ -151,18 +157,18 @@ export function lapWindowFor(containerWidth: number, currentLap: number, maxLap:
   // finger needs the spacing; on a desktop chart beside the timing tower the
   // plot is often under 900px, and a 53-lap race was showing laps 1-35 with
   // the rest scrolling in as it played.
-  if (!compact) return { from: 1, to: Math.max(2, maxLap) };
+  if (!compact) return { from: firstLap, to: Math.max(2, maxLap) };
   const usable = containerWidth - margin.left - margin.right;
   const fits = Math.max(6, Math.floor(usable / MIN_LAP_SPACING));
 
-  if (fits >= maxLap) return { from: 1, to: Math.max(2, maxLap) };
+  if (fits >= maxLap - firstLap) return { from: firstLap, to: Math.max(2, maxLap) };
 
   // Centred on the current lap, then pushed back inside the race at both ends
   // so the window never runs off either edge.
   const half = Math.floor(fits / 2);
-  let from = Math.max(1, currentLap - half);
+  let from = Math.max(firstLap, currentLap - half);
   const to = Math.min(maxLap, from + fits);
-  from = Math.max(1, to - fits);
+  from = Math.max(firstLap, to - fits);
 
   return { from, to };
 }
@@ -196,6 +202,16 @@ export function buildPath(
  * the playhead, at its last known position. Without the extra point its line
  * stopped a lap short of its own dot.
  */
+/**
+ * A car's positions with its grid slot in front, as lap 0, so its line starts
+ * where it started rather than where lap 1 left it: a car from 19th that is
+ * 14th after a lap read as having started 14th.
+ */
+export function withGrid(positions: ReplayPosition[], grid: number | null | undefined): ReplayPosition[] {
+  if (!grid || positions.length === 0) return positions;
+  return [{ ...positions[0], lap: 0, position: grid, lapTime: null, sector1: null, sector2: null, sector3: null }, ...positions];
+}
+
 export function trailPositions(
   positions: ReplayPosition[],
   currentLap: number,
