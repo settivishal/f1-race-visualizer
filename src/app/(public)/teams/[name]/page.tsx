@@ -19,7 +19,9 @@ import { BackLink } from '@/components/ui/back-link';
  */
 export async function generateStaticParams() {
   const { teams } = await getArchiveIndex();
-  return prerenderParams(teams.map((team) => ({ name: encodeURIComponent(team.name) })));
+  // The raw name: Next encodes params itself, and encoding here too baked a 404
+  // into every team with a space in its name ("Aston%2520Martin").
+  return prerenderParams(teams.map((team) => ({ name: team.name })));
 }
 
 // Blocks on purpose: the existence check and its notFound() sit above Suspense

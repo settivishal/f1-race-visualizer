@@ -28,6 +28,14 @@ test('the archive index pages list what has been imported', async ({ page }) => 
   await expect(page.getByRole('link', { name: /albert park/i }).first()).toBeVisible();
 });
 
+// A name with a space: the build once prerendered these as 404s.
+test('a team page renders for a name with a space', async ({ page }) => {
+  await page.goto('/teams/Aston%20Martin');
+  await expect(page.getByRole('heading', { name: 'Aston Martin' })).toBeVisible({
+    timeout: 30_000,
+  });
+});
+
 test('a circuit page shows only the facts it has', async ({ page }) => {
   await page.goto('/circuits/albert_park');
 
