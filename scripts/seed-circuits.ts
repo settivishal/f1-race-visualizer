@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { eq } from 'drizzle-orm';
 import { getDb, schema } from '@/db';
+import { linkCircuits } from '@/lib/ingest/circuits';
 import { fetchSeasonCircuits } from '@/lib/ingest/ergast';
 
 /**
@@ -105,7 +106,10 @@ async function main() {
       });
       created++;
     }
-    console.log(`${year}: ${circuits.length} circuit(s)`);
+    // OpenF1's meetings (2023 on) arrive with no circuit; this links them.
+    const { linked, warnings } = await linkCircuits(db, year);
+    console.log(`${year}: ${circuits.length} circuit(s), ${linked} meeting(s) linked`);
+    for (const warning of warnings) console.log(`  ${warning}`);
   }
 
   const rows = await db.select().from(schema.circuits);
