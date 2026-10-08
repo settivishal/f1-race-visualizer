@@ -90,14 +90,18 @@ export function RaceVisualizationCanvas({
   // A grid column before lap 1 when the race has a starting order, so a line
   // begins where the car started.
   const firstLap = drivers.some((entry) => entry.grid) ? 0 : 1;
+  // Rows for every grid slot too: a field of 22 can start 22 cars while the lap
+  // data never shows a P22 (a car out on lap 1), and that slot plotted under
+  // the axis.
+  const maxPosition = Math.max(summary.maxPosition, ...drivers.map((entry) => entry.grid ?? 0));
   const lapWindow = useMemo(
     () => lapWindowFor(frameWidth, currentLap, summary.maxLap || race.laps, firstLap),
     [frameWidth, currentLap, summary.maxLap, race.laps, firstLap],
   );
   const lapX = useMemo(() => makeLapX(lapWindow, layout), [lapWindow, layout]);
   const positionY = useMemo(
-    () => makePositionY(summary.maxPosition, layout),
-    [summary.maxPosition, layout],
+    () => makePositionY(maxPosition, layout),
+    [maxPosition, layout],
   );
 
   // Only the ticks inside the window, or a windowed chart labels laps it is not
@@ -274,7 +278,7 @@ export function RaceVisualizationCanvas({
       <div
         ref={frame}
         className={cn("min-h-0 flex-1", !minimal && "mt-4 min-h-[32rem] sm:min-h-[var(--frame-min)]")}
-        style={{ "--frame-min": `${minFrameHeight(summary.maxPosition)}px` } as React.CSSProperties}
+        style={{ "--frame-min": `${minFrameHeight(maxPosition)}px` } as React.CSSProperties}
       >
         <div className="h-full">
           <svg
@@ -355,7 +359,7 @@ export function RaceVisualizationCanvas({
             {/* Horizontal position grid lines. Outside the panning group: they
                 are horizontal, so panning them would only shorten them at the
                 right edge, and the P labels belong to the fixed axis. */}
-            {Array.from({ length: summary.maxPosition }, (_, index) => {
+            {Array.from({ length: maxPosition }, (_, index) => {
               const position = index + 1;
               const y = positionY(position);
 
