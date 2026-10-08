@@ -308,6 +308,13 @@ export const fetchSeasonResults = (year: number): Promise<ErgastRace[]> =>
   });
 
 /**
+ * A season's calendar: date and circuit of every race Ergast lists, run or
+ * not. One row per race, so there is nothing to merge across pages.
+ */
+export const fetchSeasonSchedule = (year: number): Promise<ErgastRace[]> =>
+  fetchSeasonRaces(year, `/${year}/races.json`, ErgastRaceSchema, () => {});
+
+/**
  * Every qualifying session of a season that Ergast has published, in round
  * order. A round that has not been qualified yet is simply absent — whether
  * that is acceptable is the caller's decision, not this client's.

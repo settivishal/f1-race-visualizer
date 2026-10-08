@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { readAppConfig } from '@/lib/app-config';
 import { isAuthorized } from '@/lib/cron-auth';
 import { fillGrids } from '@/lib/ingest/grid';
+import { linkCircuits } from '@/lib/ingest/circuits';
 import { drainPending } from '@/lib/ingest/pending';
 
 /**
@@ -83,7 +84,16 @@ async function handle(request: Request) {
     : null;
   for (const warning of grid?.warnings ?? []) console.log(`[cron/ingest] grid: ${warning}`);
 
-  if (result.imported.length === 0 && result.failed.length === 0 && !grid?.filled) {
+  // The same bargain for a meeting's circuit: OpenF1 does not say which it is.
+  const circuits = Date.now() - started < 40_000
+    ? await linkCircuits(db, config.activeSeason).catch((error) => {
+        console.log(`[cron/ingest] circuit link failed: ${error}`);
+        return null;
+      })
+    : null;
+  for (const warning of circuits?.warnings ?? []) console.log(`[cron/ingest] circuits: ${warning}`);
+
+  if (result.imported.length === 0 && result.failed.length === 0 && !grid?.filled && !circuits?.linked) {
     return skip('up to date');
   }
 
@@ -96,14 +106,14 @@ async function handle(request: Request) {
   // semantics are wrong here anyway: it expires the entry so the next request
   // blocks, and nobody is waiting on a 6am cron. 'max' serves the last good
   // page while the new one builds in the background.
-  if (result.imported.length > 0 || grid?.filled) {
+  if (result.imported.length > 0 || grid?.filled || circuits?.linked) {
     revalidateTag('race', 'max');
     revalidateTag('standings', 'max');
   }
 
   // A failure is still a failed cron, so Vercel reports it — but only after
   // the races that did import are live. Each failure is in ingest_runs.
-  return Response.json({ ...result, gridsFilled: grid?.filled ?? 0 }, { status: result.failed.length > 0 ? 500 : 200 });
+  return Response.json({ ...result, gridsFilled: grid?.filled ?? 0, circuitsLinked: circuits?.linked ?? 0 }, { status: result.failed.length > 0 ? 500 : 200 });
 }
 
 /** How far back the cron looks for a race Ergast had not caught up on. */
