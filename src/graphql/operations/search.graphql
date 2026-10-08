@@ -1,0 +1,9 @@
+# The command palette, the one query the browser sends to /api/graphql.
+query CommandPalette($query: String!) {
+  search(query: $query) {
+    kind
+    title
+    subtitle
+    href
+  }
+}

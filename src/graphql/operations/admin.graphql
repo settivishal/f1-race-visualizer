@@ -80,6 +80,8 @@ mutation UpdateRaceMetadata(
   $name: String
   $country: String
   $circuitName: String
+  $status: String
+  $release: [String!]
 ) {
   updateRaceMetadata(
     slug: $slug
@@ -87,6 +89,8 @@ mutation UpdateRaceMetadata(
     name: $name
     country: $country
     circuitName: $circuitName
+    status: $status
+    release: $release
   ) {
     slug
     laps

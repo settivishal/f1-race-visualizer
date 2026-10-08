@@ -1,6 +1,7 @@
 import { execute, parse, validate } from 'graphql';
 import { auth } from '@/auth';
 import { createContext, type Session } from './context';
+import type { TypedDocumentString } from './generated/graphql';
 import { schema } from './schema';
 
 /**
@@ -23,8 +24,8 @@ import { schema } from './schema';
  * — and a cached page must not vary by who is asking anyway. Admin callers use
  * `executeAsAdmin` below.
  */
-export async function executeQuery<TData, TVariables extends Record<string, unknown> = Record<string, never>>(
-  document: string,
+export async function executeQuery<TData, TVariables>(
+  document: TypedDocumentString<TData, TVariables>,
   variables?: TVariables,
 ): Promise<TData> {
   return run<TData, TVariables>(document, variables, null);
@@ -42,8 +43,8 @@ export async function executeQuery<TData, TVariables extends Record<string, unkn
  *
  * Server Actions and admin server components use this. Nothing else should.
  */
-export async function executeAsAdmin<TData, TVariables extends Record<string, unknown> = Record<string, never>>(
-  document: string,
+export async function executeAsAdmin<TData, TVariables>(
+  document: TypedDocumentString<TData, TVariables>,
   variables?: TVariables,
 ): Promise<TData> {
   const authSession = await auth();
@@ -54,12 +55,12 @@ export async function executeAsAdmin<TData, TVariables extends Record<string, un
   return run<TData, TVariables>(document, variables, session);
 }
 
-async function run<TData, TVariables extends Record<string, unknown>>(
-  document: string,
+async function run<TData, TVariables>(
+  document: TypedDocumentString<TData, TVariables>,
   variables: TVariables | undefined,
   session: Session,
 ): Promise<TData> {
-  const parsed = parse(document);
+  const parsed = parse(document.toString());
 
   // Catches a malformed query here rather than as an undefined field deep in a
   // render. The HTTP transport gets this from Yoga for free; this path does not.
@@ -69,7 +70,7 @@ async function run<TData, TVariables extends Record<string, unknown>>(
   const result = await execute({
     schema,
     document: parsed,
-    variableValues: variables,
+    variableValues: variables as Record<string, unknown> | undefined,
     // Fresh per call, so concurrent renders never share a context.
     contextValue: await createContext(session),
   });

@@ -31,7 +31,7 @@ query SeasonSchedule($season: Int!) {
         status
         meeting {
           name
-          round
+          round: officialRound
         }
       }
     }
@@ -53,7 +53,7 @@ query HeroReplay {
     laps
     meeting {
       name
-      round
+      round: officialRound
       season
       circuitName
     }
@@ -87,7 +87,7 @@ query LatestResult {
     type
     meeting {
       name
-      round
+      round: officialRound
       season
       circuitName
       country
