@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Count, Entrant } from '@/components/ui/results-table';
+import { Count, Entrant, teamWash } from '@/components/ui/results-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -83,7 +83,6 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
         <ol>
           {ordered.map(({ team, standing }) => {
             const color = standing?.team.color ?? team.color ?? null;
-            const tint = color ?? 'var(--muted)';
             const lead = standing?.position === 1;
             const share = standing ? (leader > 0 ? standing.points / leader : 0) : 1;
             return (
@@ -95,13 +94,9 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
                   <span
                     aria-hidden
                     className="absolute inset-y-0 left-0"
-                    style={{
-                      width: `${Math.max(0, Math.min(1, share)) * 100}%`,
-                      borderLeft: `2px solid ${tint}`,
-                      backgroundColor: `color-mix(in oklab, ${tint} ${
-                        standing ? (lead ? 40 : 28) : 12
-                      }%, transparent)`,
-                    }}
+                    // The same top edge and wash every team card wears; here it
+                    // just stops where the points do.
+                    style={{ width: `${Math.max(0, Math.min(1, share)) * 100}%`, ...teamWash(color, lead) }}
                   />
                   <span
                     className={`tabular relative w-10 shrink-0 pl-4 font-heading text-2xl font-light leading-none sm:w-14 sm:pl-6 ${
