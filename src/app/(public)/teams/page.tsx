@@ -1,11 +1,11 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Entrant, ShareBar, teamWash } from '@/components/ui/results-table';
+import { Count, Entrant } from '@/components/ui/results-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
-import { GridSkeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SeasonFilter } from '@/components/ui/season-filter';
 import { getActiveSeason, getArchiveIndex, getSeasonStandings } from '@/lib/queries';
 import { seasonFilter, type SearchParams } from '@/lib/search-params';
@@ -24,7 +24,7 @@ export default function TeamsPage({ searchParams }: { searchParams: SearchParams
         description="Every constructor that has entered a race in the seasons imported here. A team that rebranded appears under each name it raced with, which is how the championship counted it."
       />
       <div className="mt-8">
-        <Suspense fallback={<GridSkeleton count={6} itemClassName="h-36" />}>
+        <Suspense fallback={<Skeleton className="h-[40rem] w-full rounded-xl" />}>
           <TeamGrid searchParams={searchParams} />
         </Suspense>
       </div>
@@ -77,49 +77,64 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
   return (
     <>
       {filter}
-      <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {ordered.map(({ team, standing }) => {
-          const color = standing?.team.color ?? team.color ?? null;
-          const lead = standing?.position === 1;
-          return (
-            <li key={team.id}>
-              <Link href={`/teams/${encodeURIComponent(team.name)}`} className="block h-full rounded-xl">
-                <Card interactive className="h-full" style={teamWash(color, lead)}>
-                  {standing ? (
-                    <span className="mb-4 flex items-end justify-between gap-3">
-                      <span
-                        className={`tabular font-heading text-4xl font-light leading-none ${
-                          lead ? 'text-foreground' : 'text-subtle'
-                        }`}
-                      >
-                        {standing.position}
-                      </span>
-                      <span className="tabular font-heading text-xl font-semibold leading-none">
-                        {standing.points}
-                        <span className="ml-1 text-sm font-medium text-muted">pts</span>
-                      </span>
-                    </span>
-                  ) : null}
-                  <Entrant name={team.name} color={color} large />
+      {/* The page is the chart: each row fills to its share of the leader's
+          points, so the gaps between teams are the first thing you read. */}
+      <Card flush className="mt-6 overflow-hidden">
+        <ol>
+          {ordered.map(({ team, standing }) => {
+            const color = standing?.team.color ?? team.color ?? null;
+            const tint = color ?? 'var(--muted)';
+            const lead = standing?.position === 1;
+            const share = standing ? (leader > 0 ? standing.points / leader : 0) : 1;
+            return (
+              <li key={team.id} className="border-b border-line/60 last:border-0">
+                <Link
+                  href={`/teams/${encodeURIComponent(team.name)}`}
+                  className="relative flex h-14 items-center gap-3 pr-4 transition-colors hover:bg-panel-strong/50 sm:gap-4 sm:pr-6"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0"
+                    style={{
+                      width: `${Math.max(0, Math.min(1, share)) * 100}%`,
+                      borderLeft: `2px solid ${tint}`,
+                      backgroundColor: `color-mix(in oklab, ${tint} ${
+                        standing ? (lead ? 40 : 28) : 12
+                      }%, transparent)`,
+                    }}
+                  />
+                  <span
+                    className={`tabular relative w-10 shrink-0 pl-4 font-heading text-2xl font-light leading-none sm:w-14 sm:pl-6 ${
+                      lead ? 'text-foreground' : 'text-subtle'
+                    }`}
+                  >
+                    {standing?.position}
+                  </span>
+                  <span className="relative min-w-0 flex-1">
+                    <Entrant name={team.name} color={color} />
+                  </span>
                   {standing ? (
                     <>
-                      <span className="mt-0.5 flex justify-between gap-3 pl-[11px] text-sm text-muted">
-                        <span className="font-mono">{(lineups.get(team.name) ?? []).join(' · ')}</span>
-                        <span>
-                          {standing.wins} win{standing.wins === 1 ? '' : 's'}
-                        </span>
+                      <span className="relative hidden w-32 font-mono text-xs text-muted sm:block">
+                        {(lineups.get(team.name) ?? []).join(' · ')}
                       </span>
-                      <span className="mt-3 block pl-[11px]">
-                        <ShareBar share={leader > 0 ? standing.points / leader : 0} color={color} />
+                      <span className="tabular relative hidden w-16 text-right text-sm text-muted md:block">
+                        <Count value={standing.wins} />
+                        {standing.wins > 0 ? (
+                          <span className="ml-1 text-xs text-subtle">{standing.wins === 1 ? 'win' : 'wins'}</span>
+                        ) : null}
+                      </span>
+                      <span className="tabular relative w-16 text-right font-heading text-xl font-semibold sm:w-20">
+                        {standing.points}
                       </span>
                     </>
                   ) : null}
-                </Card>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                </Link>
+              </li>
+            );
+          })}
+        </ol>
+      </Card>
     </>
   );
 }

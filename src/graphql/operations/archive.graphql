@@ -90,9 +90,6 @@ query ArchiveIndex($season: Int) {
     name
     locality
     country
-    lengthKm
-    turns
-    firstGrandPrix
     races {
       slug
       date

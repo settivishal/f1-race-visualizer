@@ -126,7 +126,7 @@ export type ArchiveIndexQueryVariables = Exact<{
 }>;
 
 
-export type ArchiveIndexQuery = { seasons: Array<{ year: number }>, drivers: Array<{ id: string, code: string, name: string, number: number | null, country: string | null, latestTeam: { name: string, color: string | null } | null }>, teams: Array<{ id: string, name: string, color: string | null }>, circuits: Array<{ id: string, ergastId: string, name: string, locality: string | null, country: string | null, lengthKm: number | null, turns: number | null, firstGrandPrix: number | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> }> };
+export type ArchiveIndexQuery = { seasons: Array<{ year: number }>, drivers: Array<{ id: string, code: string, name: string, number: number | null, country: string | null, latestTeam: { name: string, color: string | null } | null }>, teams: Array<{ id: string, name: string, color: string | null }>, circuits: Array<{ id: string, ergastId: string, name: string, locality: string | null, country: string | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> }> };
 
 export type CircuitProfileQueryVariables = Exact<{
   ergastId: string;
@@ -608,9 +608,6 @@ export const ArchiveIndexDocument = new TypedDocumentString(`
     name
     locality
     country
-    lengthKm
-    turns
-    firstGrandPrix
     races {
       slug
       date
