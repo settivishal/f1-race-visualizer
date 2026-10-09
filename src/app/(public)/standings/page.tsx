@@ -11,7 +11,9 @@ import {
   Entrant,
   FIRST,
   LAST,
+  Count,
   ResultsTable,
+  ShareBar,
   Row,
   TopThree,
   type Place,
@@ -107,8 +109,9 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
               }))}
               columns={[
                 { label: 'Pos' },
-                { label: 'Driver' },
+                { label: 'Driver', className: 'md:w-64' },
                 { label: 'Team', className: 'hidden md:table-cell' },
+                { label: 'Share of leader', className: 'hidden w-32 md:table-cell', srOnly: true },
                 { label: 'Wins', className: 'w-16 text-right' },
                 { label: 'Podiums', className: 'hidden w-20 text-right sm:table-cell' },
                 { label: 'Pts' },
@@ -124,10 +127,15 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
                       color={standing.team.color ?? null}
                     />
                   </td>
-                  <td className={`${CELL} hidden text-muted md:table-cell`}>{standing.team.name}</td>
-                  <td className={`${CELL} tabular text-right text-muted`}>{standing.wins}</td>
+                  <td className={`${CELL} hidden truncate text-muted md:table-cell`}>{standing.team.name}</td>
+                  <td className={`${CELL} hidden md:table-cell`}>
+                    <ShareBar share={share(driverStandings, standing)} color={standing.team.color ?? null} />
+                  </td>
+                  <td className={`${CELL} tabular text-right text-muted`}>
+                    <Count value={standing.wins} />
+                  </td>
                   <td className={`${CELL} tabular hidden text-right text-muted sm:table-cell`}>
-                    {standing.podiums}
+                    <Count value={standing.podiums} />
                   </td>
                   <td className={`${LAST} font-semibold`}>{standing.points}</td>
                 </Row>
@@ -146,6 +154,7 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
               columns={[
                 { label: 'Pos' },
                 { label: 'Team' },
+                { label: 'Share of leader', className: 'hidden w-40 md:table-cell', srOnly: true },
                 { label: 'Wins', className: 'w-16 text-right' },
                 { label: 'Pts' },
               ]}
@@ -156,7 +165,15 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
                   <td className={CELL}>
                     <Entrant name={standing.team.name} color={standing.team.color ?? null} />
                   </td>
-                  <td className={`${CELL} tabular text-right text-muted`}>{standing.wins}</td>
+                  <td className={`${CELL} hidden md:table-cell`}>
+                    <ShareBar
+                      share={share(constructorStandings, standing)}
+                      color={standing.team.color ?? null}
+                    />
+                  </td>
+                  <td className={`${CELL} tabular text-right text-muted`}>
+                    <Count value={standing.wins} />
+                  </td>
                   <td className={`${LAST} font-semibold`}>{standing.points}</td>
                 </Row>
               ))}
@@ -180,6 +197,12 @@ function hasTopThree(standings: Standing[]) {
   return standings.length >= 3;
 }
 
+/** Points over the leader's; a season where nobody has scored is all zeros. */
+function share(standings: Standing[], standing: Standing) {
+  const leader = standings[0]?.points ?? 0;
+  return leader > 0 ? standing.points / leader : 0;
+}
+
 function rest<T extends Standing>(standings: T[]) {
   return hasTopThree(standings) ? standings.slice(3) : standings;
 }
@@ -201,7 +224,8 @@ function topThree<T extends Standing>(
           ...entrant(standing),
           position: standing.position,
           color: standing.team.color ?? null,
-          stat: `${standing.points} pts`,
+          points: standing.points,
+          share: share(standings, standing),
           note:
             standing.position === 1
               ? `${standing.wins} win${standing.wins === 1 ? '' : 's'}`

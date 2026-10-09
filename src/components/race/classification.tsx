@@ -59,7 +59,7 @@ export function Classification({ results, caption }: { results: Result[]; captio
                   subtitle: result.team?.name ?? '—',
                   color: result.team?.color ?? null,
                   mark: result.fastestLap ? <FastestLap /> : null,
-                  stat: `${result.points} pts`,
+                  points: result.points,
                   note:
                     delta !== null && delta !== 0 ? (
                       <>
@@ -73,7 +73,7 @@ export function Classification({ results, caption }: { results: Result[]; captio
         }
         columns={[
           { label: 'Pos' },
-          { label: 'Driver' },
+          { label: 'Driver', className: 'md:w-64' },
           { label: 'Team', className: 'hidden md:table-cell' },
           { label: 'Result', className: 'w-24 sm:w-[30%]' },
           ...(showGrid ? [{ label: 'Grid', className: 'hidden w-16 text-right sm:table-cell' }] : []),
@@ -93,7 +93,7 @@ export function Classification({ results, caption }: { results: Result[]; captio
                 mark={result.fastestLap ? <FastestLap /> : null}
               />
             </td>
-            <td className={`${CELL} hidden text-muted md:table-cell`}>{result.team?.name ?? '—'}</td>
+            <td className={`${CELL} hidden truncate text-muted md:table-cell`}>{result.team?.name ?? '—'}</td>
             <td className={CELL}>
               <RaceEnd result={result} raceLaps={raceLaps} />
             </td>
