@@ -28,7 +28,7 @@ export function RecordTable({
   showTeam?: boolean;
 }) {
   return (
-    <Card className="overflow-x-auto p-0">
+    <Card flush className="overflow-x-auto">
       <table className="w-full min-w-[34rem] text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead>

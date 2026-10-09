@@ -38,7 +38,7 @@ export function ResultsTable({
   children: ReactNode;
 }) {
   return (
-    <Card className="mt-4 overflow-hidden p-0">
+    <Card flush className="mt-4 overflow-hidden">
       {top}
       {/* Fixed layout, so the columns sit where the header puts them rather
           than wherever the longest name pushes them. */}
