@@ -1,4 +1,4 @@
-import { Card } from '@/components/ui/card';
+import { CELL, Entrant, FIRST, LAST, ResultsTable, Row, TopThree } from '@/components/ui/results-table';
 import type { RaceHeaderQuery } from '@/graphql/generated/graphql';
 import { gridDelta, lapsDown } from './classification-math';
 
@@ -8,7 +8,7 @@ type Result = NonNullable<RaceHeaderQuery['race']>['results'][number];
  * The final classification: the podium as one quiet strip, then everyone else
  * as a list that says in words how their race ended.
  *
- * Colour is kept for meaning. The team is a dot beside the name, the grid
+ * Colour is kept for meaning. The team is a bar beside the code, the grid
  * change is green or red, and nothing else is coloured — so the eye lands on
  * the few things that differ rather than on twenty liveries. Only cars that
  * did not finish get a distance line, so a retirement stands out from a list
@@ -38,142 +38,77 @@ export function Classification({ results, caption }: { results: Result[]; captio
     <section className="mt-10">
       <h2 className="type-section-title">Classification</h2>
 
-      <Card className="mt-4 overflow-hidden p-0">
-        {hasPodium ? (
-          <ol
-            aria-label="Podium"
-            className="grid divide-y divide-line border-b border-line sm:grid-cols-3 sm:divide-x sm:divide-y-0"
-          >
-            {podium.map((result) => (
-              <PodiumPlace
-                key={result.driver?.code ?? result.finalPosition}
-                result={result}
-                showGrid={showGrid}
-              />
-            ))}
-          </ol>
-        ) : null}
-
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">{caption}</caption>
-          <thead>
-            <tr className="border-b border-line text-eyebrow uppercase text-muted">
-              <th scope="col" className="w-12 py-3 pl-4 pr-2 font-semibold sm:w-16 sm:pl-6">Pos</th>
-              <th scope="col" className="py-3 pr-3 font-semibold">Driver</th>
-              <th scope="col" className="w-20 py-3 pr-3 font-semibold sm:w-[34%]">Result</th>
-              {showGrid ? (
-                <th scope="col" className="hidden w-16 py-3 pr-3 text-right font-semibold sm:table-cell">
-                  Grid
-                </th>
-              ) : null}
-              <th scope="col" className="w-14 py-3 pr-4 text-right font-semibold sm:pr-6">Pts</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rest.map((result, index) => (
-              <tr
-                key={result.driver?.code ?? `row-${index}`}
-                className="border-b border-line/60 last:border-0"
-              >
-                <td className="tabular py-3 pl-4 pr-2 text-muted sm:pl-6">
-                  <PositionLabel result={result} />
-                </td>
-                <td className="py-3 pr-3">
-                  <DriverName result={result} />
-                  <span className="mt-0.5 flex items-center gap-2 pl-4 text-xs text-muted">
-                    {result.team?.name ?? '—'}
-                    {/* A phone has no Grid column; the change rides here. */}
-                    {showGrid ? (
-                      <span className="sm:hidden">
-                        <GridChange result={result} />
-                      </span>
-                    ) : null}
-                  </span>
-                </td>
-                <td className="py-3 pr-3">
-                  <RaceEnd result={result} raceLaps={raceLaps} />
-                </td>
-                {showGrid ? (
-                  <td className="hidden py-3 pr-3 text-right sm:table-cell">
-                    <GridChange result={result} />
-                  </td>
-                ) : null}
-                <td
-                  className={`tabular py-3 pr-4 text-right sm:pr-6 ${
-                    result.points > 0 ? 'font-semibold' : 'text-subtle'
-                  }`}
-                >
-                  {result.points}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-    </section>
-  );
-}
-
-/** P2, P1, P3 left to right on a desktop, the way a podium stands. */
-const ORDER: Record<number, string> = { 1: 'sm:order-2', 2: 'sm:order-1', 3: 'sm:order-3' };
-
-function PodiumPlace({ result, showGrid }: { result: Result; showGrid: boolean }) {
-  const position = result.finalPosition ?? 0;
-  const delta = showGrid ? gridDelta(result) : null;
-  const winner = position === 1;
-
-  return (
-    // A row on a phone, number beside the name; a column on a desktop.
-    <li
-      className={`grid grid-cols-[3rem_1fr] items-center gap-x-3 px-5 py-4 sm:flex sm:flex-col sm:items-stretch sm:px-6 sm:py-6 ${
-        ORDER[position] ?? ''
-      }`}
-    >
-      <span className="col-start-2 flex h-4 items-center gap-1.5 text-eyebrow font-semibold uppercase text-muted empty:hidden sm:empty:flex">
-        {winner ? (
-          <>
-            <ChequeredFlag />
-            Winner
-          </>
-        ) : null}
-      </span>
-      <span
-        className={`tabular row-span-4 row-start-1 font-heading text-5xl font-light leading-none sm:mt-1 sm:text-6xl ${
-          winner ? 'text-foreground' : 'text-subtle'
-        }`}
+      <ResultsTable
+        caption={caption}
+        top={
+          hasPodium ? (
+            <TopThree
+              label="Podium"
+              leadLabel={
+                <>
+                  <ChequeredFlag />
+                  Winner
+                </>
+              }
+              places={podium.map((result) => {
+                const delta = showGrid ? gridDelta(result) : null;
+                return {
+                  position: result.finalPosition ?? 0,
+                  code: result.driver?.code,
+                  title: result.driver?.name ?? 'Unknown driver',
+                  subtitle: result.team?.name ?? '—',
+                  color: result.team?.color ?? null,
+                  mark: result.fastestLap ? <FastestLap /> : null,
+                  stat: `${result.points} pts`,
+                  note:
+                    delta !== null && delta !== 0 ? (
+                      <>
+                        <GridChange result={result} /> from P{result.gridPosition}
+                      </>
+                    ) : null,
+                };
+              })}
+            />
+          ) : null
+        }
+        columns={[
+          { label: 'Pos' },
+          { label: 'Driver' },
+          { label: 'Team', className: 'hidden md:table-cell' },
+          { label: 'Result', className: 'w-24 sm:w-[30%]' },
+          ...(showGrid ? [{ label: 'Grid', className: 'hidden w-16 text-right sm:table-cell' }] : []),
+          { label: 'Pts' },
+        ]}
       >
-        {position}
-      </span>
-      <span className="col-start-2 sm:mt-5">
-        <DriverName result={result} large />
-      </span>
-      <span className="col-start-2 mt-0.5 pl-4 text-sm text-muted">{result.team?.name ?? '—'}</span>
-      <span className="col-start-2 mt-2 flex items-baseline gap-3 pl-4 text-sm sm:mt-4">
-        <span className="tabular font-semibold">{result.points} pts</span>
-        {delta !== null && delta !== 0 ? (
-          <span className="text-muted">
-            <GridChange result={result} /> from P{result.gridPosition}
-          </span>
-        ) : null}
-      </span>
-    </li>
-  );
-}
-
-/** The team as a dot, the name, and the fastest-lap mark if it is theirs. */
-function DriverName({ result, large = false }: { result: Result; large?: boolean }) {
-  return (
-    <span className="flex items-center gap-2">
-      <span
-        className="size-2 shrink-0 rounded-full"
-        style={{ backgroundColor: result.team?.color ?? 'var(--muted)' }}
-        aria-hidden
-      />
-      <span className={`truncate font-medium ${large ? 'text-lg' : ''}`}>
-        {result.driver?.name ?? 'Unknown driver'}
-      </span>
-      {result.fastestLap ? <FastestLap /> : null}
-    </span>
+        {rest.map((result, index) => (
+          <Row key={result.driver?.code ?? `row-${index}`}>
+            <td className={FIRST}>
+              <PositionLabel result={result} />
+            </td>
+            <td className={CELL}>
+              <Entrant
+                code={result.driver?.code}
+                name={result.driver?.name ?? 'Unknown driver'}
+                color={result.team?.color ?? null}
+                mark={result.fastestLap ? <FastestLap /> : null}
+              />
+            </td>
+            <td className={`${CELL} hidden text-muted md:table-cell`}>{result.team?.name ?? '—'}</td>
+            <td className={CELL}>
+              <RaceEnd result={result} raceLaps={raceLaps} />
+            </td>
+            {showGrid ? (
+              <td className={`${CELL} hidden text-right sm:table-cell`}>
+                <GridChange result={result} />
+              </td>
+            ) : null}
+            <td className={`${LAST} ${result.points > 0 ? 'font-semibold' : 'text-subtle'}`}>
+              {result.points}
+            </td>
+          </Row>
+        ))}
+      </ResultsTable>
+    </section>
   );
 }
 
