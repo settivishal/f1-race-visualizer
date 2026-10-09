@@ -1,12 +1,23 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { buttonClasses } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SeasonFilter } from '@/components/ui/season-filter';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  CELL,
+  Entrant,
+  FIRST,
+  LAST,
+  Count,
+  ResultsTable,
+  ShareBar,
+  Row,
+  TopThree,
+  type Place,
+} from '@/components/ui/results-table';
 import { getActiveSeason, getSeasonStandings } from '@/lib/queries';
 import { yearParam, type SearchParams } from '@/lib/search-params';
 
@@ -89,58 +100,47 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
               Drivers&rsquo; championship
             </h2>
 
-            <Card className="mt-4 overflow-x-auto p-0">
-              <table className="w-full min-w-[42rem] text-left text-sm">
-                <caption className="sr-only">
-                  {season} drivers&rsquo; championship standings
-                </caption>
-                <thead>
-                  <tr className="border-b border-line text-eyebrow uppercase text-muted">
-                    <th scope="col" className="py-3 pl-5 pr-3 font-semibold">Pos</th>
-                    <th scope="col" className="py-3 pr-3 font-semibold">Driver</th>
-                    <th scope="col" className="py-3 pr-3 font-semibold">Team</th>
-                    <th scope="col" className="py-3 pr-3 text-right font-semibold">Wins</th>
-                    <th scope="col" className="py-3 pr-3 text-right font-semibold">Podiums</th>
-                    <th scope="col" className="py-3 pr-5 text-right font-semibold">Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {driverStandings.map((standing) => (
-                    <tr
-                      key={standing.driver.code}
-                      className="border-b border-line/60 last:border-0"
-                    >
-                      <td className="tabular py-2.5 pl-5 pr-3 text-muted">
-                        {standing.position}
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        <span className="flex items-center gap-2.5">
-                          <span
-                            aria-hidden
-                            className="h-4 w-1 shrink-0 rounded-full"
-                            style={{ backgroundColor: standing.team.color ?? 'var(--muted)' }}
-                          />
-                          <span className="font-mono text-xs font-medium text-muted">
-                            {standing.driver.code}
-                          </span>
-                          <span className="font-medium">{standing.driver.name}</span>
-                        </span>
-                      </td>
-                      <td className="py-2.5 pr-3 text-muted">{standing.team.name}</td>
-                      <td className="tabular py-2.5 pr-3 text-right text-muted">
-                        {standing.wins}
-                      </td>
-                      <td className="tabular py-2.5 pr-3 text-right text-muted">
-                        {standing.podiums}
-                      </td>
-                      <td className="tabular py-2.5 pr-5 text-right font-semibold">
-                        {standing.points}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
+            <ResultsTable
+              caption={`${season} drivers’ championship standings`}
+              top={topThree(driverStandings, (standing) => ({
+                code: standing.driver.code,
+                title: standing.driver.name,
+                subtitle: standing.team.name,
+              }))}
+              columns={[
+                { label: 'Pos' },
+                { label: 'Driver', className: 'md:w-64' },
+                { label: 'Team', className: 'hidden md:table-cell' },
+                { label: 'Share of leader', className: 'hidden w-32 md:table-cell', srOnly: true },
+                { label: 'Wins', className: 'w-16 text-right' },
+                { label: 'Podiums', className: 'hidden w-20 text-right sm:table-cell' },
+                { label: 'Pts' },
+              ]}
+            >
+              {rest(driverStandings).map((standing) => (
+                <Row key={standing.driver.code}>
+                  <td className={FIRST}>{standing.position}</td>
+                  <td className={CELL}>
+                    <Entrant
+                      code={standing.driver.code}
+                      name={standing.driver.name}
+                      color={standing.team.color ?? null}
+                    />
+                  </td>
+                  <td className={`${CELL} hidden truncate text-muted md:table-cell`}>{standing.team.name}</td>
+                  <td className={`${CELL} hidden md:table-cell`}>
+                    <ShareBar share={share(driverStandings, standing)} color={standing.team.color ?? null} />
+                  </td>
+                  <td className={`${CELL} tabular text-right text-muted`}>
+                    <Count value={standing.wins} />
+                  </td>
+                  <td className={`${CELL} tabular hidden text-right text-muted sm:table-cell`}>
+                    <Count value={standing.podiums} />
+                  </td>
+                  <td className={`${LAST} font-semibold`}>{standing.points}</td>
+                </Row>
+              ))}
+            </ResultsTable>
           </section>
 
           <section className="mt-12">
@@ -148,53 +148,93 @@ async function Standings({ searchParams }: { searchParams: SearchParams }) {
               Constructors&rsquo; championship
             </h2>
 
-            <Card className="mt-4 overflow-x-auto p-0">
-              <table className="w-full min-w-[30rem] text-left text-sm">
-                <caption className="sr-only">
-                  {season} constructors&rsquo; championship standings
-                </caption>
-                <thead>
-                  <tr className="border-b border-line text-eyebrow uppercase text-muted">
-                    <th scope="col" className="py-3 pl-5 pr-3 font-semibold">Pos</th>
-                    <th scope="col" className="py-3 pr-3 font-semibold">Team</th>
-                    <th scope="col" className="py-3 pr-3 text-right font-semibold">Wins</th>
-                    <th scope="col" className="py-3 pr-5 text-right font-semibold">Points</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {constructorStandings.map((standing) => (
-                    <tr
-                      key={standing.team.name}
-                      className="border-b border-line/60 last:border-0"
-                    >
-                      <td className="tabular py-2.5 pl-5 pr-3 text-muted">
-                        {standing.position}
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        <span className="flex items-center gap-2.5">
-                          <span
-                            aria-hidden
-                            className="h-4 w-1 shrink-0 rounded-full"
-                            style={{ backgroundColor: standing.team.color ?? 'var(--muted)' }}
-                          />
-                          <span className="font-medium">{standing.team.name}</span>
-                        </span>
-                      </td>
-                      <td className="tabular py-2.5 pr-3 text-right text-muted">
-                        {standing.wins}
-                      </td>
-                      <td className="tabular py-2.5 pr-5 text-right font-semibold">
-                        {standing.points}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
+            <ResultsTable
+              caption={`${season} constructors’ championship standings`}
+              top={topThree(constructorStandings, (standing) => ({ title: standing.team.name }))}
+              columns={[
+                { label: 'Pos' },
+                { label: 'Team' },
+                { label: 'Share of leader', className: 'hidden w-40 md:table-cell', srOnly: true },
+                { label: 'Wins', className: 'w-16 text-right' },
+                { label: 'Pts' },
+              ]}
+            >
+              {rest(constructorStandings).map((standing) => (
+                <Row key={standing.team.name}>
+                  <td className={FIRST}>{standing.position}</td>
+                  <td className={CELL}>
+                    <Entrant name={standing.team.name} color={standing.team.color ?? null} />
+                  </td>
+                  <td className={`${CELL} hidden md:table-cell`}>
+                    <ShareBar
+                      share={share(constructorStandings, standing)}
+                      color={standing.team.color ?? null}
+                    />
+                  </td>
+                  <td className={`${CELL} tabular text-right text-muted`}>
+                    <Count value={standing.wins} />
+                  </td>
+                  <td className={`${LAST} font-semibold`}>{standing.points}</td>
+                </Row>
+              ))}
+            </ResultsTable>
           </section>
         </>
       )}
     </>
+  );
+}
+
+type Standing = {
+  position: number;
+  points: number;
+  wins: number;
+  team: { name: string; color?: string | null };
+};
+
+/** The strip needs a full top three; anything less stays in the table. */
+function hasTopThree(standings: Standing[]) {
+  return standings.length >= 3;
+}
+
+/** Points over the leader's; a season where nobody has scored is all zeros. */
+function share(standings: Standing[], standing: Standing) {
+  const leader = standings[0]?.points ?? 0;
+  return leader > 0 ? standing.points / leader : 0;
+}
+
+function rest<T extends Standing>(standings: T[]) {
+  return hasTopThree(standings) ? standings.slice(3) : standings;
+}
+
+/** P1 shows its wins; P2 and P3 how far they trail it. */
+function topThree<T extends Standing>(
+  standings: T[],
+  entrant: (standing: T) => Pick<Place, 'code' | 'title' | 'subtitle'>,
+) {
+  if (!hasTopThree(standings)) return null;
+  const leader = standings[0].points;
+  return (
+    <TopThree
+      label="Top three"
+      leadLabel="Leader"
+      places={standings.slice(0, 3).map((standing) => {
+        const gap = leader - standing.points;
+        return {
+          ...entrant(standing),
+          position: standing.position,
+          color: standing.team.color ?? null,
+          points: standing.points,
+          share: share(standings, standing),
+          note:
+            standing.position === 1
+              ? `${standing.wins} win${standing.wins === 1 ? '' : 's'}`
+              : gap === 0
+                ? 'Level on points'
+                : `−${gap} to leader`,
+        };
+      })}
+    />
   );
 }
 
@@ -204,9 +244,9 @@ function StandingsSkeleton() {
     <div className="mt-8">
       <Skeleton className="h-10 w-64" />
       <Skeleton className="mt-10 h-8 w-72" />
-      <Skeleton className="mt-4 h-[34rem] w-full rounded-xl" />
+      <Skeleton className="mt-4 h-[42rem] w-full rounded-xl" />
       <Skeleton className="mt-12 h-8 w-72" />
-      <Skeleton className="mt-4 h-[22rem] w-full rounded-xl" />
+      <Skeleton className="mt-4 h-[26rem] w-full rounded-xl" />
     </div>
   );
 }
