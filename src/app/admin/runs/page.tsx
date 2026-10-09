@@ -61,7 +61,7 @@ async function Runs() {
   }
 
   return (
-    <Card className="mt-8 overflow-x-auto p-0">
+    <Card flush className="mt-8 overflow-x-auto">
       <table className="w-full min-w-[46rem] text-left text-sm">
         <caption className="sr-only">Ingest run history</caption>
         <thead>
