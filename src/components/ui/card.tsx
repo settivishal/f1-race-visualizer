@@ -10,18 +10,26 @@ export function Card({
   children,
   className,
   interactive = false,
+  flush = false,
   style,
 }: {
   children: ReactNode;
   className?: string;
   /** Adds hover and press affordances. For cards that are themselves links. */
   interactive?: boolean;
+  /**
+   * No padding, for a table or list that runs edge to edge. A prop rather than
+   * `p-0` in className: cn() is a plain join, so `p-0` against the default
+   * `p-5` is decided by stylesheet order — and `p-5` wins.
+   */
+  flush?: boolean;
   style?: CSSProperties;
 }) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-line bg-panel p-5 shadow-sm",
+        "rounded-xl border border-line bg-panel shadow-sm",
+        !flush && "p-5",
         interactive &&
           "transition-[background-color,border-color,transform] hover:border-line-strong hover:bg-panel-strong active:translate-y-px",
         className,

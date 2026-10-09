@@ -109,7 +109,7 @@ async function CircuitDetail({ params }: { params: Promise<{ id: string }> }) {
       {circuit.races.length > 0 ? (
         <section className="mt-10">
           <h2 className="type-section-title">Races here</h2>
-          <Card className="mt-4 p-0">
+          <Card flush className="mt-4">
             <ul>
               {circuit.races.map((race) => (
                 <li key={race.slug} className="border-b border-line/60 last:border-0">
