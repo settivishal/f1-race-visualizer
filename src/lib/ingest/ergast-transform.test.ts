@@ -3,7 +3,7 @@ import laps from './__fixtures__/australia-2018-ergast/laps.json';
 import pitStops from './__fixtures__/australia-2018-ergast/pitStops.json';
 import race from './__fixtures__/australia-2018-ergast/race.json';
 import {
-  archiveRaceSlug, buildArchiveEvents, buildArchivePitStops, buildArchivePositions,
+  CONSTRUCTOR_COLOR, archiveRaceSlug, buildArchiveEvents, buildArchivePitStops, buildArchivePositions,
   buildArchiveResults, buildNumbersByDriverId,
   classifyResult, parseDuration, transformArchiveRace,
 } from './ergast-transform';
@@ -215,5 +215,22 @@ describe('a stop under a red flag', () => {
     expect(events).toEqual([
       { lap: 20, driverNumber: 7, type: 'PIT_STOP', details: '23.4s in the pit lane' },
     ]);
+  });
+});
+
+describe('CONSTRUCTOR_COLOR', () => {
+  // WCAG's 3:1 for graphics, against the dark panel (--panel, #0d0f14): a team
+  // bar or chart line darker than that disappears on a dark screen.
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const panel = luminance('#0d0f14');
+
+  it.each(Object.entries(CONSTRUCTOR_COLOR))('%s (%s) reads on the dark panel', (_team, color) => {
+    expect((luminance(color) + 0.05) / (panel + 0.05)).toBeGreaterThanOrEqual(3);
   });
 });

@@ -28,8 +28,13 @@ import type {
  * replay of anything. Constructors that still exist keep the colour the OpenF1
  * ingest already stores; these are the ones that stopped existing before 2023,
  * plus the names the current teams raced under inside the 2018-2022 window.
+ *
+ * Every one has to read against the dark chart panel as well as the light
+ * page. AlphaTauri's navy and Alfa Romeo's maroon were the liveries but
+ * vanished as a 3px bar on near-black, so they carry the lighter shades F1's
+ * own graphics used for the same teams.
  */
-const CONSTRUCTOR_COLOR: Record<string, string> = {
+export const CONSTRUCTOR_COLOR: Record<string, string> = {
   mercedes: '#00D7B6',
   ferrari: '#ED1131',
   red_bull: '#4781D7',
@@ -40,14 +45,14 @@ const CONSTRUCTOR_COLOR: Record<string, string> = {
   haas: '#9C9FA2',
   sauber: '#01C00E',
   rb: '#6C98FF',
-  alphatauri: '#20394C',
+  alphatauri: '#4E7C9B',
   toro_rosso: '#469BFF',
   racing_point: '#F596C8',
   renault: '#FFF500',
   force_india: '#FF80C7',
-  alfa: '#900000',
+  alfa: '#C92D4B',
   lotus_f1: '#FFB800',
-  manor: '#323232',
+  manor: '#8A8A8A',
 };
 
 /**
