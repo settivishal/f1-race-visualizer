@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { TeamCode } from '@/components/race/circuit-info-panel';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
@@ -86,6 +87,9 @@ async function CircuitGrid({ searchParams }: { searchParams: SearchParams }) {
               <th scope="col" className="py-2.5 pr-3 pl-4 font-semibold sm:pl-6">
                 Circuit
               </th>
+              <th scope="col" className="hidden w-28 py-2.5 pr-3 font-semibold md:table-cell">
+                Most wins
+              </th>
               {years.map((year, index) => (
                 <th
                   key={year}
@@ -111,7 +115,7 @@ async function CircuitGrid({ searchParams }: { searchParams: SearchParams }) {
               <tr className="border-b border-line/60">
                 <th
                   scope="rowgroup"
-                  colSpan={years.length + 2}
+                  colSpan={years.length + 3}
                   className="bg-panel-strong/40 py-2 pl-4 text-left text-eyebrow font-semibold uppercase text-muted sm:pl-6"
                 >
                   Off the calendar
@@ -151,17 +155,34 @@ function CircuitRow({
     bySeason.set(race.meeting?.season, [...(bySeason.get(race.meeting?.season) ?? []), race]);
   }
   const next = bySeason.get(activeSeason)?.find((race) => race.status !== 'COMPLETED');
+  const king = mostWins(circuit.races);
 
   return (
-    <tr className="border-b border-line/60 transition-colors last:border-0 hover:bg-panel-strong/50">
+    // The name's link stretches over the whole row; the season dots sit above
+    // it (z-10) so each still opens its own race. A link inside a link is not
+    // allowed, so this is how a row is one target and many.
+    <tr className="relative border-b border-line/60 transition-colors last:border-0 hover:bg-panel-strong/50">
       <th scope="row" className="max-w-36 py-2 pr-3 pl-4 font-normal sm:max-w-none sm:pl-6">
-        <Link href={`/circuits/${circuit.ergastId}`} className="block truncate font-medium hover:text-accent">
+        <Link
+          href={`/circuits/${circuit.ergastId}`}
+          className="block truncate font-medium after:absolute after:inset-0 after:content-[''] hover:text-accent"
+        >
           {circuit.name}
         </Link>
         <span className="block truncate text-xs text-muted">
           {[circuit.locality, circuit.country].filter(Boolean).join(', ')}
         </span>
       </th>
+      <td className="hidden py-2 pr-3 md:table-cell">
+        {king ? (
+          <span className="flex items-center gap-1.5">
+            <TeamCode code={king.code} teamColor={king.teamColor} />
+            <span className="tabular text-xs text-muted">×{king.wins}</span>
+          </span>
+        ) : (
+          <span className="text-subtle">·</span>
+        )}
+      </td>
       {years.map((year, index) => {
         const held = bySeason.get(year) ?? [];
         return (
@@ -183,7 +204,7 @@ function CircuitRow({
                     key={race.slug}
                     href={`/races/${race.slug}`}
                     title={label}
-                    className={`inline-flex items-center justify-center rounded-full hover:bg-panel-strong ${
+                    className={`relative z-10 inline-flex items-center justify-center rounded-full hover:bg-panel-strong ${
                       held.length > 1 ? 'size-4' : 'size-6'
                     }`}
                   >
@@ -205,4 +226,23 @@ function CircuitRow({
       </td>
     </tr>
   );
+}
+
+/**
+ * Whoever has won here most, if anyone has won twice; a tie goes to the more
+ * recent winner. Races come newest first, so the first to reach the top count
+ * is the most recent, and their colour is from their latest win here.
+ */
+function mostWins(races: IndexCircuit['races']) {
+  const tally = new Map<string, { code: string; teamColor: string | null; wins: number }>();
+  for (const race of races) {
+    const winner = race.status === 'COMPLETED' ? race.podium[0] : undefined;
+    if (!winner) continue;
+    const entry = tally.get(winner.code) ?? { code: winner.code, teamColor: winner.teamColor ?? null, wins: 0 };
+    entry.wins += 1;
+    tally.set(winner.code, entry);
+  }
+  let best: { code: string; teamColor: string | null; wins: number } | null = null;
+  for (const entry of tally.values()) if (!best || entry.wins > best.wins) best = entry;
+  return best && best.wins >= 2 ? best : null;
 }

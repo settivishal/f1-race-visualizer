@@ -170,44 +170,56 @@ function Garage({ garage, showNumbers }: { garage: Garage; showNumbers: boolean 
         <div className="shrink-0 border-b border-line/60 p-4 sm:p-5 md:w-60 md:border-r md:border-b-0">{header}</div>
       )}
       <ul className="grid flex-1 grid-cols-2 [&>li:nth-child(even)]:border-l [&>li:nth-child(n+3)]:border-t [&>li]:border-line/60">
-        {garage.drivers.map(({ driver, standing }) => (
-          <li key={driver.id}>
-            <Link
-              href={`/drivers/${driver.code.toLowerCase()}`}
-              className="flex h-full flex-col justify-between gap-3 p-4 transition-colors hover:bg-panel-strong/50 sm:p-5"
-            >
-              <span className="flex items-start justify-between gap-3">
-                <span className="tabular font-heading text-3xl font-light leading-none text-subtle sm:text-4xl">
-                  {showNumbers && driver.number !== null ? driver.number : null}
-                </span>
-                {standing ? (
-                  <span className="text-right">
-                    <span className="tabular block font-heading text-lg font-semibold leading-none sm:text-xl">
-                      {standing.points}
-                      <span className="ml-1 text-xs font-medium text-muted sm:text-sm">pts</span>
-                    </span>
-                    <span className="tabular mt-1 block text-eyebrow font-semibold uppercase text-muted">
-                      P{standing.position}
-                      {standing.wins > 0 ? ` · ${standing.wins} win${standing.wins === 1 ? '' : 's'}` : ''}
-                    </span>
+        {garage.drivers.map(({ driver, standing }) => {
+          // A past season has no number to show (only today's is stored), so
+          // the numeral becomes the championship position, as in the standings.
+          const numeral = showNumbers ? driver.number : (standing?.position ?? null);
+          const note = [
+            showNumbers && standing ? `P${standing.position}` : null,
+            standing && standing.wins > 0 ? `${standing.wins} win${standing.wins === 1 ? '' : 's'}` : null,
+          ].filter(Boolean);
+          return (
+            <li key={driver.id}>
+              <Link
+                href={`/drivers/${driver.code.toLowerCase()}`}
+                className="flex h-full flex-col justify-between gap-3 p-4 transition-colors hover:bg-panel-strong/50 sm:p-5"
+              >
+                <span className="flex items-start justify-between gap-3">
+                  <span
+                    className={`tabular font-heading text-3xl font-light leading-none sm:text-4xl ${
+                      !showNumbers && numeral === 1 ? 'text-foreground' : 'text-subtle'
+                    }`}
+                  >
+                    {numeral}
                   </span>
-                ) : null}
-              </span>
-              <span className="block min-w-0">
-                {/* Two panels share a phone's width, so there the code leads and
-                    the name wraps under it rather than being cut off. */}
-                <span className="flex items-baseline gap-2">
-                  <span className="font-mono text-sm font-semibold text-foreground sm:text-muted">{driver.code}</span>
-                  <span className="hidden truncate font-medium sm:inline">{driver.name}</span>
+                  {standing ? (
+                    <span className="text-right">
+                      <span className="tabular block font-heading text-lg font-semibold leading-none sm:text-xl">
+                        {standing.points}
+                        <span className="ml-1 text-xs font-medium text-muted sm:text-sm">pts</span>
+                      </span>
+                      {note.length > 0 ? (
+                        <span className="tabular mt-1 block text-xs text-muted">{note.join(' · ')}</span>
+                      ) : null}
+                    </span>
+                  ) : null}
                 </span>
-                <span className="mt-0.5 block text-xs text-muted sm:hidden">{driver.name}</span>
-                {driver.country ? (
-                  <span className="mt-0.5 hidden truncate text-xs text-subtle sm:block">{driver.country}</span>
-                ) : null}
-              </span>
-            </Link>
-          </li>
-        ))}
+                <span className="block min-w-0">
+                  {/* Two panels share a phone's width, so there the code leads and
+                      the name wraps under it rather than being cut off. */}
+                  <span className="flex items-baseline gap-2">
+                    <span className="font-mono text-sm font-semibold text-foreground sm:text-muted">{driver.code}</span>
+                    <span className="hidden truncate font-medium sm:inline">{driver.name}</span>
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted sm:hidden">{driver.name}</span>
+                  {driver.country ? (
+                    <span className="mt-0.5 hidden truncate text-xs text-subtle sm:block">{driver.country}</span>
+                  ) : null}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );
