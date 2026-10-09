@@ -140,6 +140,13 @@ describe('archive index filtering', () => {
     expect(empty).toEqual({ drivers: [], teams: [] });
   });
 
+  it('gives each driver the team they last raced for, in that season’s livery', async () => {
+    const data = await run<{ drivers: { code: string; latestTeam: { name: string; color: string } | null }[] }>(
+      `query { drivers { code latestTeam { name color } } }`,
+    );
+    expect(data.drivers.find((d) => d.code === 'LEC')?.latestTeam).toEqual({ name: 'Ferrari', color: '#E8002D' });
+  });
+
   it('still lists everything with no season, which generateStaticParams needs', async () => {
     const all = await run<{ teams: { name: string }[] }>(`query { teams { name } }`);
     expect(all.teams.length).toBeGreaterThanOrEqual(2);

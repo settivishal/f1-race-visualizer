@@ -139,6 +139,20 @@ export function Entrant({
   );
 }
 
+/**
+ * A team's colour as a top edge and a faint wash down from it — a little
+ * stronger for whoever leads. Every card that belongs to a team wears this.
+ */
+export function teamWash(color: string | null, lead = false) {
+  const tint = color ?? 'var(--muted)';
+  return {
+    borderTop: `2px solid ${tint}`,
+    backgroundImage: `linear-gradient(to bottom, color-mix(in oklab, ${tint} ${
+      lead ? 22 : 12
+    }%, transparent), transparent 75%)`,
+  };
+}
+
 /** P2, P1, P3 left to right on a desktop, the way a podium stands. */
 const ORDER: Record<number, string> = { 1: 'sm:order-2', 2: 'sm:order-1', 3: 'sm:order-3' };
 
@@ -155,17 +169,11 @@ export function TopThree({ places, label, leadLabel }: { places: Place[]; label:
     >
       {places.map((place) => {
         const lead = place.position === 1;
-        const color = place.color ?? 'var(--muted)';
         return (
           <li
             key={place.code ?? place.title}
             className={`px-5 py-4 sm:px-6 sm:py-5 ${ORDER[place.position] ?? ''}`}
-            style={{
-              borderTop: `2px solid ${color}`,
-              backgroundImage: `linear-gradient(to bottom, color-mix(in oklab, ${color} ${
-                lead ? 22 : 12
-              }%, transparent), transparent 75%)`,
-            }}
+            style={teamWash(place.color, lead)}
           >
             <span className="flex h-4 items-center gap-1.5 text-eyebrow font-semibold uppercase text-muted">
               {lead ? leadLabel : null}

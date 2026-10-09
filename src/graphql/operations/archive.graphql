@@ -72,7 +72,12 @@ query ArchiveIndex($season: Int) {
     id
     code
     name
+    number
     country
+    latestTeam {
+      name
+      color
+    }
   }
   teams(season: $season) {
     id
@@ -85,6 +90,22 @@ query ArchiveIndex($season: Int) {
     name
     locality
     country
+    lengthKm
+    turns
+    firstGrandPrix
+    races {
+      slug
+      date
+      status
+      meeting {
+        season
+      }
+      podium {
+        position
+        code
+        teamColor
+      }
+    }
   }
 }
 

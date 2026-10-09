@@ -112,6 +112,22 @@ export function createLoaders(db: Db) {
       db.select().from(meetings).where(inArray(meetings.id, ids)),
     ),
     podiumByRaceId: podiumLoader(db),
+    // The grands prix held at each circuit, newest first. The circuit index
+    // asks for every circuit's history at once; this keeps that one query.
+    // Cancelled rounds were never held there, so they are not its history.
+    racesByCircuitId: new DataLoader<string, RaceRow[]>(async (circuitIds) => {
+      const rows = await db
+        .select({ circuitId: meetings.circuitId, race: races })
+        .from(races)
+        .innerJoin(meetings, eq(meetings.id, races.meetingId))
+        .where(and(
+          inArray(meetings.circuitId, [...circuitIds]),
+          eq(races.type, 'GRAND_PRIX'),
+          ne(races.status, 'CANCELLED'),
+        ))
+        .orderBy(desc(races.date));
+      return circuitIds.map((id) => rows.filter((row) => row.circuitId === id).map((row) => row.race));
+    }),
     // Every model version's rows, so the resolver can pick one without a
     // second query. A race has ~22 rows per version; there are few versions.
     predictionsByRaceId: new DataLoader<string, PredictionRow[]>(async (raceIds) => {
