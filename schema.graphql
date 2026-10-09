@@ -18,6 +18,7 @@ type Circuit {
   locality: String
   longitude: Float
   name: String!
+  races: [Race!]!
   turns: Int
 }
 

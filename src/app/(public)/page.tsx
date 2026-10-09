@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { buttonClasses } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { CELL, Entrant, FIRST, LAST, ResultsTable, Row, ShareBar } from '@/components/ui/results-table';
 import { PageContainer } from '@/components/ui/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChampionshipFight } from '@/components/home/championship-fight';
@@ -222,6 +222,7 @@ async function Standings() {
   if (driverStandings.length === 0) {
     return null;
   }
+  const leaderPoints = driverStandings[0].points;
 
   return (
     <section className="reveal mt-14">
@@ -237,48 +238,39 @@ async function Standings() {
         </Link>
       </div>
 
-      <Card className="mt-4 overflow-x-auto p-0">
-        <table className="w-full min-w-[34rem] text-left text-sm">
-          <caption className="sr-only">
-            {season} drivers&rsquo; championship standings
-          </caption>
-          <thead>
-            <tr className="border-b border-line text-eyebrow uppercase text-muted">
-              <th scope="col" className="py-3 pl-5 pr-3 font-semibold">Pos</th>
-              <th scope="col" className="py-3 pr-3 font-semibold">Driver</th>
-              <th scope="col" className="py-3 pr-3 font-semibold">Team</th>
-              <th scope="col" className="py-3 pr-5 text-right font-semibold">Points</th>
-            </tr>
-          </thead>
-          <tbody>
-            {driverStandings.map((standing) => (
-              <tr
-                key={standing.driver.code}
-                className="border-b border-line/60 last:border-0"
-              >
-                <td className="tabular py-2.5 pl-5 pr-3 text-muted">{standing.position}</td>
-                <td className="py-2.5 pr-3">
-                  <span className="flex items-center gap-2.5">
-                    <span
-                      aria-hidden
-                      className="h-4 w-1 shrink-0 rounded-full"
-                      style={{ backgroundColor: standing.team.color ?? 'var(--muted)' }}
-                    />
-                    <span className="font-mono text-xs font-medium text-muted">
-                      {standing.driver.code}
-                    </span>
-                    <span className="font-medium">{standing.driver.name}</span>
-                  </span>
-                </td>
-                <td className="py-2.5 pr-3 text-muted">{standing.team.name}</td>
-                <td className="tabular py-2.5 pr-5 text-right font-semibold">
-                  {standing.points}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      {/* No top-three strip: the title-race card right above already has
+          the leader against second. */}
+      <ResultsTable
+        caption={`${season} drivers’ championship standings`}
+        columns={[
+          { label: 'Pos' },
+          { label: 'Driver', className: 'md:w-64' },
+          { label: 'Team', className: 'hidden md:table-cell' },
+          { label: 'Share of leader', className: 'hidden w-32 md:table-cell', srOnly: true },
+          { label: 'Pts' },
+        ]}
+      >
+        {driverStandings.map((standing) => (
+          <Row key={standing.driver.code}>
+            <td className={FIRST}>{standing.position}</td>
+            <td className={CELL}>
+              <Entrant
+                code={standing.driver.code}
+                name={standing.driver.name}
+                color={standing.team.color ?? null}
+              />
+            </td>
+            <td className={`${CELL} hidden truncate text-muted md:table-cell`}>{standing.team.name}</td>
+            <td className={`${CELL} hidden md:table-cell`}>
+              <ShareBar
+                share={leaderPoints > 0 ? standing.points / leaderPoints : 0}
+                color={standing.team.color ?? null}
+              />
+            </td>
+            <td className={`${LAST} font-semibold`}>{standing.points}</td>
+          </Row>
+        ))}
+      </ResultsTable>
     </section>
   );
 }

@@ -184,6 +184,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
               circuitName={meeting?.circuitName ?? null}
               country={meeting?.country ?? null}
               laps={race.laps}
+              date={race.date}
             />
           </div>
         </>
@@ -209,6 +210,7 @@ async function RaceDetail({ slug, view, children }: { slug: string; view: View; 
             circuitName={meeting?.circuitName ?? null}
             country={meeting?.country ?? null}
             laps={race.laps}
+            date={race.date}
           />
         </div>
       ) : null}
