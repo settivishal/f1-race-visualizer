@@ -64,7 +64,8 @@ query TeamProfile($name: String!) {
   }
 }
 
-query ArchiveIndex($season: Int) {
+# $all asks for careers, which only the all-seasons view shows.
+query ArchiveIndex($season: Int, $all: Boolean!) {
   seasons {
     year
   }
@@ -72,12 +73,31 @@ query ArchiveIndex($season: Int) {
     id
     code
     name
+    number
     country
+    latestTeam {
+      name
+      color
+    }
+    career @include(if: $all) {
+      wins
+      podiums
+      points
+      seasons {
+        season
+      }
+    }
   }
   teams(season: $season) {
     id
     name
     color
+    # The drivers page heads each garage with the team's years.
+    career @include(if: $all) {
+      seasons {
+        season
+      }
+    }
   }
   circuits {
     id
@@ -85,6 +105,19 @@ query ArchiveIndex($season: Int) {
     name
     locality
     country
+    races {
+      slug
+      date
+      status
+      meeting {
+        season
+      }
+      podium {
+        position
+        code
+        teamColor
+      }
+    }
   }
 }
 

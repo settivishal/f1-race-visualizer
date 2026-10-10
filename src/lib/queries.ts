@@ -221,7 +221,7 @@ export async function getArchiveIndex(season: number | null = null) {
   cacheTag('race');
   cacheLife('days');
 
-  return executeQuery(ArchiveIndexDocument, { season });
+  return executeQuery(ArchiveIndexDocument, { season, all: season === null });
 }
 
 export async function getCircuitProfile(ergastId: string) {

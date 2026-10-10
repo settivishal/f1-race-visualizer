@@ -31,7 +31,7 @@ export function PaceTable({ rows }: { rows: PaceRow[] }) {
   const reference = ranked.find((r) => r.median !== null)?.median ?? null;
 
   return (
-    <Card className="overflow-x-auto p-0">
+    <Card flush className="overflow-x-auto">
       <table className="w-full min-w-[38rem] text-left text-sm">
         <caption className="sr-only">
           Race pace by driver: best lap, median lap, gap to the quickest median,

@@ -123,10 +123,11 @@ export type TeamProfileQuery = { team: { team: { id: string, name: string, color
 
 export type ArchiveIndexQueryVariables = Exact<{
   season?: number | null | undefined;
+  all: boolean;
 }>;
 
 
-export type ArchiveIndexQuery = { seasons: Array<{ year: number }>, drivers: Array<{ id: string, code: string, name: string, country: string | null }>, teams: Array<{ id: string, name: string, color: string | null }>, circuits: Array<{ id: string, ergastId: string, name: string, locality: string | null, country: string | null }> };
+export type ArchiveIndexQuery = { seasons: Array<{ year: number }>, drivers: Array<{ id: string, code: string, name: string, number: number | null, country: string | null, latestTeam: { name: string, color: string | null } | null, career?: { wins: number, podiums: number, points: number, seasons: Array<{ season: number }> } }>, teams: Array<{ id: string, name: string, color: string | null, career?: { seasons: Array<{ season: number }> } }>, circuits: Array<{ id: string, ergastId: string, name: string, locality: string | null, country: string | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> }> };
 
 export type CircuitProfileQueryVariables = Exact<{
   ergastId: string;
@@ -222,7 +223,7 @@ export type SeasonStandingsQueryVariables = Exact<{
 }>;
 
 
-export type SeasonStandingsQuery = { driverStandings: Array<{ position: number, points: number, wins: number, podiums: number, driver: { code: string, name: string, number: number | null }, team: { name: string, color: string | null } }>, constructorStandings: Array<{ position: number, points: number, wins: number, team: { name: string, color: string | null } }>, seasons: Array<{ year: number }> };
+export type SeasonStandingsQuery = { driverStandings: Array<{ position: number, points: number, wins: number, podiums: number, driver: { code: string, name: string, number: number | null }, team: { name: string, color: string | null }, stints: Array<{ points: number, wins: number, fromRound: number | null, toRound: number | null, team: { name: string, color: string | null } }> }>, constructorStandings: Array<{ position: number, points: number, wins: number, team: { name: string, color: string | null } }>, seasons: Array<{ year: number }> };
 
 export class TypedDocumentString<TResult, TVariables>
   extends String
@@ -582,7 +583,7 @@ export const TeamProfileDocument = new TypedDocumentString(`
 }
     `) as unknown as TypedDocumentString<TeamProfileQuery, TeamProfileQueryVariables>;
 export const ArchiveIndexDocument = new TypedDocumentString(`
-    query ArchiveIndex($season: Int) {
+    query ArchiveIndex($season: Int, $all: Boolean!) {
   seasons {
     year
   }
@@ -590,12 +591,30 @@ export const ArchiveIndexDocument = new TypedDocumentString(`
     id
     code
     name
+    number
     country
+    latestTeam {
+      name
+      color
+    }
+    career @include(if: $all) {
+      wins
+      podiums
+      points
+      seasons {
+        season
+      }
+    }
   }
   teams(season: $season) {
     id
     name
     color
+    career @include(if: $all) {
+      seasons {
+        season
+      }
+    }
   }
   circuits {
     id
@@ -603,6 +622,19 @@ export const ArchiveIndexDocument = new TypedDocumentString(`
     name
     locality
     country
+    races {
+      slug
+      date
+      status
+      meeting {
+        season
+      }
+      podium {
+        position
+        code
+        teamColor
+      }
+    }
   }
 }
     `) as unknown as TypedDocumentString<ArchiveIndexQuery, ArchiveIndexQueryVariables>;
@@ -990,6 +1022,16 @@ export const SeasonStandingsDocument = new TypedDocumentString(`
     team {
       name
       color
+    }
+    stints {
+      team {
+        name
+        color
+      }
+      points
+      wins
+      fromRound
+      toRound
     }
   }
   constructorStandings(season: $season) {

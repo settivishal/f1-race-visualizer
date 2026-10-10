@@ -65,3 +65,13 @@ export function withSeasonColor<T extends { color: string | null }>(
 }
 
 export const seasonColorSql = sql<string | null>`coalesce(${teamSeasons.color}, ${teams.color})`;
+
+// A field rather than a column on Driver's row: the team is a fact about their
+// most recent race, so it goes through the loader that already knows that.
+builder.objectField(Driver, 'latestTeam', (t) =>
+  t.field({
+    type: Team,
+    nullable: true,
+    resolve: (driver, _args, ctx) => ctx.loaders.latestTeamByDriverId.load(driver.id),
+  }),
+);

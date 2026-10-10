@@ -216,7 +216,7 @@ const METRICS = [
 
 function ComparisonTable({ a, b, season }: { a: NonNullable<Side>; b: NonNullable<Side>; season: number | null }) {
   return (
-    <Card className="mt-6 overflow-x-auto p-0">
+    <Card flush className="mt-6 overflow-x-auto">
       <table className="w-full min-w-[30rem] text-sm">
         <caption className="sr-only">
           {a.label} compared with {b.label}

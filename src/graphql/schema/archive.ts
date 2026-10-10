@@ -1,12 +1,8 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
-import {
-  circuits, driverTeamAssignments, drivers, meetings, raceResults, races,
-  teamSeasons, teams,
-} from '@/db/schema';
+import { and, asc, eq } from 'drizzle-orm';
+import { circuits, driverTeamAssignments, drivers, teamSeasons, teams } from '@/db/schema';
 import { builder } from '../builder';
-import { resultTotals } from './aggregates';
 import { Circuit } from './meeting';
-import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow, withSeasonColor } from './entity';
+import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow } from './entity';
 
 /**
  * The archive: what the database knows about a driver, a team, a circuit or a
@@ -20,7 +16,7 @@ import { Driver, Team, driverColumns, teamColumns, type DriverRow, type TeamRow,
  * pages that render them say so.
  */
 
-type SeasonRecordShape = {
+export type SeasonRecordShape = {
   season: number;
   team: TeamRow | null;
   starts: number;
@@ -67,25 +63,24 @@ const CareerTotals = builder
     }),
   });
 
+// The index asks every driver and team for this at once, so the same loaders
+// the profile pages use keep it to one query each.
+builder.objectField(Driver, 'career', (t) =>
+  t.field({
+    type: CareerTotals,
+    resolve: async (driver, _args, ctx) => ({ seasons: await ctx.loaders.careerByDriverId.load(driver.id) }),
+  }),
+);
+
+builder.objectField(Team, 'career', (t) =>
+  t.field({
+    type: CareerTotals,
+    resolve: async (team, _args, ctx) => ({ seasons: await ctx.loaders.careerByTeamId.load(team.id) }),
+  }),
+);
+
 const sum = <T>(rows: T[], of: (row: T) => number) =>
   rows.reduce((total, row) => total + of(row), 0);
-
-/**
- * The aggregate every career page is built from.
- *
- * Wins and podiums count grands prix only, matching the standings resolvers —
- * a sprint is won, but no published career total includes it. `starts` counts
- * every scored session the entrant appeared in, including the ones they
- * retired from, because a start is a start.
- */
-const careerColumns = {
-  season: meetings.seasonYear,
-  starts: sql<number>`count(*) filter (where ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-  wins: resultTotals.wins,
-  podiums: resultTotals.podiums,
-  points: resultTotals.points,
-  bestFinish: sql<number | null>`min(${raceResults.finalPosition}) filter (where ${races.type} = 'GRAND_PRIX')`.mapWith(Number),
-};
 
 // ── Driver ────────────────────────────────────────────────────────────
 
@@ -96,34 +91,7 @@ const DriverProfile = builder.objectRef<DriverProfileShape>('DriverProfile').imp
     driver: t.field({ type: Driver, resolve: (p) => p.driver }),
     career: t.field({
       type: CareerTotals,
-      resolve: async ({ driver }, _args, ctx) => {
-        const rows = await ctx.db
-          .select({ ...careerColumns, team: teams, teamColor: teamSeasons.color })
-          .from(raceResults)
-          .innerJoin(races, eq(races.id, raceResults.raceId))
-          .innerJoin(meetings, eq(meetings.id, races.meetingId))
-          .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))
-          .innerJoin(teamSeasons, eq(teamSeasons.id, driverTeamAssignments.teamSeasonId))
-          .innerJoin(teams, eq(teams.id, teamSeasons.teamId))
-          .where(eq(driverTeamAssignments.driverId, driver.id))
-          .groupBy(meetings.seasonYear, teams.id, teamSeasons.color)
-          .orderBy(desc(meetings.seasonYear));
-
-        // A driver who changed team mid-season has two rows for that year. They
-        // are kept separate rather than merged: "Racing Bulls, then Red Bull" is
-        // the fact, and a merged row would have to pick one team and lie.
-        return {
-          seasons: rows.map((row) => ({
-            season: row.season,
-            team: withSeasonColor(row.team, row.teamColor),
-            starts: row.starts,
-            wins: row.wins,
-            podiums: row.podiums,
-            points: row.points,
-            bestFinish: row.bestFinish,
-          })),
-        };
-      },
+      resolve: async ({ driver }, _args, ctx) => ({ seasons: await ctx.loaders.careerByDriverId.load(driver.id) }),
     }),
   }),
 });
@@ -173,22 +141,7 @@ const TeamProfile = builder.objectRef<TeamProfileShape>('TeamProfile').implement
     team: t.field({ type: Team, resolve: (p) => p.team }),
     career: t.field({
       type: CareerTotals,
-      resolve: async ({ team }, _args, ctx) => {
-        const rows = await ctx.db
-          .select(careerColumns)
-          .from(raceResults)
-          .innerJoin(races, eq(races.id, raceResults.raceId))
-          .innerJoin(meetings, eq(meetings.id, races.meetingId))
-          .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))
-          .innerJoin(teamSeasons, eq(teamSeasons.id, driverTeamAssignments.teamSeasonId))
-          .where(eq(teamSeasons.teamId, team.id))
-          .groupBy(meetings.seasonYear)
-          .orderBy(desc(meetings.seasonYear));
-
-        return {
-          seasons: rows.map((row) => ({ ...row, team: null })),
-        };
-      },
+      resolve: async ({ team }, _args, ctx) => ({ seasons: await ctx.loaders.careerByTeamId.load(team.id) }),
     }),
     drivers: t.field({
       type: [Driver],
