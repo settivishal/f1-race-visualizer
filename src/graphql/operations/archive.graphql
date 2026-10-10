@@ -92,10 +92,8 @@ query ArchiveIndex($season: Int, $all: Boolean!) {
     id
     name
     color
+    # The drivers page heads each garage with the team's years.
     career @include(if: $all) {
-      wins
-      podiums
-      points
       seasons {
         season
       }

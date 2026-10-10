@@ -127,7 +127,7 @@ export type ArchiveIndexQueryVariables = Exact<{
 }>;
 
 
-export type ArchiveIndexQuery = { seasons: Array<{ year: number }>, drivers: Array<{ id: string, code: string, name: string, number: number | null, country: string | null, latestTeam: { name: string, color: string | null } | null, career?: { wins: number, podiums: number, points: number, seasons: Array<{ season: number }> } }>, teams: Array<{ id: string, name: string, color: string | null, career?: { wins: number, podiums: number, points: number, seasons: Array<{ season: number }> } }>, circuits: Array<{ id: string, ergastId: string, name: string, locality: string | null, country: string | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> }> };
+export type ArchiveIndexQuery = { seasons: Array<{ year: number }>, drivers: Array<{ id: string, code: string, name: string, number: number | null, country: string | null, latestTeam: { name: string, color: string | null } | null, career?: { wins: number, podiums: number, points: number, seasons: Array<{ season: number }> } }>, teams: Array<{ id: string, name: string, color: string | null, career?: { seasons: Array<{ season: number }> } }>, circuits: Array<{ id: string, ergastId: string, name: string, locality: string | null, country: string | null, races: Array<{ slug: string, date: string, status: RaceStatus, meeting: { season: number } | null, podium: Array<{ position: number, code: string, teamColor: string | null }> }> }> };
 
 export type CircuitProfileQueryVariables = Exact<{
   ergastId: string;
@@ -611,9 +611,6 @@ export const ArchiveIndexDocument = new TypedDocumentString(`
     name
     color
     career @include(if: $all) {
-      wins
-      podiums
-      points
       seasons {
         season
       }

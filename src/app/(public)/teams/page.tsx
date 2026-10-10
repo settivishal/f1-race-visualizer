@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Count, Entrant, span, teamWash } from '@/components/ui/results-table';
+import { Count, Entrant, teamWash } from '@/components/ui/results-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -40,6 +40,7 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
     getArchiveIndex(season),
     season === null ? null : getSeasonStandings(season),
   ]);
+  const years = seasons.map((entry) => entry.year).sort((a, b) => a - b);
 
   const filter = (
     <SeasonFilter pathname="/teams" seasons={seasons.map((entry) => entry.year)} active={season} />
@@ -63,6 +64,15 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
     );
   }
 
+  if (season === null) {
+    return (
+      <>
+        {filter}
+        <TeamHistory teams={teams} years={years} />
+      </>
+    );
+  }
+
   // Everyone who drove for the team that season, a mid-season move included.
   const lineups = new Map<string, string[]>();
   for (const standing of standings?.driverStandings ?? []) {
@@ -71,33 +81,21 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
     }
   }
   const byName = new Map(standings?.constructorStandings.map((entry) => [entry.team.name, entry]));
-  // A season reads as its championship; all seasons as the archive's career
-  // table, by points. A team with no result yet goes last.
-  const ranked = teams
+  const leader = standings?.constructorStandings[0]?.points ?? 0;
+  // Championship order; a team with no result yet goes last.
+  const ordered = teams
     .map((team) => {
       const standing = byName.get(team.name);
-      if (standing) {
-        return {
-          team, color: standing.team.color ?? team.color ?? null,
-          points: standing.points, wins: standing.wins, detail: (lineups.get(team.name) ?? []).join(' · '),
-        };
-      }
-      if (season === null && team.career && team.career.seasons.length > 0) {
-        return {
-          team, color: team.color ?? null,
-          points: team.career.points, wins: team.career.wins, detail: span(team.career.seasons),
-        };
-      }
-      return { team, color: team.color ?? null, points: null, wins: 0, detail: null };
+      return {
+        team,
+        color: standing?.team.color ?? team.color ?? null,
+        points: standing?.points ?? null,
+        wins: standing?.wins ?? 0,
+        detail: (lineups.get(team.name) ?? []).join(' · '),
+        position: standing?.position ?? null,
+      };
     })
-    .sort((a, b) => (b.points ?? -Infinity) - (a.points ?? -Infinity));
-  const leader = ranked[0]?.points ?? 0;
-  const ordered = ranked.map((row, i) => ({
-    ...row,
-    // The championship's own order for a season, which breaks ties on countback.
-    position: row.points === null ? null : (byName.get(row.team.name)?.position ?? i + 1),
-  }));
-  if (standings) ordered.sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
+    .sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
 
   return (
     <>
@@ -153,6 +151,133 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
             );
           })}
         </ol>
+      </Card>
+    </>
+  );
+}
+
+type IndexTeam = Awaited<ReturnType<typeof getArchiveIndex>>['teams'][number];
+type Finish = { position: number; color: string | null };
+
+/**
+ * All seasons, without adding them up. The archive starts in 2018, so a career
+ * points total only rewards whoever has been here longest; a championship
+ * place compares a team with its own season's grid and nothing else. So each
+ * row is a team and each cell is where it finished that year.
+ */
+async function TeamHistory({ teams, years }: { teams: IndexTeam[]; years: number[] }) {
+  const [activeSeason, ...tables] = await Promise.all([
+    getActiveSeason(),
+    ...years.map((year) => getSeasonStandings(year)),
+  ]);
+  const finishes = new Map<string, Map<number, Finish>>();
+  years.forEach((year, i) => {
+    for (const entry of tables[i].constructorStandings) {
+      const row = finishes.get(entry.team.name) ?? new Map<number, Finish>();
+      row.set(year, { position: entry.position, color: entry.team.color ?? null });
+      finishes.set(entry.team.name, row);
+    }
+  });
+
+  const rows = teams.map((team) => {
+    const row = finishes.get(team.name) ?? new Map<number, Finish>();
+    const raced = [...row.keys()];
+    return {
+      team,
+      row,
+      // The livery of its latest season, as every other team surface wears.
+      color: row.get(Math.max(...raced))?.color ?? team.color ?? null,
+      titles: [...row.values()].filter((f) => f.position === 1).length,
+      last: raced.length > 0 ? Math.max(...raced) : 0,
+      best: Math.min(Infinity, ...[...row.values()].map((f) => f.position)),
+      now: row.get(activeSeason)?.position ?? null,
+    };
+  });
+  const current = rows.filter((r) => r.now !== null).sort((a, b) => a.now! - b.now!);
+  const gone = rows
+    .filter((r) => r.now === null)
+    .sort((a, b) => b.last - a.last || a.best - b.best);
+  // A phone shows the latest six seasons, as the circuits table does.
+  const phoneFrom = years.length - 6;
+
+  const line = (r: (typeof rows)[number]) => (
+    <tr key={r.team.id} className="relative border-b border-line/60 transition-colors last:border-0 hover:bg-panel-strong/50">
+      <th scope="row" className="max-w-32 py-2 pr-2 pl-4 font-normal sm:max-w-none sm:pr-3 sm:pl-6">
+        <Link
+          href={`/teams/${encodeURIComponent(r.team.name)}`}
+          className="block truncate after:absolute after:inset-0 after:content-[''] hover:text-accent"
+        >
+          <Entrant name={r.team.name} color={r.color} />
+        </Link>
+      </th>
+      <td className="tabular hidden py-2 pr-3 text-center text-sm md:table-cell">
+        {r.titles > 0 ? r.titles : <span className="text-subtle">·</span>}
+      </td>
+      {years.map((year, index) => {
+        const finish = r.row.get(year);
+        return (
+          <td key={year} className={`px-0.5 py-1.5 text-center ${index < phoneFrom ? 'hidden sm:table-cell' : ''}`}>
+            {finish ? (
+              <span
+                className={`tabular inline-flex h-7 w-8 items-center sm:w-9 justify-center rounded-md text-xs font-semibold ${
+                  finish.position === 1 ? 'text-foreground' : 'text-muted'
+                }`}
+                // Stronger for a higher place, so the champions read first.
+                style={{
+                  backgroundColor: `color-mix(in oklab, ${finish.color ?? 'var(--muted)'} ${Math.max(6, 30 - (finish.position - 1) * 3)}%, transparent)`,
+                }}
+              >
+                P{finish.position}
+              </span>
+            ) : (
+              <span className="text-subtle" aria-label={`${year}: did not race`}>·</span>
+            )}
+          </td>
+        );
+      })}
+    </tr>
+  );
+
+  return (
+    <>
+      <p className="mt-6 text-xs text-muted">
+        Constructors&rsquo; championship place each season. The stronger the tint, the higher the place.
+      </p>
+      <Card flush className="mt-4 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Constructors&rsquo; championship place by season</caption>
+          <thead>
+            <tr className="border-b border-line text-eyebrow uppercase text-muted">
+              <th scope="col" className="py-2.5 pr-3 pl-4 font-semibold sm:pl-6">Team</th>
+              <th scope="col" className="hidden w-16 py-2.5 pr-3 text-center font-semibold md:table-cell">Titles</th>
+              {years.map((year, index) => (
+                <th
+                  key={year}
+                  scope="col"
+                  className={`tabular w-9 py-2.5 text-center font-semibold sm:w-10 ${index < phoneFrom ? 'hidden sm:table-cell' : ''}`}
+                >
+                  <span aria-hidden>’{String(year).slice(2)}</span>
+                  <span className="sr-only">{year}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {current.map(line)}
+            {gone.length > 0 ? (
+              <tr className="border-b border-line/60">
+                <th
+                  scope="rowgroup"
+                  colSpan={years.length + 2}
+                  className="bg-panel-strong/40 py-2 pl-4 text-left text-eyebrow font-semibold uppercase text-muted sm:pl-6"
+                >
+                  No longer racing
+                </th>
+              </tr>
+            ) : null}
+            {gone.map(line)}
+          </tbody>
+        </table>
       </Card>
     </>
   );
