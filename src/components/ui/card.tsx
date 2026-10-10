@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -11,6 +11,7 @@ export function Card({
   className,
   interactive = false,
   flush = false,
+  style,
 }: {
   children: ReactNode;
   className?: string;
@@ -22,6 +23,7 @@ export function Card({
    * `p-5` is decided by stylesheet order — and `p-5` wins.
    */
   flush?: boolean;
+  style?: CSSProperties;
 }) {
   return (
     <div
@@ -32,6 +34,7 @@ export function Card({
           "transition-[background-color,border-color,transform] hover:border-line-strong hover:bg-panel-strong active:translate-y-px",
         className,
       )}
+      style={style}
     >
       {children}
     </div>
