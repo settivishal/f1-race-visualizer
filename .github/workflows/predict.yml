@@ -5,8 +5,8 @@ name: Predict
 # and not the Vercel cron because training needs Python and LightGBM.
 #
 # Qualifying is at least ~20 hours before the race, so a run every three hours
-# over the weekend predicts in time. Most runs stop at the Jolpica check in
-# scripts/next-prediction.ts without touching the database.
+# over the weekend predicts in time. Most runs stop at the OpenF1 qualifying
+# check in scripts/next-prediction.ts, after one read of the database.
 on:
   # Off until the first run by hand matches a manual one.
   # schedule:
