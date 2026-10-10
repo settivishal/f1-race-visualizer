@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
-import { Count, Entrant, teamWash } from '@/components/ui/results-table';
+import { Count, Entrant, span, teamWash } from '@/components/ui/results-table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PageContainer } from '@/components/ui/page-container';
 import { SectionHeader } from '@/components/ui/section-header';
@@ -63,16 +63,41 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
     );
   }
 
+  // Everyone who drove for the team that season, a mid-season move included.
   const lineups = new Map<string, string[]>();
   for (const standing of standings?.driverStandings ?? []) {
-    lineups.set(standing.team.name, [...(lineups.get(standing.team.name) ?? []), standing.driver.code]);
+    for (const stint of standing.stints) {
+      lineups.set(stint.team.name, [...(lineups.get(stint.team.name) ?? []), standing.driver.code]);
+    }
   }
   const byName = new Map(standings?.constructorStandings.map((entry) => [entry.team.name, entry]));
-  const leader = standings?.constructorStandings[0]?.points ?? 0;
-  // Championship order for a season; a team with no result yet goes last.
-  const ordered = teams
-    .map((team) => ({ team, standing: byName.get(team.name) ?? null }))
-    .sort((a, b) => (a.standing?.position ?? Infinity) - (b.standing?.position ?? Infinity));
+  // A season reads as its championship; all seasons as the archive's career
+  // table, by points. A team with no result yet goes last.
+  const ranked = teams
+    .map((team) => {
+      const standing = byName.get(team.name);
+      if (standing) {
+        return {
+          team, color: standing.team.color ?? team.color ?? null,
+          points: standing.points, wins: standing.wins, detail: (lineups.get(team.name) ?? []).join(' · '),
+        };
+      }
+      if (season === null && team.career && team.career.seasons.length > 0) {
+        return {
+          team, color: team.color ?? null,
+          points: team.career.points, wins: team.career.wins, detail: span(team.career.seasons),
+        };
+      }
+      return { team, color: team.color ?? null, points: null, wins: 0, detail: null };
+    })
+    .sort((a, b) => (b.points ?? -Infinity) - (a.points ?? -Infinity));
+  const leader = ranked[0]?.points ?? 0;
+  const ordered = ranked.map((row, i) => ({
+    ...row,
+    // The championship's own order for a season, which breaks ties on countback.
+    position: row.points === null ? null : (byName.get(row.team.name)?.position ?? i + 1),
+  }));
+  if (standings) ordered.sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
 
   return (
     <>
@@ -81,10 +106,9 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
           points, so the gaps between teams are the first thing you read. */}
       <Card flush className="mt-6 overflow-hidden">
         <ol>
-          {ordered.map(({ team, standing }) => {
-            const color = standing?.team.color ?? team.color ?? null;
-            const lead = standing?.position === 1;
-            const share = standing ? (leader > 0 ? standing.points / leader : 0) : 1;
+          {ordered.map(({ team, color, points, wins, detail, position }) => {
+            const lead = position === 1;
+            const share = points === null ? 1 : leader > 0 ? points / leader : 0;
             return (
               <li key={team.id} className="border-b border-line/60 last:border-0">
                 <Link
@@ -103,24 +127,24 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
                       lead ? 'text-foreground' : 'text-subtle'
                     }`}
                   >
-                    {standing?.position}
+                    {position}
                   </span>
                   <span className="relative min-w-0 flex-1">
                     <Entrant name={team.name} color={color} />
                   </span>
-                  {standing ? (
+                  {points !== null ? (
                     <>
-                      <span className="relative hidden w-32 font-mono text-xs text-muted sm:block">
-                        {(lineups.get(team.name) ?? []).join(' · ')}
+                      <span className="tabular relative hidden w-32 font-mono text-xs text-muted sm:block">
+                        {detail}
                       </span>
                       <span className="tabular relative hidden w-16 text-right text-sm text-muted md:block">
-                        <Count value={standing.wins} />
-                        {standing.wins > 0 ? (
-                          <span className="ml-1 text-xs text-subtle">{standing.wins === 1 ? 'win' : 'wins'}</span>
+                        <Count value={wins} />
+                        {wins > 0 ? (
+                          <span className="ml-1 text-xs text-subtle">{wins === 1 ? 'win' : 'wins'}</span>
                         ) : null}
                       </span>
                       <span className="tabular relative w-16 text-right font-heading text-xl font-semibold sm:w-20">
-                        {standing.points}
+                        {points}
                       </span>
                     </>
                   ) : null}

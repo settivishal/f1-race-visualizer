@@ -64,7 +64,8 @@ query TeamProfile($name: String!) {
   }
 }
 
-query ArchiveIndex($season: Int) {
+# $all asks for careers, which only the all-seasons view shows.
+query ArchiveIndex($season: Int, $all: Boolean!) {
   seasons {
     year
   }
@@ -78,11 +79,27 @@ query ArchiveIndex($season: Int) {
       name
       color
     }
+    career @include(if: $all) {
+      wins
+      podiums
+      points
+      seasons {
+        season
+      }
+    }
   }
   teams(season: $season) {
     id
     name
     color
+    career @include(if: $all) {
+      wins
+      podiums
+      points
+      seasons {
+        season
+      }
+    }
   }
   circuits {
     id

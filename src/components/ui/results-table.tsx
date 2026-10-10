@@ -139,6 +139,14 @@ export function Entrant({
   );
 }
 
+/** The years a career covers: "2018–26", or "2021" for one season. */
+export function span(seasons: { season: number }[]) {
+  if (seasons.length === 0) return null;
+  const years = seasons.map((s) => s.season);
+  const [first, last] = [Math.min(...years), Math.max(...years)];
+  return first === last ? String(first) : `${first}–${String(last).slice(2)}`;
+}
+
 /**
  * A team's colour as a top edge and a faint wash down from it — a little
  * stronger for whoever leads. Every card that belongs to a team wears this.

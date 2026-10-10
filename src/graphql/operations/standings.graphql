@@ -16,6 +16,17 @@ query SeasonStandings($season: Int!) {
       name
       color
     }
+    # One per team raced for: two for a driver moved mid-season.
+    stints {
+      team {
+        name
+        color
+      }
+      points
+      wins
+      fromRound
+      toRound
+    }
   }
   constructorStandings(season: $season) {
     position

@@ -28,6 +28,26 @@ async function run<T>(document: string, variableValues?: Record<string, unknown>
   return result.data as T;
 }
 
+class Rollback extends Error {}
+
+/** Runs `fn` against a transaction that is always rolled back, and returns its result. */
+async function rollingBack<T>(fn: () => Promise<T>): Promise<T> {
+  const outer = db;
+  let result: T;
+  try {
+    await db.transaction(async (tx) => {
+      db = tx as unknown as Db;
+      result = await fn();
+      throw new Rollback();
+    });
+  } catch (error) {
+    if (!(error instanceof Rollback)) throw error;
+  } finally {
+    db = outer;
+  }
+  return result!;
+}
+
 beforeAll(async () => {
   db = drizzle(new PGlite(), { schema: dbSchema });
   await migrate(db, { migrationsFolder: './src/db/migrations' });
@@ -562,6 +582,73 @@ describe('standings', () => {
       query { constructorStandings(season: 2025) { position team { name } points } }
     `);
     expect(data.constructorStandings[0]).toEqual({ position: 1, team: { name: 'Ferrari' }, points: 32 });
+  });
+});
+
+describe('a driver moved mid-season', () => {
+  it('has one stint per team, with the rounds they drove there', async () => {
+    // Inserted inside a transaction that is rolled back, so the extra season
+    // never reaches the shared fixture the other tests count.
+    const data = await rollingBack(async () => {
+      await db.insert(dbSchema.seasons).values({ year: 2019 });
+      const [tr, rb, gas] = [
+        ...(await db.insert(dbSchema.teams).values([{ name: 'Toro Rosso' }, { name: 'Red Bull' }]).returning()),
+        ...(await db.insert(dbSchema.drivers).values({ code: 'GAS', name: 'Pierre Gasly' }).returning()),
+      ];
+      const seats = [];
+      for (const team of [rb, tr]) {
+        const [ts] = await db.insert(dbSchema.teamSeasons).values({ seasonYear: 2019, teamId: team.id }).returning();
+        const [seat] = await db.insert(dbSchema.driverTeamAssignments)
+          .values({ teamSeasonId: ts.id, driverId: gas.id }).returning();
+        seats.push(seat);
+      }
+      // Rounds 1 and 2 at Red Bull, round 3 at Toro Rosso.
+      for (const [round, seat, points] of [[1, seats[0], 10], [2, seats[0], 6], [3, seats[1], 18]] as const) {
+        const [meeting] = await db.insert(dbSchema.meetings).values({
+          seasonYear: 2019, round, name: `Round ${round}`, country: 'X',
+          startDate: new Date(`2019-0${round}-01T00:00:00Z`), openf1MeetingKey: 1900 + round,
+        }).returning();
+        const [race] = await db.insert(dbSchema.races).values({
+          meetingId: meeting.id, type: 'GRAND_PRIX', slug: `2019-r${round}`,
+          date: new Date(`2019-0${round}-02T14:00:00Z`), laps: 1, openf1SessionKey: 1900 + round, status: 'COMPLETED',
+        }).returning();
+        await db.insert(dbSchema.raceResults).values({
+          raceId: race.id, assignmentId: seat.id, finalPosition: 2, status: 'FINISHED', points, lapsCompleted: 1,
+        });
+      }
+      return run<{ driverStandings: { points: number; team: { name: string }; stints: { team: { name: string }; points: number; fromRound: number; toRound: number }[] }[] }>(`
+        query { driverStandings(season: 2019) { points team { name } stints { team { name } points fromRound toRound } } }
+      `);
+    });
+
+    const [gasly] = data.driverStandings;
+    expect(gasly.points).toBe(34);
+    // The headline team is still the one most points were scored with.
+    expect(gasly.team.name).toBe('Toro Rosso');
+    expect(gasly.stints).toEqual([
+      { team: { name: 'Red Bull' }, points: 16, fromRound: 1, toRound: 2 },
+      { team: { name: 'Toro Rosso' }, points: 18, fromRound: 3, toRound: 3 },
+    ]);
+  });
+});
+
+describe('careers on the index', () => {
+  it('match the profile pages, from the same loaders', async () => {
+    const data = await run<{
+      drivers: { code: string; career: { wins: number; points: number; seasons: { season: number }[] } }[];
+      teams: { name: string; career: { wins: number; points: number } }[];
+      driver: { career: { wins: number; points: number } };
+      team: { career: { wins: number; points: number } };
+    }>(`query {
+      drivers { code career { wins points seasons { season } } }
+      teams { name career { wins points } }
+      driver(code: "LEC") { career { wins points } }
+      team(name: "Ferrari") { career { wins points } }
+    }`);
+    const lec = data.drivers.find((d) => d.code === 'LEC')!;
+    expect(lec.career).toEqual({ ...data.driver.career, seasons: [{ season: 2025 }] });
+    expect(lec.career).toMatchObject({ wins: 1, points: 32 });
+    expect(data.teams.find((t) => t.name === 'Ferrari')!.career).toEqual(data.team.career);
   });
 });
 

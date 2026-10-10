@@ -11,7 +11,9 @@ import {
   teams,
 } from '@/db/schema';
 import type { Db } from './context';
-import { driverColumns, teamColumns, type DriverRow, type TeamRow, seasonColorSql } from './schema/entity';
+import { careerColumns } from './schema/aggregates';
+import type { SeasonRecordShape } from './schema/archive';
+import { driverColumns, teamColumns, type DriverRow, type TeamRow, seasonColorSql, withSeasonColor } from './schema/entity';
 
 type AssignmentRow = typeof driverTeamAssignments.$inferSelect;
 type TeamSeasonRow = typeof teamSeasons.$inferSelect;
@@ -90,6 +92,9 @@ function podiumLoader(db: Db) {
   });
 }
 
+const seasonOf = ({ season, starts, wins, podiums, points, bestFinish }: Omit<SeasonRecordShape, 'team'>) =>
+  ({ season, starts, wins, podiums, points, bestFinish });
+
 export type Loaders = ReturnType<typeof createLoaders>;
 
 export function createLoaders(db: Db) {
@@ -112,6 +117,42 @@ export function createLoaders(db: Db) {
       db.select().from(meetings).where(inArray(meetings.id, ids)),
     ),
     podiumByRaceId: podiumLoader(db),
+    // Careers, season by season, newest first — one query for a profile page
+    // and one for the whole index. A driver who changed team mid-season has two
+    // rows for that year. They are kept separate rather than merged: "Racing
+    // Bulls, then Red Bull" is the fact, and a merged row would have to pick
+    // one team and lie.
+    careerByDriverId: new DataLoader<string, SeasonRecordShape[]>(async (driverIds) => {
+      const rows = await db
+        .select({ id: driverTeamAssignments.driverId, ...careerColumns, team: teams, teamColor: teamSeasons.color })
+        .from(raceResults)
+        .innerJoin(races, eq(races.id, raceResults.raceId))
+        .innerJoin(meetings, eq(meetings.id, races.meetingId))
+        .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))
+        .innerJoin(teamSeasons, eq(teamSeasons.id, driverTeamAssignments.teamSeasonId))
+        .innerJoin(teams, eq(teams.id, teamSeasons.teamId))
+        .where(inArray(driverTeamAssignments.driverId, [...driverIds]))
+        .groupBy(driverTeamAssignments.driverId, meetings.seasonYear, teams.id, teamSeasons.color)
+        .orderBy(desc(meetings.seasonYear));
+      return driverIds.map((id) => rows
+        .filter((row) => row.id === id)
+        .map((row) => ({ ...seasonOf(row), team: withSeasonColor(row.team, row.teamColor) })));
+    }),
+    careerByTeamId: new DataLoader<string, SeasonRecordShape[]>(async (teamIds) => {
+      const rows = await db
+        .select({ id: teamSeasons.teamId, ...careerColumns })
+        .from(raceResults)
+        .innerJoin(races, eq(races.id, raceResults.raceId))
+        .innerJoin(meetings, eq(meetings.id, races.meetingId))
+        .innerJoin(driverTeamAssignments, eq(driverTeamAssignments.id, raceResults.assignmentId))
+        .innerJoin(teamSeasons, eq(teamSeasons.id, driverTeamAssignments.teamSeasonId))
+        .where(inArray(teamSeasons.teamId, [...teamIds]))
+        .groupBy(teamSeasons.teamId, meetings.seasonYear)
+        .orderBy(desc(meetings.seasonYear));
+      return teamIds.map((id) => rows
+        .filter((row) => row.id === id)
+        .map((row) => ({ ...seasonOf(row), team: null })));
+    }),
     // The grands prix held at each circuit, newest first. The circuit index
     // asks for every circuit's history at once; this keeps that one query.
     // Cancelled rounds were never held there, so they are not its history.
