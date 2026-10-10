@@ -37,6 +37,7 @@ enum DataTier {
 scalar DateTime
 
 type Driver {
+  career: CareerTotals!
   code: String!
   country: String
   id: ID!
@@ -62,6 +63,7 @@ type DriverStanding {
   podiums: Int!
   points: Float!
   position: Int!
+  stints: [DriverStint!]!
   team: Team!
   wins: Int!
 }
@@ -71,6 +73,14 @@ enum DriverStatus {
   DNS
   DSQ
   FINISHED
+}
+
+type DriverStint {
+  fromRound: Int
+  points: Float!
+  team: Team!
+  toRound: Int
+  wins: Int!
 }
 
 type HeadToHead {
@@ -360,6 +370,7 @@ type Stint {
 }
 
 type Team {
+  career: CareerTotals!
   color: String
   id: ID!
   name: String!
