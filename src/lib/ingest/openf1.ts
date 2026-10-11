@@ -105,11 +105,13 @@ export const RaceControlSchema = z.object({
 });
 
 // position is null for anyone not classified; dnf/dns/dsq carry the reason.
+// Qualifying sometimes sends a status there instead ("RT" for a car that set
+// no time), which means the same thing.
 export const SessionResultSchema = z.object({
   driver_number: z.number(),
-  position: z.number().nullable(),
+  position: z.preprocess((v) => (typeof v === 'string' ? null : v), z.number().nullable()),
   number_of_laps: z.number().nullable(),
-  points: z.number().nullable(),
+  points: z.number().nullable().default(null), // absent from qualifying
   dnf: z.boolean(),
   dns: z.boolean(),
   dsq: z.boolean(),
@@ -169,3 +171,36 @@ export const fetchSessionResults = (sessionKey: number) =>
   getList('/session_result', { session_key: sessionKey }, SessionResultSchema);
 export const fetchWeather = (sessionKey: number) =>
   getList('/weather', { session_key: sessionKey }, WeatherSchema);
+
+// ── Qualifying ────────────────────────────────────────────────────────
+
+/** One qualifier, in the vocabulary the rest of the codebase speaks. */
+export type Qualifier = { code: string; teamName: string | null; position: number | null };
+
+/**
+ * A qualifying classification, keyed by driver number on both sides. Position
+ * stays null for a driver with no time: the model reads that as the back.
+ */
+export function toQualifying(results: SessionResult[], drivers: Driver[]): Qualifier[] {
+  const byNumber = new Map(drivers.map((driver) => [driver.driver_number, driver]));
+  return results.map((result) => {
+    const driver = byNumber.get(result.driver_number);
+    if (!driver) throw new Error(`OpenF1 qualifying: car ${result.driver_number} is not in the driver list.`);
+    return { code: driver.name_acronym, teamName: driver.team_name, position: result.position };
+  });
+}
+
+/**
+ * A meeting's qualifying, for predicting its grand prix. OpenF1 has it within
+ * the hour; Jolpica can take until the next day, which is after the race for a
+ * Saturday-night publish. Empty until the session has a classification.
+ */
+export async function fetchQualifying(meetingKey: number, year: number): Promise<Qualifier[]> {
+  const session = (await fetchSessions(year)).find(
+    (s) => s.meeting_key === meetingKey && s.session_name === 'Qualifying',
+  );
+  if (!session) return [];
+  const results = await fetchSessionResults(session.session_key);
+  if (results.length === 0) return [];
+  return toQualifying(results, await fetchDrivers(session.session_key));
+}

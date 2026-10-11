@@ -36,7 +36,8 @@ export function createJsonClient({
       if (response.ok) return response.json();
       if (response.status === 404 && emptyOn404) return [];
 
-      lastError = new Error(`${name} ${path} returned ${response.status}`);
+      // The status rides along so a caller can tell "not now" from "broken".
+      lastError = Object.assign(new Error(`${name} ${path} returned ${response.status}`), { status: response.status });
       if (!RETRYABLE.has(response.status)) throw lastError;
 
       // Exponential backoff. A 429 means the throttle's view of the window and
