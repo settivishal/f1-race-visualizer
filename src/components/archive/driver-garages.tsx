@@ -15,7 +15,8 @@ export type GaragePanel = {
   numeral: number | null;
   /** The championship leader's numeral is lit, as in the standings. */
   lit: boolean;
-  points: number | null;
+  /** The headline beside the numeral: a season's points, or a best finish. */
+  figure: { value: string | number; unit: string } | null;
   note: string[];
 };
 
@@ -123,11 +124,11 @@ function GarageCard({ garage }: { garage: Garage }) {
                 >
                   {panel.numeral}
                 </span>
-                {panel.points !== null ? (
+                {panel.figure !== null ? (
                   <span className="text-right">
                     <span className="tabular block font-heading text-lg font-semibold leading-none sm:text-xl">
-                      {panel.points}
-                      <span className="ml-1 text-xs font-medium text-muted sm:text-sm">pts</span>
+                      {panel.figure.value}
+                      <span className="ml-1 text-xs font-medium text-muted sm:text-sm">{panel.figure.unit}</span>
                     </span>
                     {panel.note.length > 0 ? (
                       // Each part stays whole, so a narrow panel breaks between
