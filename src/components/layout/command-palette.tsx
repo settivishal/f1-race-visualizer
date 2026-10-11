@@ -140,6 +140,8 @@ export function CommandPalette() {
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
+        // The visible "Search" is sm and up; a phone sees only the icon.
+        aria-label="Search"
         className="flex h-9 items-center gap-2 rounded-md border border-line bg-panel px-3 text-sm text-muted transition-colors hover:border-line-strong hover:text-foreground"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden className="h-4 w-4">
