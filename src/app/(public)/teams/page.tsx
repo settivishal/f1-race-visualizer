@@ -243,7 +243,10 @@ async function TeamHistory({ teams, years }: { teams: IndexTeam[]; years: number
                 P{finish.position}
               </span>
             ) : (
-              <span className="text-subtle" aria-label={`${year}: did not race`}>·</span>
+              <span className="text-subtle">
+                <span aria-hidden>·</span>
+                <span className="sr-only">{year}: did not race</span>
+              </span>
             )}
           </td>
         );
