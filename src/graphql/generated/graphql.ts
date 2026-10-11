@@ -119,7 +119,7 @@ export type TeamProfileQueryVariables = Exact<{
 }>;
 
 
-export type TeamProfileQuery = { team: { team: { id: string, name: string, color: string | null }, drivers: Array<{ code: string, name: string }>, career: { seasonCount: number, starts: number, wins: number, podiums: number, points: number, bestFinish: number | null, seasons: Array<{ season: number, starts: number, wins: number, podiums: number, points: number, bestFinish: number | null }> } } | null };
+export type TeamProfileQuery = { team: { team: { id: string, name: string, color: string | null, lineage: Array<{ name: string, career: { seasons: Array<{ season: number }> } }> }, drivers: Array<{ code: string, name: string }>, career: { seasonCount: number, starts: number, wins: number, podiums: number, points: number, bestFinish: number | null, seasons: Array<{ season: number, starts: number, wins: number, podiums: number, points: number, bestFinish: number | null }> } } | null };
 
 export type ArchiveIndexQueryVariables = Exact<{
   season?: number | null | undefined;
@@ -558,6 +558,14 @@ export const TeamProfileDocument = new TypedDocumentString(`
       id
       name
       color
+      lineage {
+        name
+        career {
+          seasons {
+            season
+          }
+        }
+      }
     }
     drivers {
       code

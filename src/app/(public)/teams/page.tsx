@@ -129,6 +129,12 @@ async function TeamGrid({ searchParams }: { searchParams: SearchParams }) {
                   </span>
                   <span className="relative min-w-0 flex-1">
                     <Entrant name={team.name} color={color} />
+                    {/* Wins has its own column from md; below that it rides here. */}
+                    {wins > 0 ? (
+                      <span className="tabular mt-0.5 block text-xs text-muted md:hidden">
+                        {wins} {wins === 1 ? 'win' : 'wins'}
+                      </span>
+                    ) : null}
                   </span>
                   {points !== null ? (
                     <>
@@ -187,7 +193,8 @@ async function TeamHistory({ teams, years }: { teams: IndexTeam[]; years: number
       row,
       // The livery of its latest season, as every other team surface wears.
       color: row.get(Math.max(...raced))?.color ?? team.color ?? null,
-      titles: [...row.values()].filter((f) => f.position === 1).length,
+      // Leading the season still running is not a title, as on /drivers.
+      titles: [...row].filter(([year, f]) => f.position === 1 && year < activeSeason).length,
       last: raced.length > 0 ? Math.max(...raced) : 0,
       best: Math.min(Infinity, ...[...row.values()].map((f) => f.position)),
       now: row.get(activeSeason)?.position ?? null,
@@ -209,6 +216,12 @@ async function TeamHistory({ teams, years }: { teams: IndexTeam[]; years: number
         >
           <Entrant name={r.team.name} color={r.color} />
         </Link>
+        {/* The Titles column is md and up. */}
+        {r.titles > 0 ? (
+          <span className="tabular mt-0.5 block text-xs text-muted md:hidden">
+            {r.titles} {r.titles === 1 ? 'title' : 'titles'}
+          </span>
+        ) : null}
       </th>
       <td className="tabular hidden py-2 pr-3 text-center text-sm md:table-cell">
         {r.titles > 0 ? r.titles : <span className="text-subtle">·</span>}

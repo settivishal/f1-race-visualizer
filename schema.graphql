@@ -373,6 +373,7 @@ type Team {
   career: CareerTotals!
   color: String
   id: ID!
+  lineage: [Team!]!
   name: String!
 }
 

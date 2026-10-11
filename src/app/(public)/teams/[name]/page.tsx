@@ -6,7 +6,9 @@ import { ProfileSkeleton } from '@/components/ui/skeleton';
 import { RecordTable, StatRow } from '@/components/archive/record-table';
 import { getArchiveIndex, getTeamProfile } from '@/lib/queries';
 import { prerenderParams } from '@/lib/prerender';
+import Link from 'next/link';
 import { BackLink } from '@/components/ui/back-link';
+import { span } from '@/components/ui/results-table';
 
 /**
  * A constructor's record.
@@ -98,6 +100,20 @@ async function TeamDetail({ params }: { params: Promise<{ name: string }> }) {
                 : 'No drivers recorded'
             }
           />
+          {team.lineage.length > 0 ? (
+            <p className="mt-2 text-sm text-muted">
+              Also raced as{' '}
+              {team.lineage.map((earlier, i) => (
+                <span key={earlier.name} className="whitespace-nowrap">
+                  {i > 0 ? ' · ' : null}
+                  <Link href={`/teams/${encodeURIComponent(earlier.name)}`} className="font-medium text-foreground hover:text-accent">
+                    {earlier.name}
+                  </Link>{' '}
+                  <span className="tabular">{span(earlier.career.seasons)}</span>
+                </span>
+              ))}
+            </p>
+          ) : null}
         </div>
       </header>
 
