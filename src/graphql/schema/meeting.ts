@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { circuits, meetings, races, seasons } from '@/db/schema';
 import { readAppConfig } from '@/lib/app-config';
 import { builder } from '../builder';
@@ -27,20 +27,10 @@ export const Circuit = builder.objectRef<CircuitRow>('Circuit').implement({
     turns: t.exposeInt('turns', { nullable: true }),
     firstGrandPrix: t.exposeInt('firstGrandPrix', { nullable: true }),
     // The grands prix held here, newest first. Through `meetings.circuit_id`,
-    // which every season carries since the calendar link. Cancelled rounds
-    // were never held here, so they are not part of its history.
+    // which every season carries since the calendar link.
     races: t.field({
       type: [Race],
-      resolve: (circuit, _args, ctx) =>
-        ctx.db.select({ race: races }).from(races)
-          .innerJoin(meetings, eq(meetings.id, races.meetingId))
-          .where(and(
-            eq(meetings.circuitId, circuit.id),
-            eq(races.type, 'GRAND_PRIX'),
-            ne(races.status, 'CANCELLED'),
-          ))
-          .orderBy(desc(races.date))
-          .then((rows) => rows.map((row) => row.race)),
+      resolve: (circuit, _args, ctx) => ctx.loaders.racesByCircuitId.load(circuit.id),
     }),
   }),
 });

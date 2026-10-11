@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import {
   driverTeamAssignments, drivers, meetings, raceResults, races, raceStatus, teamSeasons, teams,
 } from '@/db/schema';
@@ -25,6 +25,14 @@ import type { DriverRow, TeamRow } from './entity';
  * Hamilton's name, who had none.
  */
 
+type DriverStintShape = {
+  team: TeamRow;
+  points: number;
+  wins: number;
+  firstMeetingId: string;
+  lastMeetingId: string;
+};
+
 type DriverStandingShape = {
   position: number;
   driver: DriverRow;
@@ -33,6 +41,7 @@ type DriverStandingShape = {
   wins: number;
   podiums: number;
   finishes: number[];
+  stints: DriverStintShape[];
 };
 
 type ConstructorStandingShape = {
@@ -67,6 +76,26 @@ export function countback(a: number[], b: number[]): number {
   return 0;
 }
 
+/**
+ * One team a driver raced for in the season. Most drivers have one; a driver
+ * moved mid-season (Gasly and Albon in 2019) has one per team, in race order.
+ */
+const DriverStint = builder.objectRef<DriverStintShape>('DriverStint').implement({
+  fields: (t) => ({
+    team: t.field({ type: Team, resolve: (s) => s.team }),
+    points: t.exposeFloat('points'),
+    wins: t.exposeInt('wins'),
+    fromRound: t.int({
+      nullable: true,
+      resolve: (s, _args, ctx) => ctx.loaders.officialRoundByMeetingId.load(s.firstMeetingId),
+    }),
+    toRound: t.int({
+      nullable: true,
+      resolve: (s, _args, ctx) => ctx.loaders.officialRoundByMeetingId.load(s.lastMeetingId),
+    }),
+  }),
+});
+
 const DriverStanding = builder.objectRef<DriverStandingShape>('DriverStanding').implement({
   fields: (t) => ({
     position: t.exposeInt('position'),
@@ -75,6 +104,7 @@ const DriverStanding = builder.objectRef<DriverStandingShape>('DriverStanding').
     points: t.exposeFloat('points'),
     wins: t.exposeInt('wins'),
     podiums: t.exposeInt('podiums'),
+    stints: t.field({ type: [DriverStint], resolve: (s) => s.stints }),
   }),
 });
 
@@ -101,6 +131,9 @@ builder.queryField('driverStandings', (t) =>
           team: teams,
           teamColor: teamSeasons.color,
           ...resultTotals,
+          firstAt: sql<string>`min(${races.date})`,
+          firstMeetingId: sql<string>`(array_agg(${meetings.id} order by ${races.date}))[1]`,
+          lastMeetingId: sql<string>`(array_agg(${meetings.id} order by ${races.date} desc))[1]`,
         })
         .from(raceResults)
         .innerJoin(races, eq(races.id, raceResults.raceId))
@@ -112,18 +145,23 @@ builder.queryField('driverStandings', (t) =>
         .where(eq(meetings.seasonYear, args.season))
         .groupBy(drivers.id, teams.id, teamSeasons.color);
 
-      const byDriver = new Map<string, DriverStandingShape & { teamPoints: number }>();
+      const byDriver = new Map<string, DriverStandingShape & { teamPoints: number; stints: (DriverStintShape & { firstAt: string })[] }>();
       for (const row of rows) {
         const team = withSeasonColor(row.team, row.teamColor);
+        const stint = {
+          team, points: row.points, wins: row.wins,
+          firstMeetingId: row.firstMeetingId, lastMeetingId: row.lastMeetingId, firstAt: row.firstAt,
+        };
         const existing = byDriver.get(row.driver.id);
         if (!existing) {
           byDriver.set(row.driver.id, {
             position: 0, driver: row.driver, team,
             points: row.points, wins: row.wins, podiums: row.podiums,
-            finishes: row.finishes, teamPoints: row.points,
+            finishes: row.finishes, teamPoints: row.points, stints: [stint],
           });
           continue;
         }
+        existing.stints = [...existing.stints, stint].sort((a, b) => a.firstAt.localeCompare(b.firstAt));
         existing.points += row.points;
         existing.wins += row.wins;
         existing.podiums += row.podiums;
