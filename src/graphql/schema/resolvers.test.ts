@@ -724,3 +724,33 @@ describe('Circuit.races', () => {
     expect(data.circuit.races.map((race) => race.slug)).toEqual(['2025-test', '2023-test']);
   });
 });
+
+describe('Team.lineage', () => {
+  it('lists the names a team raced under, oldest first, and not the team itself', async () => {
+    const data = await rollingBack(async () => {
+      await db.insert(dbSchema.seasons).values([{ year: 2019 }, { year: 2021 }]);
+      const [tr, at, rb] = await db.insert(dbSchema.teams).values([
+        { name: 'Toro Rosso', ergastConstructorId: 'toro_rosso' },
+        { name: 'AlphaTauri', ergastConstructorId: 'alphatauri' },
+        { name: 'RB', ergastConstructorId: 'rb' },
+      ]).returning();
+      await db.insert(dbSchema.teamSeasons).values([
+        { seasonYear: 2019, teamId: tr.id },
+        { seasonYear: 2021, teamId: at.id },
+        { seasonYear: 2025, teamId: rb.id },
+      ]);
+      return run<{ team: { team: { lineage: { name: string }[] } } }>(
+        'query { team(name: "RB") { team { lineage { name } } } }',
+      );
+    });
+    expect(data.team.team.lineage.map((team) => team.name)).toEqual(['Toro Rosso', 'AlphaTauri']);
+  });
+
+  it('is empty for a team the lineage map does not know', async () => {
+    // Ferrari is seeded with no Ergast id, which the feature builder would refuse.
+    const data = await run<{ team: { team: { lineage: unknown[] } } }>(
+      'query { team(name: "Ferrari") { team { lineage { name } } } }',
+    );
+    expect(data.team.team.lineage).toEqual([]);
+  });
+});

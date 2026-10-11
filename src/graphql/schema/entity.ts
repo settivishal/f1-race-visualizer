@@ -1,5 +1,6 @@
-import { sql } from 'drizzle-orm';
+import { asc, eq, min, sql } from 'drizzle-orm';
 import { drivers, teamSeasons, teams } from '@/db/schema';
+import { lineageOf } from '@/lib/features';
 import { builder } from '../builder';
 
 /**
@@ -65,6 +66,41 @@ export function withSeasonColor<T extends { color: string | null }>(
 }
 
 export const seasonColorSql = sql<string | null>`coalesce(${teamSeasons.color}, ${teams.color})`;
+
+/**
+ * The other names this team has raced under, oldest first: RB was Toro Rosso
+ * and AlphaTauri. The same lineage map the win model uses, so the site and the
+ * model agree on what a rebrand is. Unmapped is an empty list here, where the
+ * feature builder would fail: a page has no reason to break over it.
+ *
+ * One read of the whole teams table, a few dozen rows. Only the team page asks.
+ */
+builder.objectField(Team, 'lineage', (t) =>
+  t.field({
+    type: [Team],
+    resolve: async (team, _args, ctx) => {
+      const rows = await ctx.db
+        .select({ ...teamColumns, ergastConstructorId: teams.ergastConstructorId, first: min(teamSeasons.seasonYear) })
+        .from(teams)
+        .innerJoin(teamSeasons, eq(teamSeasons.teamId, teams.id))
+        .groupBy(teams.id)
+        .orderBy(asc(min(teamSeasons.seasonYear)));
+      const keyOf = (row: (typeof rows)[number]) => {
+        try {
+          return lineageOf(row);
+        } catch {
+          return null;
+        }
+      };
+      const self = rows.find((row) => row.id === team.id);
+      const key = self ? keyOf(self) : null;
+      if (key === null) return [];
+      return rows
+        .filter((row) => row.id !== team.id && keyOf(row) === key)
+        .map(({ id, name, color }) => ({ id, name, color }));
+    },
+  }),
+);
 
 // A field rather than a column on Driver's row: the team is a fact about their
 // most recent race, so it goes through the loader that already knows that.
