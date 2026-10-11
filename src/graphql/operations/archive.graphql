@@ -40,6 +40,14 @@ query TeamProfile($name: String!) {
       id
       name
       color
+      lineage {
+        name
+        career {
+          seasons {
+            season
+          }
+        }
+      }
     }
     drivers {
       code

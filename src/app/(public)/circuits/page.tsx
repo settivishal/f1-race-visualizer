@@ -172,6 +172,13 @@ function CircuitRow({
         <span className="block truncate text-xs text-muted">
           {[circuit.locality, circuit.country].filter(Boolean).join(', ')}
         </span>
+        {/* The Most wins column is md and up; a phone gets it here instead. */}
+        {king ? (
+          <span className="mt-1 flex items-center gap-1.5 md:hidden">
+            <TeamCode code={king.code} teamColor={king.teamColor} />
+            <span className="tabular text-xs text-muted">×{king.wins}</span>
+          </span>
+        ) : null}
       </th>
       <td className="hidden py-2 pr-3 md:table-cell">
         {king ? (
