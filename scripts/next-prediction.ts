@@ -30,9 +30,14 @@ async function main() {
     .limit(1);
   if (!race) return done('no scheduled grand prix ahead');
   if (race.meetingKey === null) return done(`${race.slug}: meeting has no OpenF1 key`);
-  if ((await fetchQualifying(race.meetingKey, race.season)).length === 0) {
-    return done(`${race.slug}: qualifying not published yet`);
-  }
+  // OpenF1's free tier answers 401 from 30 minutes before a session to 30
+  // after it. A scheduled run that lands there has nothing wrong to report.
+  const qualifying = await fetchQualifying(race.meetingKey, race.season).catch((error) => {
+    if ((error as { status?: number }).status === 401) return null;
+    throw error;
+  });
+  if (qualifying === null) return done(`${race.slug}: OpenF1 is in a live session (401), a later run will check`);
+  if (qualifying.length === 0) return done(`${race.slug}: qualifying not published yet`);
 
   const [{ n }] = await db
     .select({ n: count() })
