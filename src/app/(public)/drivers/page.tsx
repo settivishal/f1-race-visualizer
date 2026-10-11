@@ -67,10 +67,16 @@ async function DriverGrid({ searchParams }: { searchParams: SearchParams }) {
   // another, so it shows only where "now" is what the page is about.
   const showNumbers = season === null || season === activeSeason;
 
+  // All seasons ranks by best championship finish, read from every season's
+  // standings (cached per season, as the teams grid reads them).
+  const best = season === null
+    ? bestFinishes(await Promise.all(seasons.map((entry) => getSeasonStandings(entry.year))), seasons.map((entry) => entry.year), activeSeason)
+    : new Map<string, Best>();
+
   return (
     <>
       {filter}
-      <DriverGarages garages={garages(drivers, teams, standings, showNumbers)} />
+      <DriverGarages garages={garages(drivers, teams, standings, showNumbers, best)} />
     </>
   );
 }
@@ -83,6 +89,27 @@ type Stint = DriverStanding['stints'][number];
 
 const winsNote = (wins: number) => (wins > 0 ? `${wins} win${wins === 1 ? '' : 's'}` : null);
 
+type Best = { position: number; titles: number };
+
+/**
+ * Each driver's best championship place across the archive, and how many they
+ * won. The active season counts towards the best place but not as a title:
+ * leading a championship is not winning it.
+ */
+function bestFinishes(tables: Standings[], years: number[], activeSeason: number): Map<string, Best> {
+  const best = new Map<string, Best>();
+  tables.forEach((table, i) => {
+    for (const standing of table.driverStandings) {
+      const prior = best.get(standing.driver.code) ?? { position: Infinity, titles: 0 };
+      best.set(standing.driver.code, {
+        position: Math.min(prior.position, standing.position),
+        titles: prior.titles + (standing.position === 1 && years[i] < activeSeason ? 1 : 0),
+      });
+    }
+  });
+  return best;
+}
+
 function panel(
   driver: IndexDriver,
   standing: DriverStanding | null,
@@ -90,6 +117,8 @@ function panel(
   // Set only for a driver who raced for more than one team that season: the
   // panel in this garage shows what they scored here, and when.
   stint: Stint | null = null,
+  // All seasons only: the best championship place, which leads the panel.
+  best: Best | null = null,
 ): GaragePanel {
   const base = {
     id: driver.id, code: driver.code, name: driver.name, country: driver.country ?? null,
@@ -104,7 +133,7 @@ function panel(
       : `Rounds ${stint.fromRound}–${stint.toRound}`;
     return {
       ...base,
-      points: stint?.points ?? standing.points,
+      figure: { value: stint?.points ?? standing.points, unit: 'pts' },
       note: [
         showNumbers ? `P${standing.position}` : null,
         rounds,
@@ -113,21 +142,25 @@ function panel(
     };
   }
   const career = driver.career;
-  if (career && career.seasons.length > 0) {
+  if (best && career && career.seasons.length > 0) {
     return {
       ...base,
-      points: career.points,
-      note: [span(career.seasons), winsNote(career.wins)].filter((part): part is string => part !== null),
+      figure: { value: `P${best.position}`, unit: 'best' },
+      note: [
+        best.titles > 0 ? `${best.titles} title${best.titles === 1 ? '' : 's'}` : null,
+        span(career.seasons),
+        winsNote(career.wins),
+      ].filter((part): part is string => part !== null),
     };
   }
-  return { ...base, points: null, note: [] };
+  return { ...base, figure: null, note: [] };
 }
 
 /**
  * The grid, one garage per team. A season lines the teams up in championship
  * order with each driver under every team they scored for; all seasons puts
- * each driver in the garage they last raced from, teams A–Z, best career
- * first. Anyone the standings do not place — a season with no result yet —
+ * each driver in the garage they last raced from, teams A–Z, best
+ * championship finish first, then wins. Anyone the standings do not place — a season with no result yet —
  * waits in a garage of their own.
  */
 function garages(
@@ -135,6 +168,7 @@ function garages(
   teams: Index['teams'],
   standings: Standings | null,
   showNumbers: boolean,
+  best: Map<string, Best>,
 ): Garage[] {
   if (standings === null) {
     const spans = new Map(teams.map((team) => [team.name, team.career ? span(team.career.seasons) : null]));
@@ -152,8 +186,9 @@ function garages(
       .map(({ drivers: inGarage, ...garage }) => ({
         ...garage,
         panels: inGarage
-          .sort((a, b) => (b.career?.points ?? 0) - (a.career?.points ?? 0))
-          .map((driver) => panel(driver, null, showNumbers)),
+          .sort((a, b) => (best.get(a.code)?.position ?? Infinity) - (best.get(b.code)?.position ?? Infinity)
+            || (b.career?.wins ?? 0) - (a.career?.wins ?? 0))
+          .map((driver) => panel(driver, null, showNumbers, null, best.get(driver.code) ?? null)),
       }));
   }
 
