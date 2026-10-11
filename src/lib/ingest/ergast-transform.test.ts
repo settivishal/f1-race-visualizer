@@ -233,4 +233,11 @@ describe('CONSTRUCTOR_COLOR', () => {
   it.each(Object.entries(CONSTRUCTOR_COLOR))('%s (%s) reads on the dark panel', (_team, color) => {
     expect((luminance(color) + 0.05) / (panel + 0.05)).toBeGreaterThanOrEqual(3);
   });
+
+  // And on the white page, where a pale yellow bar vanished. 1.5, not 3: on
+  // white, 3:1 would fail real liveries (McLaren's orange is 2.5). The point is
+  // a visible bar, not readable text.
+  it.each(Object.entries(CONSTRUCTOR_COLOR))('%s (%s) shows on the light page', (_team, color) => {
+    expect(1.05 / (luminance(color) + 0.05)).toBeGreaterThanOrEqual(1.5);
+  });
 });

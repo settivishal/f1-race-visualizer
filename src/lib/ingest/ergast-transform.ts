@@ -32,7 +32,8 @@ import type {
  * Every one has to read against the dark chart panel as well as the light
  * page. AlphaTauri's navy and Alfa Romeo's maroon were the liveries but
  * vanished as a 3px bar on near-black, so they carry the lighter shades F1's
- * own graphics used for the same teams.
+ * own graphics used for the same teams. Renault's yellow had the opposite
+ * problem on white, so it is a deeper yellow.
  */
 export const CONSTRUCTOR_COLOR: Record<string, string> = {
   mercedes: '#00D7B6',
@@ -48,7 +49,7 @@ export const CONSTRUCTOR_COLOR: Record<string, string> = {
   alphatauri: '#4E7C9B',
   toro_rosso: '#469BFF',
   racing_point: '#F596C8',
-  renault: '#FFF500',
+  renault: '#D4C800',
   force_india: '#FF80C7',
   alfa: '#C92D4B',
   lotus_f1: '#FFB800',

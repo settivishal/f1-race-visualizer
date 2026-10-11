@@ -66,7 +66,14 @@ async function handle(request: Request) {
   }
 
   const started = Date.now();
-  const result = await drainPending(db, config);
+  // OpenF1's free tier answers 401 from 30 minutes before a session to 30
+  // after it, and the 06:00 run lands in one on early-morning race weekends.
+  // Nothing is wrong and tomorrow's run imports it, so it is a skip, not a 500.
+  const result = await drainPending(db, config).catch((error) => {
+    if ((error as { status?: number }).status === 401) return null;
+    throw error;
+  });
+  if (result === null) return skip('OpenF1 is in a live session (401); the next run imports it');
   for (const sessionKey of result.abandoned) {
     console.log(`[cron/ingest] gave up on session ${sessionKey}: still no laps a week after it ended`);
   }
