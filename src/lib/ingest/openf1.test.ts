@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchSessionByKey } from './openf1';
+import { fetchSessionByKey, toQualifying } from './openf1';
 
 /**
  * `fetchSessionByKey` exists because of a bug worth not repeating.
@@ -55,5 +55,22 @@ describe('fetchSessionByKey', () => {
     // run.ts turns the empty result into its own "session not found", which is
     // the message that carries the session key.
     await expect(fetchSessionByKey(1)).resolves.toEqual([]);
+  });
+});
+
+describe('toQualifying', () => {
+  it('joins results to drivers by car number and keeps a missing time as null', () => {
+    const result = (driver_number: number, position: number | null) =>
+      ({ driver_number, position, number_of_laps: null, points: null, dnf: false, dns: false, dsq: false });
+    const driver = (driver_number: number, name_acronym: string, team_name: string) =>
+      ({ driver_number, name_acronym, full_name: name_acronym, team_name, team_colour: null, headshot_url: null, country_code: null });
+
+    expect(toQualifying(
+      [result(3, 1), result(44, null)],
+      [driver(44, 'HAM', 'Ferrari'), driver(3, 'VER', 'Red Bull Racing')],
+    )).toEqual([
+      { code: 'VER', teamName: 'Red Bull Racing', position: 1 },
+      { code: 'HAM', teamName: 'Ferrari', position: null },
+    ]);
   });
 });

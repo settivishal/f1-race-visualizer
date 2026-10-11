@@ -40,6 +40,13 @@ describe('createJsonClient', () => {
     expect(stub).toHaveBeenCalledTimes(1);
   });
 
+  it('carries the status on the error', async () => {
+    respondInTurn(401);
+    const get = createJsonClient({ name: 'Test', baseUrl: 'https://example.test', throttle: passthrough });
+
+    await expect(get('/sessions', {})).rejects.toMatchObject({ status: 401 });
+  });
+
   it('reads a 404 as an empty list only when told to', async () => {
     respondInTurn(404, 404);
     const lenient = createJsonClient({ name: 'Test', baseUrl: 'https://example.test', throttle: passthrough, emptyOn404: true });

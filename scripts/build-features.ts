@@ -6,7 +6,8 @@ import {
   buildFeatureRows, lineageOf, missingFromQualifying, toCsv,
   type Entry, type RaceInput,
 } from '@/lib/features';
-import { ergastRaceOn, fetchSeasonQualifying, type ErgastQualifyingRace } from '@/lib/ingest/ergast';
+import { ergastRaceOn, fetchSeasonQualifying, fetchSeasonSchedule, type ErgastQualifyingRace } from '@/lib/ingest/ergast';
+import { fetchQualifying } from '@/lib/ingest/openf1';
 
 const { drivers, driverTeamAssignments, meetings, raceResults, races, teamSeasons, teams } = schema;
 
@@ -25,7 +26,9 @@ const OUT = 'ml/data/features.csv';
  * Two queries: every result of a completed race in range, and the upcoming
  * race. Qualifying and the circuit come from Ergast, matched to our races by
  * date, never by round: the 2026 Sepang race is round 16 there and 18 here.
- * meetings.circuit_id is not used because OpenF1 imports never set it.
+ * meetings.circuit_id is not used because OpenF1 imports never set it. The
+ * upcoming race's qualifying comes from OpenF1 instead, because Jolpica can
+ * publish it after the race has started.
  *
  * Any failure exits non-zero before the file is written, so a CSV on disk is
  * always a complete one.
@@ -68,7 +71,6 @@ async function main() {
 
   // One Ergast read per season, keyed by date (UTC, as ours is).
   const seasons = new Set(rows.map((row) => row.season));
-  if (upcoming) seasons.add(upcoming.season);
   const qualifyingByDate = new Map<string, ErgastQualifyingRace>();
   for (const season of [...seasons].sort()) {
     for (const race of await fetchSeasonQualifying(season)) qualifyingByDate.set(race.date, race);
@@ -123,7 +125,7 @@ async function main() {
   }
 
   const all = [...inputs.values()];
-  if (upcoming) all.push(upcomingInput(upcoming, qualifyingByDate, sprintFinish, all, warnings));
+  if (upcoming) all.push(await upcomingInput(upcoming, sprintFinish, all, warnings));
 
   const featureRows = buildFeatureRows(all);
   mkdirSync('ml/data', { recursive: true });
@@ -146,6 +148,7 @@ async function findUpcoming(slug: string) {
       season: meetings.seasonYear,
       round: meetings.round,
       meetingId: meetings.id,
+      openf1MeetingKey: meetings.openf1MeetingKey,
     })
     .from(races)
     .innerJoin(meetings, eq(meetings.id, races.meetingId))
@@ -160,48 +163,61 @@ async function findUpcoming(slug: string) {
 /**
  * The upcoming race's entry list is its qualifying list, and its teams come
  * from that list too: our lineup for a race is only written once it has run.
+ * Qualifying is OpenF1's; only the circuit still comes from Ergast's calendar.
  */
-function upcomingInput(
+async function upcomingInput(
   race: Awaited<ReturnType<typeof findUpcoming>>,
-  qualifyingByDate: Map<string, ErgastQualifyingRace>,
   sprintFinish: Map<string, Map<string, number | null>>,
   past: RaceInput[],
   warnings: string[],
-): RaceInput {
-  const qualifying = ergastRaceOn(race.date, qualifyingByDate);
-  const results = qualifying?.QualifyingResults ?? [];
+): Promise<RaceInput> {
+  if (race.openf1MeetingKey === null) throw new Error(`${race.slug}: meeting has no OpenF1 key.`);
+  const results = await fetchQualifying(race.openf1MeetingKey, race.season);
+  if (results.length === 0) throw new Error(`${race.slug}: OpenF1 has no qualifying yet.`);
 
   const lastField = past
     .filter((r) => r.date < race.date)
     .sort((a, b) => b.date.getTime() - a.date.getTime())[0];
   const missing = missingFromQualifying(
     race.slug,
-    results.flatMap((result) => result.Driver.code ?? []),
+    results.map((result) => result.code),
     lastField?.entries.map((entry) => entry.driverCode) ?? [],
   );
   if (missing.length > 0) {
     warnings.push(`${race.slug}: not in qualifying, so not predicted: ${missing.join(', ')}`);
   }
 
+  // OpenF1 team names are the ones our OpenF1 imports wrote.
+  const seasonTeams = await getDb()
+    .select({ name: teams.name, ergastConstructorId: teams.ergastConstructorId })
+    .from(teamSeasons)
+    .innerJoin(teams, eq(teams.id, teamSeasons.teamId))
+    .where(eq(teamSeasons.seasonYear, race.season));
+  const teamByName = new Map(seasonTeams.map((team) => [team.name, team]));
+
   const entries: Entry[] = results.map((result) => {
-    const code = result.Driver.code;
-    if (!code) throw new Error(`${race.slug}: qualifier ${result.Driver.driverId} has no driver code.`);
+    const team = result.teamName ? teamByName.get(result.teamName) : undefined;
+    if (!team) throw new Error(`${race.slug}: ${result.code}'s team "${result.teamName}" is not a ${race.season} team.`);
     return {
-      driverCode: code,
-      teamKey: lineageOf({ name: result.Constructor.name, ergastConstructorId: result.Constructor.constructorId }),
+      driverCode: result.code,
+      teamKey: lineageOf(team),
       qualiPosition: result.position,
-      sprintFinishPosition: sprintFinish.get(race.meetingId)?.get(code) ?? null,
+      sprintFinishPosition: sprintFinish.get(race.meetingId)?.get(result.code) ?? null,
       finalPosition: null,
       gridPosition: null,
     };
   });
+
+  const schedule = new Map((await fetchSeasonSchedule(race.season)).map((r) => [r.date, r]));
+  const circuitId = ergastRaceOn(race.date, schedule)?.Circuit.circuitId ?? null;
+  if (!circuitId) warnings.push(`${race.slug}: not on the Ergast calendar; circuit left blank`);
 
   return {
     slug: race.slug,
     season: race.season,
     round: race.round,
     date: race.date,
-    circuitId: qualifying?.Circuit.circuitId ?? null,
+    circuitId,
     upcoming: true,
     entries,
   };
