@@ -198,8 +198,10 @@ function CircuitRow({
             className={`py-2 text-center whitespace-nowrap ${index < phoneFrom ? 'hidden sm:table-cell' : ''}`}
           >
             {held.length === 0 ? (
-              <span className="text-subtle" aria-label={`${year}: not held`}>
-                ·
+              // aria-label on a plain span is ignored by screen readers; sr-only text is not.
+              <span className="text-subtle">
+                <span aria-hidden>·</span>
+                <span className="sr-only">{year}: not held</span>
               </span>
             ) : (
               held.map((race) => {
@@ -211,9 +213,9 @@ function CircuitRow({
                     key={race.slug}
                     href={`/races/${race.slug}`}
                     title={label}
-                    className={`relative z-10 inline-flex items-center justify-center rounded-full hover:bg-panel-strong ${
-                      held.length > 1 ? 'size-4' : 'size-6'
-                    }`}
+                    // 24px even when a season held two races here: WCAG 2.2's
+                    // minimum target. That year's column widens instead.
+                    className="relative z-10 inline-flex size-6 items-center justify-center rounded-full hover:bg-panel-strong"
                   >
                     <span
                       aria-hidden
