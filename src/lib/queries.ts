@@ -9,6 +9,7 @@ import {
   HeroReplayDocument,
   HomeLineupDocument,
   LatestResultDocument,
+  PredictionScorecardDocument,
   RaceAnalysisDocument,
   RaceHeaderDocument,
   RaceLibraryDocument,
@@ -59,6 +60,15 @@ export async function getRacePredictions(slug: string) {
   cacheLife('days');
 
   return executeQuery(RacePredictionsDocument, { slug });
+}
+
+/** The /races scorecard. Tagged `race`: an import or a result changes it. */
+export async function getPredictionScorecard() {
+  'use cache';
+  cacheTag('race');
+  cacheLife('days');
+
+  return executeQuery(PredictionScorecardDocument, {});
 }
 
 export async function getDriverStandings(season: number) {

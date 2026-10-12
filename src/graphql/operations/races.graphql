@@ -161,3 +161,25 @@ query RacePredictions($slug: String!) {
     expanded
   }
 }
+
+# The /races scorecard: each run race the model predicted before the start.
+query PredictionScorecard {
+  scoredRaces {
+    slug
+    meeting {
+      name
+    }
+    predictions {
+      winProbability
+      modelVersion
+      driver {
+        code
+      }
+    }
+    podium {
+      position
+      code
+      teamColor
+    }
+  }
+}

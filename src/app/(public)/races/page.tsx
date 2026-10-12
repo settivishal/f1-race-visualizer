@@ -1,5 +1,6 @@
 import { Suspense, ViewTransition } from 'react';
 import Link from 'next/link';
+import { PredictionScorecard } from '@/components/race/prediction-scorecard';
 import { RaceStartTime, RaceWeekFrame, WeekendBadge } from '@/components/schedule/upcoming-race';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { SeasonFilter } from '@/components/ui/season-filter';
@@ -40,6 +41,9 @@ export default function RacesPage({ searchParams }: { searchParams: SearchParams
         title="Races"
         description="Pick a race to replay it lap by lap."
       />
+      <Suspense fallback={null}>
+        <PredictionScorecard />
+      </Suspense>
       <Suspense fallback={<LibrarySkeleton />}>
         <RaceLibrary searchParams={searchParams} />
       </Suspense>
