@@ -754,3 +754,35 @@ describe('Team.lineage', () => {
     expect(data.team.team.lineage).toEqual([]);
   });
 });
+
+describe('scoredRaces', () => {
+  const scored = () => run<{ scoredRaces: { slug: string; predictions: { driver: { code: string } }[] }[] }>(
+    'query { scoredRaces { slug predictions { driver { code } } } }',
+  );
+
+  it('lists a run race predicted before the start', async () => {
+    const data = await rollingBack(async () => {
+      const race = await db.query.races.findFirst({ where: eq(dbSchema.races.slug, '2025-test') });
+      const lec = await db.query.drivers.findFirst({ where: eq(dbSchema.drivers.code, 'LEC') });
+      await db.insert(dbSchema.racePredictions).values({
+        raceId: race!.id, driverId: lec!.id, winProbability: 1, modelVersion: 'v1',
+        generatedAt: new Date('2025-03-01T20:00:00Z'),
+      });
+      return scored();
+    });
+    expect(data.scoredRaces.map((race) => race.slug)).toEqual(['2025-test']);
+  });
+
+  it('leaves out a race whose newest prediction came after the start', async () => {
+    const data = await rollingBack(async () => {
+      const race = await db.query.races.findFirst({ where: eq(dbSchema.races.slug, '2025-test') });
+      const lec = await db.query.drivers.findFirst({ where: eq(dbSchema.drivers.code, 'LEC') });
+      await db.insert(dbSchema.racePredictions).values([
+        { raceId: race!.id, driverId: lec!.id, winProbability: 1, modelVersion: 'v1', generatedAt: new Date('2025-03-01T20:00:00Z') },
+        { raceId: race!.id, driverId: lec!.id, winProbability: 1, modelVersion: 'v2', generatedAt: new Date('2025-03-03T00:00:00Z') },
+      ]);
+      return scored();
+    });
+    expect(data.scoredRaces).toEqual([]);
+  });
+});

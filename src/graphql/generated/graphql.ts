@@ -202,6 +202,11 @@ export type RacePredictionsQueryVariables = Exact<{
 
 export type RacePredictionsQuery = { race: { predictions: Array<{ winProbability: number, modelVersion: string, generatedAt: string, driver: { code: string, name: string } | null, team: { color: string | null } | null }> } | null, predictionDisplay: { shown: number, expanded: number } };
 
+export type PredictionScorecardQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type PredictionScorecardQuery = { scoredRaces: Array<{ slug: string, meeting: { name: string } | null, predictions: Array<{ winProbability: number, modelVersion: string, driver: { code: string } | null }>, podium: Array<{ position: number, code: string, teamColor: string | null }> }> };
+
 export type RaceReplayFieldsFragment = { laps: Array<number>, summary: { lapCount: number, maxLap: number, maxPosition: number, driverCount: number }, drivers: Array<{ grid: number | null, driver: { id: string, code: string, name: string, number: number | null } | null, team: { id: string, name: string, color: string | null } | null, positions: Array<{ lap: number, position: number, lapTime: number | null, sector1: number | null, sector2: number | null, sector3: number | null }> }>, events: Array<{ lap: number, type: string, details: string, driver: { id: string, code: string, name: string, number: number | null } | null }> };
 
 export type RaceReplayQueryVariables = Exact<{
@@ -942,6 +947,28 @@ export const RacePredictionsDocument = new TypedDocumentString(`
   }
 }
     `) as unknown as TypedDocumentString<RacePredictionsQuery, RacePredictionsQueryVariables>;
+export const PredictionScorecardDocument = new TypedDocumentString(`
+    query PredictionScorecard {
+  scoredRaces {
+    slug
+    meeting {
+      name
+    }
+    predictions {
+      winProbability
+      modelVersion
+      driver {
+        code
+      }
+    }
+    podium {
+      position
+      code
+      teamColor
+    }
+  }
+}
+    `) as unknown as TypedDocumentString<PredictionScorecardQuery, PredictionScorecardQueryVariables>;
 export const RaceReplayDocument = new TypedDocumentString(`
     query RaceReplay($slug: String!) {
   race(slug: $slug) {

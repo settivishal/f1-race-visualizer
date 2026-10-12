@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, gt, sql } from 'drizzle-orm';
-import { raceEvents, racePositions, raceResults, races } from '@/db/schema';
+import { and, asc, desc, eq, getTableColumns, gt, sql } from 'drizzle-orm';
+import { raceEvents, racePositions, racePredictions, raceResults, races } from '@/db/schema';
 import { readAppConfig } from '@/lib/app-config';
 import { builder } from '../builder';
 import type { Db } from '../context';
@@ -323,6 +323,25 @@ builder.queryField('race', (t) =>
       const race = await ctx.db.query.races.findFirst({ where: eq(races.slug, args.slug) });
       return race ?? null;
     },
+  }),
+);
+
+/**
+ * Run races the model predicted before the start, newest first: the
+ * scorecard's rows. A race whose newest prediction was written after the start
+ * is left out, because a forecast made once the result was known proves
+ * nothing, and `predictions` above shows the newest one.
+ */
+builder.queryField('scoredRaces', (t) =>
+  t.field({
+    type: [Race],
+    resolve: (_root, _args, ctx) =>
+      ctx.db.select(getTableColumns(races)).from(races)
+        .innerJoin(racePredictions, eq(racePredictions.raceId, races.id))
+        .where(eq(races.status, 'COMPLETED'))
+        .groupBy(races.id)
+        .having(sql`max(${racePredictions.generatedAt}) < ${races.date}`)
+        .orderBy(desc(races.date)),
   }),
 );
 

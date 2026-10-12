@@ -212,6 +212,7 @@ type Query {
   race(slug: String!): Race
   raceSlugs: [RaceSlug!]!
   races(after: String, before: String, first: Int, search: String, season: Int, type: RaceType): RaceConnection!
+  scoredRaces: [Race!]!
   search(query: String!): [SearchHit!]!
   seasonPulse(season: Int!): [PulseRound!]!
   seasons: [Season!]!
